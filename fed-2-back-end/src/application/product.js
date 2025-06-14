@@ -1,67 +1,64 @@
 // This module defines the routes for product-related operations in an Express application
-import { products } from '../data.js';
+// import { products } from '../data.js';
+import Product from '../infrastructure/db/entities/product.js';
+// Import the Product model from the database entities
 
-const getAllProducts = (req, res) => {
+const getAllProducts = async (req, res) => {
+  const products = await Product.find();
   res.json(products);
 };
 
-const getProductById = (req, res) => {
+const getProductById = async (req, res) => {
   const { id } = req.params;
-  const product = products.find((p) => p._id === id);
+  const product = await Product.findById(id);
   if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
   res.json(product);
 };
 
-const createProduct = (req, res) => {
-  const { name, price, description, categoryId } = req.body;
-  if (!name || !price || !description || !categoryId) {
-    return res.status(400).json({ message: 'All fields are required' });
-  }
-
-  const newProduct = {
-    _id: products.length + 1,
-    name,
-    price,
-    description,
-    categoryId,
-  };
-
-  products.push(newProduct);
+const createProduct = async (req, res) => {
+  // const { name, price, description, categoryId } = req.body;
+  // if (!name || !price || !description || !categoryId) {
+  //   return res.status(400).json({ message: 'All fields are required' });
+  // }
+  const newProduct = req.body;
+  // Assuming req.body contains the new product data
+  await Product.create(newProduct);
+  // Create a new product in the database
   res.status(201).json(newProduct);
 };
 
-const updateProductById = (req, res) => {
+const updateProductById = async (req, res) => {
   const { id } = req.params;
-  const { name, price, description, categoryId } = req.body;
+  const { name, price, description, categoryId, image } = req.body;
 
-  const productIndex = products.findIndex((p) => p._id === id);
-  if (productIndex === -1) {
+  const product = await Product.findById(id);
+  if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
 
-  products[productIndex] = {
-    ...products[productIndex],
-    name,
-    price,
-    description,
-    categoryId,
-  };
+  product.name = name;
+  product.price = price;
+  product.description = description;
+  product.category = categoryId;
+  product.image = image;
 
-  res.json(products[productIndex]);
+  await product.save();
+
+  res.status(200).json(product);
 };
 
-const deleteProductById = (req, res) => {
+const deleteProductById = async (req, res) => {
   const { id } = req.params;
 
-  const productIndex = products.findIndex((p) => p._id === id);
-  if (productIndex === -1) {
+  const product = await Product.findById(id);
+  if (!product) {
     return res.status(404).json({ message: 'Product not found' });
   }
 
-  products.splice(productIndex, 1);
-  res.json({ message: 'Product deleted successfully' });
+  await Product.deleteOne({ _id: id });
+  res.status(200).json({ message: 'Product deleted successfully' });
 };
 
 export {

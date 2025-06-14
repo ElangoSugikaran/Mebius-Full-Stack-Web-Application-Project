@@ -8,7 +8,8 @@ import {
   getProductById,
   createProduct,
   updateProductById,
-  deleteProductById, } from '../application/product.js';
+  deleteProductById,
+} from '../application/product.js';
 
 // Create a new router for product-related routes
 const productRouter = express.Router();
