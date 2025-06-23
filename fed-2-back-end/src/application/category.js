@@ -1,5 +1,6 @@
 // This module defines the routes for product-related operations in an Express application
-import Category from "../infrastructure/db/entities/category";
+import Category from "../infrastructure/db/entities/category.js";
+// Import the Category model from the database entities
 
 const getAllCategories = async (req, res) => {
   try {

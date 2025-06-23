@@ -4,6 +4,11 @@ import mongoose from 'mongoose';
 // Import Mongoose for MongoDB object modeling
 
 const productSchema = new mongoose.Schema({
+  categoryId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Category',
+    required: true
+  },
   name: {
     type: String,
     required: true
@@ -15,6 +20,11 @@ const productSchema = new mongoose.Schema({
   image: {
     type: String,
     required: true
+  },
+  review: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Review',
+    default: [],
   },
 });
 

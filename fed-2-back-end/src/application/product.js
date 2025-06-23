@@ -4,8 +4,15 @@ import Product from '../infrastructure/db/entities/product.js';
 // Import the Product model from the database entities
 
 const getAllProducts = async (req, res) => {
-  const products = await Product.find();
-  res.json(products);
+  const categoryId = req.query.categoryId;
+  // Check if a categoryId is provided
+  if (categoryId) {
+    const products = await Product.find({ categoryId });
+    return res.json(products);
+  } else {
+    const products = await Product.find();
+    res.json(products);
+  }
 };
 
 const getProductById = async (req, res) => {
