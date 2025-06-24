@@ -21,8 +21,8 @@ const productSchema = new mongoose.Schema({
     type: String,
     required: true
   },
-  review: {
-    type: mongoose.Schema.Types.ObjectId,
+  reviews: {
+    type: [mongoose.Schema.Types.ObjectId],
     ref: 'Review',
     default: [],
   },
