@@ -1,0 +1,21 @@
+import ValidationError from "../../domain/errors/validation-error.js";
+import NotFoundError from "../../domain/errors/not-found-error.js";
+import UnauthorizedError from "../../domain/errors/unauthorized-error.js";
+
+const globalErrorHandlingMiddleware = (err, req, res, next) => {
+  if (err instanceof ValidationError) {
+    // Handle validation errors
+    res.status(400).json({ message: err.message });
+  } else if (err instanceof NotFoundError) {
+    // Handle not found errors
+    res.status(404).json({ message: err.message });
+  } else if (err instanceof UnauthorizedError) {
+    // Handle unauthorized errors
+    res.status(401).json({ message: err.message });
+  } else {
+    // Handle other errors
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+}
+
+export default globalErrorHandlingMiddleware;

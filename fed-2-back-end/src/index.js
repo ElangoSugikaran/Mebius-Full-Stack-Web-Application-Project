@@ -7,6 +7,7 @@ import productRouter from './api/product.js'; // Import product routes
 import categoryRouter from './api/category.js'; // Import category routes
 import reviewRouter from './api/review.js'; // Import review routes
 import connectDB from './infrastructure/db/index.js';
+import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware.js";
 
 // Create an instance of an Express application (the main server object)
 const app = express();
@@ -23,6 +24,8 @@ app.use('/api/products', productRouter);
 app.use('/api/categories', categoryRouter);
 // Use the review router for handling requests to the /api/reviews endpoint
 app.use('/api/reviews', reviewRouter);
+
+app.use(globalErrorHandlingMiddleware); // Use global error handling middleware to catch and respond to errors
 
 connectDB();
 

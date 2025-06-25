@@ -18,7 +18,7 @@ const productRouter = express.Router();
 productRouter
   .route('/')
   // GET /api/products - Returns all products as JSON
-  .get(getAllProducts)  
+  .get( getAllProducts)
   // POST /api/products - Adds a new product
   .post(createProduct);
 
