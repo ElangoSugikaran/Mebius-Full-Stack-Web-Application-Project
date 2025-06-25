@@ -3,7 +3,6 @@ import HeroGrid from "./components/HeroGrid";
 import Navigation from "./components/Navigation";
 import TrendingSection from "./components/TrendingSection";
 
-
 const App = () => {
 
   return (
