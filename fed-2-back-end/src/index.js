@@ -8,12 +8,14 @@ import categoryRouter from './api/category.js'; // Import category routes
 import reviewRouter from './api/review.js'; // Import review routes
 import connectDB from './infrastructure/db/index.js';
 import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware.js";
+import cors from 'cors'; // Import CORS middleware to handle cross-origin requests
 
 // Create an instance of an Express application (the main server object)
 const app = express();
 
 // Use middleware to automatically parse incoming JSON request bodies
 app.use(express.json());
+app.use(cors({origin: "http://localhost:5173"})); // Enable CORS to allow cross-origin requests
 
 // Define the port number where the server will listen for requests
 const Port = 8000;

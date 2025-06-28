@@ -2,7 +2,9 @@ import React from 'react'
 
 const SignInPage = () => {
   return (
-    <div>Sign In Page</div>
+    <main>
+      <h1>Sign In Page</h1>
+    </main>
   )
 }
 
