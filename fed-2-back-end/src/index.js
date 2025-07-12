@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "dotenv/config"
 
 // Import the Express framework to simplify server and routing logic
 import express from 'express';
@@ -6,8 +6,9 @@ import express from 'express';
 import productRouter from './api/product.js'; // Import product routes
 import categoryRouter from './api/category.js'; // Import category routes
 import reviewRouter from './api/review.js'; // Import review routes
-import connectDB from './infrastructure/db/index.js';
+import connectDB from './infrastructure/db/index.js';// Import the database connection function
 import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware.js";
+// Import global error handling middleware to manage errors across the application
 import cors from 'cors'; // Import CORS middleware to handle cross-origin requests
 
 // Create an instance of an Express application (the main server object)

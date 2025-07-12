@@ -68,8 +68,8 @@ export default function Navigation() {
             <button aria-label="Search" className="p-1">
               <Search size={20} />
             </button>
-            <a
-              href="/shop/cart"
+            <Link
+              to="/shop/cart"
               aria-label="Shopping Bag"
               className="p-1 relative"
             >
@@ -77,7 +77,7 @@ export default function Navigation() {
               <span className="absolute -top-1 -right-1 bg-black text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
                 {cartItemCount}
               </span>
-            </a>
+            </Link>
             {/* <SignedIn>
               <UserButton />
             </SignedIn> */}

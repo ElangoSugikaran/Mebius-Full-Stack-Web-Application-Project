@@ -1,10 +1,10 @@
+
 import { Button } from "@/components/ui/button";
 import { useDispatch } from "react-redux";
 import { addToCart } from "@/lib/features/cartSlice";
 
 function SimpleProductCard(props) {
-
-  const dispatch = useDispatch()
+  const dispatch = useDispatch();
 
   return (
     <div key={props.product._id}>
@@ -24,20 +24,20 @@ function SimpleProductCard(props) {
         </span>
       </div>
       <div>
-        <Button className={"w-full mt-2"} 
-          onClick={() => 
+        <Button
+          className={"w-full mt-2"}
+          onClick={() =>
             dispatch(
-              addToCart(
-                {  _id: props.product._id,
-                   name: props.product.name, 
-                   price: props.product.price, 
-                   image: props.product.image 
-                }
-              )
+              addToCart({
+                _id: props.product._id,
+                name: props.product.name,
+                price: props.product.price,
+                image: props.product.image,
+              })
             )
           }
-          >
-          Add to Cart
+        >
+          Add To Cart
         </Button>
       </div>
     </div>
