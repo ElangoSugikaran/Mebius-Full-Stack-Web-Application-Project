@@ -1,6 +1,8 @@
 import { useSelector } from 'react-redux';
 import { Navigate } from 'react-router';
 import CartItem from '@/components/CartItem';
+import ShippingAddressForm from '@/components/ShippingAddressForm';
+
 
 const CheckoutPage = () => {
 
@@ -25,7 +27,7 @@ const CheckoutPage = () => {
       <div className="mt-4">
         <h3 className="text-3xl font-semibold">Enter Shipping Address</h3>
         <div className="mt-2 w-1/2">
-          {/* <ShippingAddressForm /> */}
+          <ShippingAddressForm />
         </div>
       </div>
     </main>
