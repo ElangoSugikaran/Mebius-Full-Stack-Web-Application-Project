@@ -6,7 +6,7 @@ import { getAllCategories,
   getCategoryById,
   createCategory,
   updateCategoryById,
-  deleteCategoryById, } from '../application/category.js';
+  deleteCategoryById, } from '../application/category';
 // Import the categories data from the data module
 
 // Create a new router for category-related routes

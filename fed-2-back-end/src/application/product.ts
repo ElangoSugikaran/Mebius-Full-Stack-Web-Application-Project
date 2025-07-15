@@ -1,11 +1,13 @@
 // This module defines the routes for product-related operations in an Express application
-import Product from '../infrastructure/db/entities/product.js';
+import Product from '../infrastructure/db/entities/Product';
 // Import custom error classes for validation and not found errors
-import ValidationError from "../domain/errors/validation-error.js";
-import NotFoundError from "../domain/errors/not-found-error.js";
+import ValidationError from "../domain/errors/validation-error";
+import NotFoundError from "../domain/errors/not-found-error";
+import { Request, Response, NextFunction } from "express";
+import { createProductDTO } from '../domain/dto/product';
 
 // Get all products, optionally filtered by categoryId
-const getAllProducts = async (req, res, next) => {
+const getAllProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categoryId = req.query.categoryId;
     if (categoryId) {
@@ -21,7 +23,7 @@ const getAllProducts = async (req, res, next) => {
 };
 
 // Get a product by ID
-const getProductById = async (req, res, next) => {
+const getProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id).populate('reviews');
@@ -35,13 +37,21 @@ const getProductById = async (req, res, next) => {
 };
 
 // Create a new product
-const createProduct = async (req, res, next) => {
+/**
+ * Creates a new product after validating the request body.
+ * Uses Zod schema (createProductDTO) for data validation.
+ * Returns 201 status with created product on success.
+ */
+const createProduct = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { name, price, description, categoryId, image } = req.body;
-    if (!name || !price || !categoryId || !image) {
-      throw new ValidationError('Name, price, categoryId, and image are required');
+    // Validate request body against DTO schema
+    const result = createProductDTO.safeParse(req.body);
+    if (!result.success) {
+      throw new ValidationError('Invalid product data');
     }
-    const createdProduct = await Product.create({ name, price, description, category: categoryId, image });
+
+    // Create and save the product
+    const createdProduct = await Product.create(result.data);
     res.status(201).json(createdProduct);
   } catch (error) {
     next(error);
@@ -49,7 +59,7 @@ const createProduct = async (req, res, next) => {
 };
 
 // Update a product by ID
-const updateProductById = async (req, res, next) => {
+const updateProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { name, price, description, categoryId, image } = req.body;
@@ -62,8 +72,8 @@ const updateProductById = async (req, res, next) => {
     }
     product.name = name;
     product.price = price;
-    product.description = description;
-    product.category = categoryId;
+    // product.description = description;
+    product.categoryId = categoryId;
     product.image = image;
     await product.save();
     res.status(200).json(product);
@@ -73,7 +83,7 @@ const updateProductById = async (req, res, next) => {
 };
 
 // Delete a product by ID
-const deleteProductById = async (req, res, next) => {
+const deleteProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id);

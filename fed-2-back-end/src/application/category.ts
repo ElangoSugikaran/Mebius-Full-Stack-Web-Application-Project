@@ -1,11 +1,13 @@
 // This module defines the routes for category-related operations in an Express application
-import Category from "../infrastructure/db/entities/category.js";
+import Category from '../infrastructure/db/entities/Category'; // Import the Category entity
 // Import custom error classes for validation and not found errors
-import ValidationError from "../domain/errors/validation-error.js";
-import NotFoundError from "../domain/errors/not-found-error.js";
+import ValidationError from "../domain/errors/validation-error";
+import NotFoundError from "../domain/errors/not-found-error";
+
+import { Request, Response, NextFunction } from "express";
 
 // Get all categories
-const getAllCategories = async (req, res, next) => {
+const getAllCategories = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const categories = await Category.find();
     res.json(categories);
@@ -15,7 +17,7 @@ const getAllCategories = async (req, res, next) => {
 };
 
 // Get a category by ID
-const getCategoryById = async (req, res, next) => {
+const getCategoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const category = await Category.findById(id);
@@ -29,7 +31,7 @@ const getCategoryById = async (req, res, next) => {
 };
 
 // Create a new category
-const createCategory = async (req, res, next) => {
+const createCategory = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { name } = req.body;
     if (!name) {
@@ -43,7 +45,7 @@ const createCategory = async (req, res, next) => {
 };
 
 // Update a category by ID
-const updateCategoryById = async (req, res, next) => {
+const updateCategoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const { name } = req.body;
@@ -63,7 +65,7 @@ const updateCategoryById = async (req, res, next) => {
 };
 
 // Delete a category by ID
-const deleteCategoryById = async (req, res, next) => {
+const deleteCategoryById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const category = await Category.findById(id);

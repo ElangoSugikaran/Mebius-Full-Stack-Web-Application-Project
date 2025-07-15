@@ -3,7 +3,7 @@
 // Import the Express framework for routing
 import express from 'express';
 
-import { createReview } from '../application/review.js';
+import { createReview } from '../application/review';
 
 // Create a new router for review-related routes
 const reviewRouter = express.Router();

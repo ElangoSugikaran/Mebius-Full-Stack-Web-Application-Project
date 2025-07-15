@@ -1,58 +1,106 @@
-import  { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+import {zodResolver} from "@hookform/resolvers/zod";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+
+
+ // Define the schema for the form validation
+  const shippingAddressFormSchema = z.object({
+    line1: z.string().min(1).max(50),
+    line2: z.string().min(1).max(50),
+    city: z.string().min(1).max(50),
+    phone: z.string().min(2).max(15),
+  });
 
 const ShippingAddressForm = () => {
 
-  const [errors, setErrors] = useState({});
+  // Initialize the form with validation schema
+  const form = useForm({
+    resolver: zodResolver(shippingAddressFormSchema),
+    defaultValues: {
+      line1: "",
+      line2: "",
+      city: "",
+      phone: "",
+    },
+  });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const formData = new FormData(e.target);
-
-    const fname = formData.get("fname");
-    if (fname.length < 4) {
-      setErrors({
-        ...errors,
-        fname: "First Name should be at least 4 char long",
-      });
-      return;
-    }
-    setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
-      delete newErrors.fname; // Remove fname error
-      return newErrors;
-    });
-
-    const lname = formData.get("lname");
-    if (lname.length < 4) {
-      setErrors({
-        ...errors,
-        lname: "Last Name should be at least 4 char long",
-      });
-      return;
-    }
-    setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors };
-      delete newErrors.lname; // Remove lname error
-      return newErrors;
-    });
-    console.log(fname);
-  };
+  
+   function onSubmit(values) {
+    // Do something with the form values.
+    // ✅ This will be type-safe and validated.
+    console.log(values)
+  }
 
   return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <Label>First Name</Label>
-        <Input name="fname" className={errors.fname ? "border-red-500" : ""} />
-      </div>
-      <div>
-        <Label>Last Name</Label>
-        <Input name="lname" className={errors.lname ? "border-red-500" : ""} />
-      </div>
-      <Button>Submit</Button>
-    </form>
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(onSubmit)}>
+        <FormField
+          control={form.control}
+          name="line1"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address Line 1</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter address line 1" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="line2"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Address Line 2</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter address line 2" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="city"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>City</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter city" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <FormField
+          control={form.control}
+          name="phone"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Phone</FormLabel>
+              <FormControl>
+                <Input placeholder="Enter phone number" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+        <Button type="submit">Submit</Button>
+      </form>
+    </Form>
   );
 
 };

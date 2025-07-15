@@ -1,10 +1,12 @@
-import Review from '../infrastructure/db/entities/review.js';
-import Product from '../infrastructure/db/entities/product.js';
-import ValidationError from "../domain/errors/validation-error.js";
-import NotFoundError from "../domain/errors/not-found-error.js";
+import Review from '../infrastructure/db/entities/Review';
+import Product from '../infrastructure/db/entities/Product';
+import ValidationError from "../domain/errors/validation-error";
+import NotFoundError from "../domain/errors/not-found-error";
+
+import { Request, Response, NextFunction } from "express";
 
 // Create a new review and associate it with a product
-const createReview = async (req, res, next) => {
+const createReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { review, rating, productId } = req.body;
     if (!review || !rating || !productId) {
