@@ -9,10 +9,12 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { useCreateOrderMutation } from "@/lib/api";
+import { useSelector } from "react-redux";
 
 import {zodResolver} from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { map, z } from "zod";
 
 
  // Define the schema for the form validation
@@ -36,11 +38,24 @@ const ShippingAddressForm = () => {
     },
   });
 
-  
-   function onSubmit(values) {
-    // Do something with the form values.
-    // ✅ This will be type-safe and validated.
-    console.log(values)
+  const cart = useSelector((state) => state.cart.cartItems);
+  const [createOrder, {isLoading}] = useCreateOrderMutation();
+  console.log(cart);
+
+  async function onSubmit(values) {
+    try {
+      await createOrder({ 
+        shippingAddress: values,
+        orderItems: cart.map(
+          (item) => ({
+            productId: item.product._id,
+            quantity: item.quantity
+          })
+        ),
+      }).unwrap();
+    } catch (error) {
+      console.log(error);
+    }
   }
 
   return (

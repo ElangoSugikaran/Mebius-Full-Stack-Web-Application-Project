@@ -10,9 +10,10 @@ const CheckoutPage = () => {
   const cart = useSelector((state) => state.cart.cartItems);
 
   if (cart.length === 0) {
-    return <Navigate to="/" />
-  }
-    
+    return <Navigate to="/" />;
+  } 
+  // If cart is empty, redirect to home page
+  // This ensures that the user cannot access the checkout page without items in the cart
   return (
     <main className="px-16 min-h-screen py-8">
       <h2 className="text-4xl font-bold">Checkout Page</h2>
