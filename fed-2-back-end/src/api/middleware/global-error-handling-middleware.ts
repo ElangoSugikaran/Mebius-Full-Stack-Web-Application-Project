@@ -10,6 +10,8 @@ const globalErrorHandlingMiddleware = (
   res: Response, 
   next: NextFunction
 ) => {
+  // Log the error for debugging purposes
+  // console.error(err);
   if (err instanceof ValidationError) {
     // Handle validation errors
     res.status(400).json({ message: err.message });

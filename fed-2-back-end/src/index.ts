@@ -11,7 +11,7 @@ import connectDB from './infrastructure/db/index';// Import the database connect
 import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware";
 // Import global error handling middleware to manage errors across the application
 import cors from 'cors'; // Import CORS middleware to handle cross-origin requests
-import { clerkMiddleware } from '@clerk/express' // Import Clerk middleware for authentication
+import { clerkMiddleware } from '@clerk/express';// Import Clerk middleware for authentication
 
 // Create an instance of an Express application (the main server object)
 const app = express();

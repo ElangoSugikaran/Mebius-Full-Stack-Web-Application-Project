@@ -14,7 +14,7 @@ import { useSelector } from "react-redux";
 
 import {zodResolver} from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
-import { map, z } from "zod";
+import { z } from "zod";
 
 
  // Define the schema for the form validation

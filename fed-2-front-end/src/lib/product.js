@@ -4,7 +4,7 @@ export const getAllProducts = async (category) => {
     `http://localhost:8000/api/products?category=${category}`,
     {
       method: "GET",
-      // headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json" },
     }
   );
   if (!res.ok) {
