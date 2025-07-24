@@ -10,6 +10,7 @@ import {
   updateProductById,
   deleteProductById,
 } from '../application/product';
+import { isAuthenticated } from './middleware/authentication-middleware';
 
 // Create a new router for product-related routes
 const productRouter = express.Router();
@@ -20,7 +21,7 @@ productRouter
   // GET /api/products - Returns all products as JSON
   .get( getAllProducts)
   // POST /api/products - Adds a new product
-  .post(createProduct);
+  .post( isAuthenticated, createProduct );
 
 productRouter
   // Define a route for individual product operations

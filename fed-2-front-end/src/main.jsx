@@ -16,6 +16,8 @@ import CheckoutPage from './pages/checkout.page.jsx';
 // layouts
 import RootLayout from './layouts/root.layout.jsx';
 import ProtectedLayout from './layouts/protected.layout.jsx';
+import CreateProductPage from './pages/create-product-page.jsx';
+import AdminProtectedLayout from './layouts/admin-protected.layout';
 
 
 // Import your Publishable Key
@@ -41,6 +43,15 @@ createRoot(document.getElementById('root')).render(
                   <Route path="checkout" element={<CheckoutPage />} />
                 </Route>
               </Route>
+              <Route  element={<ProtectedLayout />}>
+                <Route element={<AdminProtectedLayout />}>
+                  <Route 
+                    path='/admin/products/create' 
+                    element={<CreateProductPage />} 
+                  />
+                </Route>
+              </Route>
+              
             </Route>
             <Route path="/sign-up" element={<SignUpPage />} />
             <Route path="/sign-in" element={<SignInPage />} />
