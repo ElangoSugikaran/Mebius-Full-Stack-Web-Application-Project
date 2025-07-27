@@ -2,6 +2,7 @@ import { useForm } from "react-hook-form";
 import z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useCreateProductMutation } from "@/lib/api";
+import ImageInput from "@/components/ImageInput";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +15,13 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { 
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 
 const createProductFormSchema = z.object({
@@ -24,30 +32,46 @@ const createProductFormSchema = z.object({
     stock: z.number()
 });
 
-const CreateProductForm = () => {
+const CreateProductForm = ({ categories }) => {
 
-    const form = useForm({
-        resolver: zodResolver(createProductFormSchema)
-        // defaultValues: {
-        //     categoryId: "",
-        //     name: "",
-        //     price: 0,
-        //     image: "",
-        //     stock: 0
-        // }
+   const form = useForm({
+        resolver: zodResolver(createProductFormSchema),  // Add missing comma
+        defaultValues: {
+            categoryId: "",
+            name: "",
+            price: 0,
+            image: "",
+            stock: 0
+        }
     });
 
     const [createProduct, { isLoading }] = useCreateProductMutation();
 
+    // const onSubmit = async (values) => {
+    //     try {
+    //         await createProduct(values).unwrap();
+    //         form.reset();
+    //     } catch (error) {
+    //         console.error("Failed to create product:", error);
+    //     }
+    // }
+
     const onSubmit = async (values) => {
-        try {
-            await createProduct(values).unwrap();
-            form.reset();
-        } catch (error) {
-            console.error("Failed to create product:", error);
-        }
+    try {
+        await createProduct(values).unwrap();
+        form.reset();
+        // You can add a toast notification here
+    } catch (error) {
+        console.error("Failed to create product:", error);
+        // Set form error
+        form.setError("root", { 
+            type: "submit",
+            message: error.message || "Failed to create product"
+        });
     }
-    
+}
+
+   
   return (
     <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 mt-4 w-1/4">
@@ -56,10 +80,21 @@ const CreateProductForm = () => {
                 name="categoryId"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Category ID</FormLabel>
-                        <FormControl>
-                            <Input placeholder="Category ID" {...field} />
-                        </FormControl>
+                        <FormLabel>Category</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select a category" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {categories?.map((category) => (
+                                    <SelectItem key={category._id} value={category._id}>
+                                        {category.name}
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <FormMessage />
                     </FormItem>
                 )}
@@ -102,9 +137,9 @@ const CreateProductForm = () => {
                 name="image"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Image URL</FormLabel>
+                        <FormLabel>Image</FormLabel>
                         <FormControl>
-                            <Input placeholder="Image URL" {...field} />
+                            <ImageInput onChange={field.onChange} value={field.value} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -138,4 +173,4 @@ const CreateProductForm = () => {
   );
 }
 
-export default CreateProductForm
+export default CreateProductForm;
