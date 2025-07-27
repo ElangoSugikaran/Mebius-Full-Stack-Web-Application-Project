@@ -9,9 +9,10 @@ import {
   createProduct,
   updateProductById,
   deleteProductById,
+  uploadProductImage,
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
-
+import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
 // Create a new router for product-related routes
 const productRouter = express.Router();
 
@@ -21,7 +22,7 @@ productRouter
   // GET /api/products - Returns all products as JSON
   .get( getAllProducts)
   // POST /api/products - Adds a new product
-  .post( isAuthenticated, createProduct );
+  .post( isAuthenticated, isAdmin, createProduct );
 
 productRouter
   // Define a route for individual product operations
@@ -33,6 +34,9 @@ productRouter
   .put(updateProductById)
   // DELETE /api/products/:id - Deletes a specific product by ID
   .delete(deleteProductById);
+
+
+productRouter.route("/images").post( uploadProductImage );
 
 // Export the router to be used in the main app
 export default productRouter;
