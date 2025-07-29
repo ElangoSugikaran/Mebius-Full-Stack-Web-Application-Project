@@ -30,10 +30,20 @@ export const Api = createApi({
     getAllCategories: build.query({
       query: () => `/categories`,
     }),
+    getProductById: build.query({
+      query: (id) => `/products/${id}`,
+    }),
     createProduct: build.mutation({
       query: (product) => ({
         url: "/products",
         method: "POST",
+        body: product,
+      }),
+    }),
+    updateProduct: build.mutation({
+      query: ({ id, ...product }) => ({
+        url: `/products/${id}`,
+        method: "PUT", // or "PATCH" if your backend supports partial updates
         body: product,
       }),
     }),
@@ -53,5 +63,7 @@ export const {
   useGetAllProductsQuery, 
   useCreateOrderMutation, 
   useCreateProductMutation,
-  useGetAllCategoriesQuery
+  useUpdateProductMutation,
+  useGetAllCategoriesQuery,
+  useGetProductByIdQuery,
 } = Api;

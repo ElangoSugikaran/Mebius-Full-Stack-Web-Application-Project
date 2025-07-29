@@ -16,8 +16,13 @@ import CheckoutPage from './pages/checkout.page.jsx';
 // layouts
 import RootLayout from './layouts/root.layout.jsx';
 import ProtectedLayout from './layouts/protected.layout.jsx';
-import CreateProductPage from './pages/create-product-page.jsx';
+import CreateProductPage from './pages/admin/create-product-page.jsx';
+import EditProductPage from './pages/admin/edit-product-page.jsx';
+import AdminDashboardPage from './pages/admin/admin-dashboard.page.jsx';
 import AdminProtectedLayout from './layouts/admin-protected.layout';
+import AdminDashboardLayout from './layouts/admin-dashboard.layout.jsx';
+import ProductsPage from './pages/admin/product-management.page';
+import ProductDetailPage from './pages/admin/product-details.page.jsx';
 
 
 // Import your Publishable Key
@@ -43,14 +48,38 @@ createRoot(document.getElementById('root')).render(
                   <Route path="checkout" element={<CheckoutPage />} />
                 </Route>
               </Route>
-              <Route  element={<ProtectedLayout />}>
+              
+              {/* // ✅ CORRECTED ROUTE STRUCTURE */}
+
+              <Route element={<ProtectedLayout />}>
+                {/* 🔐 ADMIN ROUTES - Protected by AdminProtectedLayout */}
                 <Route element={<AdminProtectedLayout />}>
-                  <Route 
-                    path='/admin/products/create' 
-                    element={<CreateProductPage />} 
-                  />
+                  <Route path="/admin" element={<AdminDashboardLayout />}>
+                    {/* 📊 Admin Dashboard Home */}
+                    <Route index element={<AdminDashboardPage />} />
+                    
+                    {/* 📦 PRODUCT MANAGEMENT ROUTES */}
+                    <Route path="products" element={<ProductsPage />} />
+                    <Route path="/admin/products/:id" element={<ProductDetailPage />} />
+                    <Route path="products/create" element={<CreateProductPage />} />
+                    <Route path="products/edit/:id" element={<EditProductPage />} />
+                    
+                    {/* 🛒 ORDER MANAGEMENT ROUTES */}
+                    {/* <Route path="orders" element={<OrdersPage />} />
+                    <Route path="orders/:id" element={<OrderDetailsPage />} /> */}
+                    
+                    {/* 👥 CUSTOMER MANAGEMENT ROUTES */}
+                    {/* <Route path="customers" element={<CustomersPage />} />
+                    <Route path="customers/:id" element={<CustomerDetailsPage />} /> */}
+                    
+                    {/* ⚙️ SETTINGS ROUTES */}
+                    {/* <Route path="settings" element={<SettingsPage />} />
+                    <Route path="settings/profile" element={<ProfileSettingsPage />} />
+                    <Route path="settings/store" element={<StoreSettingsPage />} /> */}
+                  </Route>
                 </Route>
               </Route>
+
               
             </Route>
             <Route path="/sign-up" element={<SignUpPage />} />
