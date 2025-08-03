@@ -10,6 +10,7 @@ import {
   updateProductById,
   deleteProductById,
   uploadProductImage,
+  uploadProductImageGeneric,
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
 import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
@@ -36,7 +37,9 @@ productRouter
   .delete(deleteProductById);
 
 
-productRouter.route("/images").post( uploadProductImage );
+// Image upload routes
+productRouter.route("/upload-image").post(uploadProductImageGeneric);  // For CREATE mode
+productRouter.route("/:id/image").post(uploadProductImage);           // For EDIT mode
 
 // Export the router to be used in the main app
 export default productRouter;

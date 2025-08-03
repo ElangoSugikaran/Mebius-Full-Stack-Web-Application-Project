@@ -1,17 +1,16 @@
-// This file defines product-related API routes and delegates logic to the application layer.
-
-// Import the Express framework for routing
 import express from 'express';
+import { createReview, getReviews, getAllReviews, deleteReview } from '../application/review';
 
-import { createReview } from '../application/review';
-
-// Create a new router for review-related routes
 const reviewRouter = express.Router();
 
-// Define the main route for reviews
-reviewRouter
-  .route('/')
-  .post(createReview); // POST /api/reviews - Adds a new review
+// Get reviews for a specific product
+reviewRouter.get('/products/:id/reviews', getReviews);
 
-// Export the router to be used in the main app
+// Create a new review
+reviewRouter.post('/', createReview);
+
+// Admin routes (optional)
+reviewRouter.get('/', getAllReviews); // Get all reviews
+reviewRouter.delete('/:id', deleteReview); // Delete a review
+
 export default reviewRouter;

@@ -6,7 +6,10 @@ import { getAllCategories,
   getCategoryById,
   createCategory,
   updateCategoryById,
-  deleteCategoryById, } from '../application/category';
+  deleteCategoryById,
+  uploadCategoryImageGeneric, 
+  putCategoryImage,
+} from '../application/category';
 // Import the categories data from the data module
 
 // Create a new router for category-related routes
@@ -30,6 +33,12 @@ categoryRouter
   .put(updateCategoryById)
   // DELETE /api/categories/:id - Deletes a specific category by ID
   .delete(deleteCategoryById);
+
+
+// Image upload routes
+categoryRouter.route("/upload-image").post(uploadCategoryImageGeneric);  // For CREATE mode
+categoryRouter.route("/:id/image").post(putCategoryImage);           // For EDIT mode
+
 
 // Export the category router
 export default categoryRouter;

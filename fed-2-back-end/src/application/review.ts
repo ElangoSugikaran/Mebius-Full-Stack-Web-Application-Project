@@ -5,29 +5,85 @@ import NotFoundError from "../domain/errors/not-found-error";
 
 import { Request, Response, NextFunction } from "express";
 
-// Create a new review and associate it with a product
+// Get reviews for a specific product
+const getReviews = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const productId = req.params.id;
+    
+    // Find reviews directly by productId
+    const reviews = await Review.find({ productId: productId })
+      .sort({ createdAt: -1 }); // Sort by newest first
+    
+    res.status(200).json(reviews);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Create a new review
 const createReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const { review, rating, productId } = req.body;
-    if (!review || !rating || !productId) {
-      throw new ValidationError('Review, rating, and productId are required');
+    const { comment, rating, title, userName, productId, userId } = req.body;
+    
+    // Validation
+    if (!comment || !rating || !title || !userName || !productId) {
+      throw new ValidationError('Comment, rating, title, userName, and productId are required');
     }
-    // Create a new review in the database
-    const newReview = await Review.create({ review, rating });
-    // Add the review's ObjectId to the product's reviews array
-    const product = await Product.findByIdAndUpdate(
-      productId,
-      { $push: { reviews: newReview._id } },
-      { new: true }
-    );
+
+    if (rating < 1 || rating > 5) {
+      throw new ValidationError('Rating must be between 1 and 5');
+    }
+
+    // Check if product exists
+    const product = await Product.findById(productId);
     if (!product) {
       throw new NotFoundError('Product not found');
     }
+
+    // Create the review
+    const newReview = await Review.create({ 
+      comment, 
+      rating, 
+      title, 
+      userName, 
+      productId,
+      userId: userId || null,
+      verified: false // Set based on your business logic
+    });
+
     res.status(201).json(newReview);
   } catch (error) {
     next(error);
   }
 };
 
-export { createReview };
-// This function handles the creation of a new review and associates it with a product
+// Get all reviews (admin function)
+const getAllReviews = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reviews = await Review.find()
+      .populate('productId', 'name')
+      .sort({ createdAt: -1 });
+    
+    res.status(200).json(reviews);
+  } catch (error) {
+    next(error);
+  }
+};
+
+// Delete a review (admin function)
+const deleteReview = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const reviewId = req.params.id;
+    
+    const deletedReview = await Review.findByIdAndDelete(reviewId);
+    if (!deletedReview) {
+      throw new NotFoundError('Review not found');
+    }
+    
+    res.status(200).json({ message: 'Review deleted successfully' });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export { createReview, getReviews, getAllReviews, deleteReview };

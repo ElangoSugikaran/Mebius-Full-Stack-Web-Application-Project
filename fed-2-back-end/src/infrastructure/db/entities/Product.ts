@@ -45,7 +45,7 @@ const productSchema = new mongoose.Schema({
 
   material: {
     type: String,
-    required: true,
+    required: false, // Optional field
     trim: true
   },
 
@@ -85,11 +85,6 @@ const productSchema = new mongoose.Schema({
     type: Boolean,
     default: true,
     index: true
-  },
-
-  tags: {
-    type: [String],
-    default: []
   },
 
   description: {
