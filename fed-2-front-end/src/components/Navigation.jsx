@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router";
-import { Menu, X, ShoppingBag, Search, User } from "lucide-react";
+import { Menu, X, ShoppingBag, Search, User, Heart } from "lucide-react";
 import { useSelector } from "react-redux";
 import { SignedIn, UserButton, SignedOut } from "@clerk/clerk-react";
 
@@ -8,12 +8,16 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   
   const cartItems = useSelector((state) => state.cart.cartItems);
+  const wishlistItems = useSelector((state) => state.wishlist.wishlistItems);
 
   // Calculate total quantity of items in cart
   const cartItemCount = cartItems.reduce(
     (total, item) => total + item.quantity,
     0
   );
+
+   // Calculate total number of items in wishlist
+  const wishlistItemCount = wishlistItems ? wishlistItems.length : 0;
 
   // Function href close mobile menu
   const closeMobileMenu = () => setIsMenuOpen(false);
@@ -68,6 +72,19 @@ export default function Navigation() {
             <button aria-label="Search" className="p-1">
               <Search size={20} />
             </button>
+             {/* Wishlist Icon */}
+            <Link
+              to="/shop/wishlist"
+              aria-label="Wishlist"
+              className="p-1 relative"
+            >
+              <Heart size={20} />
+              {wishlistItemCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-4 h-4 flex items-center justify-center rounded-full">
+                  {wishlistItemCount}
+                </span>
+              )}
+            </Link>
             <Link
               to="/shop/cart"
               aria-label="Shopping Bag"

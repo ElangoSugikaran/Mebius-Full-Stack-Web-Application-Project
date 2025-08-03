@@ -8,7 +8,8 @@ import {
   Plus,
   LogOut,
   Home,
-  ExternalLink
+  ExternalLink,
+  FolderOpen
 } from "lucide-react";
 import { useUser, useClerk } from "@clerk/clerk-react";
 
@@ -20,6 +21,7 @@ const AdminDashboardLayout = () => {
   // 📋 ADMIN MENU ITEMS
   const adminNavigation = [
     { name: 'Dashboard', href: '/admin', icon: LayoutDashboard },
+    { name: 'Categories', href: '/admin/categories', icon: FolderOpen },
     { name: 'Products', href: '/admin/products', icon: Package },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/customers', icon: Users },

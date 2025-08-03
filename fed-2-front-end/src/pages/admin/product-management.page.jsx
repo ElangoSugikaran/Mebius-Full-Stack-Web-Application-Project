@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { toast } from 'react-toastify'; // 🎉 Import toast for notifications
 import { 
   Plus, 
   Edit, 
@@ -9,7 +10,8 @@ import {
   Search, 
   Eye,
   MoreHorizontal,
-  Package
+  Package,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Table,
@@ -25,79 +27,124 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { useGetAllProductsQuery } from '@/lib/api'; 
+import { useGetAllProductsQuery, useGetAllCategoriesQuery, useDeleteProductMutation } from '@/lib/api'; 
 
 const ProductsPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
 
-//   // 📦 MOCK PRODUCTS DATA (Replace with your actual data)
-//   const products = [
-//     {
-//       id: 1,
-//       name: 'Wireless Headphones',
-//       category: 'Electronics',
-//       price: 99.99,
-//       stock: 45,
-//       status: 'active',
-//       image: '/api/placeholder/60/60',
-//       createdAt: '2024-01-15'
-//     },
-//     {
-//       id: 2,
-//       name: 'Cotton T-Shirt',
-//       category: 'Clothing',
-//       price: 24.99,
-//       stock: 0,
-//       status: 'out_of_stock',
-//       image: '/api/placeholder/60/60',
-//       createdAt: '2024-01-12'
-//     },
-//     {
-//       id: 3,
-//       name: 'Laptop Stand',
-//       category: 'Accessories',
-//       price: 49.99,
-//       stock: 12,
-//       status: 'active',
-//       image: '/api/placeholder/60/60',
-//       createdAt: '2024-01-10'
-//     }
-//   ];
+    const { data: products = [], isLoading, error, refetch } = useGetAllProductsQuery();
+    const { data: categories } = useGetAllCategoriesQuery();
+    const [deleteProduct, { isLoading: isDeleting }] = useDeleteProductMutation();
 
-    const { data: products = [], isLoading, error } = useGetAllProductsQuery();
+   // Helper function to get category name
+    const getCategoryName = (categoryId) => {
+      const category = categories?.find(cat => cat._id === categoryId);
+      return category?.name || 'N/A';
+    };
+
+    // 🚀 UPDATED: Handle delete product with toast notifications
+    const handleDeleteProduct = async (productId, productName) => {
+      try {
+        // Attempt to delete the product
+        await deleteProduct(productId).unwrap();
+        
+        // ✅ SUCCESS: Show success toast
+        toast.success(`Product "${productName}" deleted successfully!`, {
+          position: "top-right",
+          autoClose: 3000, // Auto close after 3 seconds
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+        
+        // Refresh the product list
+        refetch();
+        console.log('Product deleted successfully');
+        
+      } catch (error) {
+        console.error('Failed to delete product:', error);
+        
+        // ❌ ERROR: Show error toast
+        toast.error(`Failed to delete product "${productName}". Please try again.`, {
+          position: "top-right",
+          autoClose: 5000, // Keep error messages longer
+          hideProgressBar: false,
+          closeOnClick: true,
+          pauseOnHover: true,
+          draggable: true,
+        });
+      }
+    };
 
     if (isLoading) return <div>Loading...</div>;
     if (error) return <div>Error loading products.</div>;
 
-  // 🔍 FILTER PRODUCTS
-  const filteredProducts = products.filter(product =>
-    product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    product.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  // 🎨 STATUS BADGE STYLING
-  const getStatusBadge = (status) => {
-    const variants = {
-      active: 'bg-green-100 text-green-800',
-      out_of_stock: 'bg-red-100 text-red-800',
-      draft: 'bg-gray-100 text-gray-800'
-    };
-    
-    const labels = {
-      active: 'Active',
-      out_of_stock: 'Out of Stock',
-      draft: 'Draft'
-    };
-
-    return (
-      <Badge className={variants[status]}>
-        {labels[status]}
-      </Badge>
+    // 🔍 FILTER PRODUCTS
+    const filteredProducts = products.filter(product =>
+      product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      getCategoryName(product.categoryId).toLowerCase().includes(searchTerm.toLowerCase())
     );
+
+  // 🔧 SOLUTION 1: Add status determination function
+const getProductStatus = (product) => {
+  // Check if product has explicit status field
+  if (product.status) {
+    return product.status;
+  }
+  
+  // Determine status based on stock and other conditions
+  if (product.stock === 0) {
+    return 'out_of_stock';
+  } else if (product.stock < 10) {
+    return 'low_stock'; // Optional: add this status
+  } else if (product.isFeatured || product.isActive !== false) {
+    return 'active';
+  } else {
+    return 'draft';
+  }
+};
+
+// 🎨 UPDATED STATUS BADGE STYLING
+const getStatusBadge = (status) => {
+  const variants = {
+    active: 'bg-green-100 text-green-800 border-green-200',
+    out_of_stock: 'bg-red-100 text-red-800 border-red-200',
+    low_stock: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+    draft: 'bg-gray-100 text-gray-800 border-gray-200'
   };
+  
+  const labels = {
+    active: 'Active',
+    out_of_stock: 'Out of Stock',
+    low_stock: 'Low Stock',
+    draft: 'Draft'
+  };
+
+  return (
+    <Badge 
+      variant="outline" 
+      className={`${variants[status]} font-medium`}
+    >
+      {labels[status]}
+    </Badge>
+  );
+};
+
 
   return (
     <div className="container mx-auto px-6">
@@ -160,7 +207,7 @@ const ProductsPage = () => {
           </TableHeader>
           <TableBody>
             {filteredProducts.map((product) => (
-              <TableRow key={product.id}>
+              <TableRow key={product._id}>
                 
                 {/* 🖼️ PRODUCT IMAGE */}
                 <TableCell>
@@ -177,13 +224,13 @@ const ProductsPage = () => {
                 <TableCell>
                   <div>
                     <p className="font-medium text-gray-900">{product.name}</p>
-                    <p className="text-sm text-gray-500">ID: #{product.id}</p>
+                    <p className="text-sm text-gray-500">ID: #{product._id}</p>
                   </div>
                 </TableCell>
                 
                 {/* 🏷️ CATEGORY */}
                 <TableCell>
-                  <Badge variant="outline">{product.category}</Badge>
+                  <Badge variant="outline">  {getCategoryName(product.categoryId)}</Badge>
                 </TableCell>
                 
                 {/* 💰 PRICE */}
@@ -203,7 +250,7 @@ const ProductsPage = () => {
                 
                 {/* 📊 STATUS */}
                 <TableCell>
-                  {getStatusBadge(product.status)}
+                  {getStatusBadge(getProductStatus(product))}
                 </TableCell>
                 
                 {/* 📅 CREATED DATE */}
@@ -211,7 +258,7 @@ const ProductsPage = () => {
                   <span className="text-sm text-gray-500">{product.createdAt}</span>
                 </TableCell>
                 
-                {/* ⚙️ ACTIONS */}
+                 {/* ⚙️ ACTIONS */}
                 <TableCell className="text-right">
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
@@ -220,24 +267,52 @@ const ProductsPage = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                       <Link to={`/admin/products/${product._id}`} className="flex items-center">
-                         <Eye className="mr-2 h-4 w-4" />
-                         View Details
-                       </Link>
+                      <DropdownMenuItem asChild>
+                        <Link to={`/admin/products/${product._id}`} className="flex items-center">
+                          <Eye className="mr-2 h-4 w-4" />
+                          View Details
+                        </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem>
+                      <DropdownMenuItem asChild>
                         <Link to={`/admin/products/edit/${product._id}`} className="flex items-center">
                           <Edit className="mr-2 h-4 w-4" />
                           Edit Product
                         </Link>
                       </DropdownMenuItem>
-                      <DropdownMenuItem className="text-red-600">
-                       <Link to={`/admin/products/delete/${product._id}`} className="flex items-center">
-                          <Trash2 className="mr-2 h-4 w-4" />
-                          Delete Product
-                       </Link>
-                      </DropdownMenuItem>
+                      
+                      {/* 🚨 UPDATED: Delete with confirmation dialog + toast notifications */}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <DropdownMenuItem 
+                            className="text-red-600 focus:text-red-600"
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <Trash2 className="mr-2 h-4 w-4" />
+                            Delete Product
+                          </DropdownMenuItem>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle className="flex items-center">
+                              <AlertTriangle className="mr-2 h-5 w-5 text-red-500" />
+                              Delete Product
+                            </AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete "{product.name}"? This action cannot be undone and will permanently remove the product from your store.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteProduct(product._id, product.name)}
+                              disabled={isDeleting}
+                              className="bg-red-600 hover:bg-red-700"
+                            >
+                              {isDeleting ? 'Deleting...' : 'Delete Product'}
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

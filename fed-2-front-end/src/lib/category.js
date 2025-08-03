@@ -1,34 +1,10 @@
-// export const putImage = async ({ file }) => {
-//   const res = await fetch("http://localhost:8000/api/products/images", {
-//     method: "POST",
-//     headers: {
-//       "Content-Type": "application/json",
-//     },
-//     body: JSON.stringify({ fileType: file.type }),
-//   });
+// File: lib/category.js
 
-//   const data = await res.json();
-//   const { url, publicURL } = data;
-//     console.log(url, publicURL);
-
-//   const upload = await fetch(url, {
-//     method: "PUT",
-//     headers: {
-//       "Content-Type": file.type,
-//     },
-//     body: file,
-//   });
-
-//   return publicURL;
-// }
-
-// File: lib/product.js
-
-// ✅ FOR CREATE MODE - Generic product image upload (no productId needed)
-export const uploadProductImageGeneric = async ({ file }) => {
+// ✅ FOR CREATE MODE - Generic category image upload (no categoryId needed)
+export const uploadCategoryImageGeneric = async ({ file }) => {
   try {
     // Step 1: Get signed URL from backend
-    const res = await fetch(`http://localhost:8000/api/products/upload-image`, {
+    const res = await fetch(`http://localhost:8000/api/categories/upload-image`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileType: file.type }),
@@ -41,7 +17,7 @@ export const uploadProductImageGeneric = async ({ file }) => {
 
     const data = await res.json();
     
-    // Step 2: Upload file to cloud storage using signed URL  
+    // Step 2: Upload file to cloud storage using signed URL
     const uploadRes = await fetch(data.url, {
       method: "PUT",
       headers: { "Content-Type": file.type },
@@ -56,17 +32,17 @@ export const uploadProductImageGeneric = async ({ file }) => {
     return data.publicURL;
     
   } catch (error) {
-    console.error("Product image upload failed:", error);
+    console.error("Category image upload failed:", error);
     throw error;
   }
 };
 
-// ✅ FOR EDIT MODE - Upload image for existing product
-export const putProductImage = async ({ file, productId }) => {
+// ✅ FOR EDIT MODE - Upload image for existing category
+export const putCategoryImage = async ({ file, categoryId }) => {
   try {
-    // Step 1: Get signed URL for specific product
-    const res = await fetch(`http://localhost:8000/api/products/${productId}/image`, {
-      method: "POST",
+    // Step 1: Get signed URL for specific category
+    const res = await fetch(`http://localhost:8000/api/categories/${categoryId}/image`, {
+      method: "POST", 
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ fileType: file.type }),
     });
@@ -80,7 +56,7 @@ export const putProductImage = async ({ file, productId }) => {
     
     // Step 2: Upload file to cloud storage
     const uploadRes = await fetch(data.url, {
-      method: "PUT", 
+      method: "PUT",
       headers: { "Content-Type": file.type },
       body: file,
     });
@@ -93,7 +69,7 @@ export const putProductImage = async ({ file, productId }) => {
     return data.publicURL;
     
   } catch (error) {
-    console.error("Product image update failed:", error);
+    console.error("Category image update failed:", error);
     throw error;
   }
 };
