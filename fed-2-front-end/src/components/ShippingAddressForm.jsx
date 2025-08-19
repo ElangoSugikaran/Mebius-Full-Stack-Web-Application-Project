@@ -1,32 +1,27 @@
+// 🔧 FIXED: ShippingAddressForm.jsx - Simplified for checkout flow
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { useCreateOrderMutation } from "@/lib/api";
-import { useSelector } from "react-redux";
-
-import {zodResolver} from "@hookform/resolvers/zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+// 🔧 FIXED: Schema matches what we actually need
+const shippingAddressFormSchema = z.object({
+  line1: z.string().min(1, "Address line 1 is required").max(100),
+  line2: z.string().max(100).optional().or(z.literal("")),
+  city: z.string().min(1, "City is required").max(50),
+  phone: z.string().min(10, "Phone number must be at least 10 digits").max(15),
+});
 
- // Define the schema for the form validation
-  const shippingAddressFormSchema = z.object({
-    line1: z.string().min(1).max(50),
-    line2: z.string().min(1).max(50),
-    city: z.string().min(1).max(50),
-    phone: z.string().min(2).max(15),
-  });
-
-const ShippingAddressForm = () => {
-
+const ShippingAddressForm = ({ onSubmit }) => {
   // Initialize the form with validation schema
   const form = useForm({
     resolver: zodResolver(shippingAddressFormSchema),
@@ -38,87 +33,103 @@ const ShippingAddressForm = () => {
     },
   });
 
-  const cart = useSelector((state) => state.cart.cartItems);
-  const [createOrder, {isLoading}] = useCreateOrderMutation();
-  console.log(cart);
-
-  async function onSubmit(values) {
+  // 🔧 FIXED: Only handle form submission - don't create order here
+  // The CheckoutPage will handle order creation
+  async function handleSubmit(values) {
     try {
-      await createOrder({ 
-        shippingAddress: values,
-        orderItems: cart.map(
-          (item) => ({
-            productId: item.product._id,
-            quantity: item.quantity
-          })
-        ),
-      }).unwrap();
+      console.log("📋 Form submitted with values:", values);
+      
+      // 🔧 FIXED: Just call the parent callback with form data
+      if (onSubmit) {
+        onSubmit(values);
+      }
+      
+      // Show success message (optional)
+      console.log("✅ Address information saved");
+      
     } catch (error) {
-      console.log(error);
+      console.error("❌ Form submission error:", error);
     }
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
         <FormField
           control={form.control}
           name="line1"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Address Line 1</FormLabel>
+              <FormLabel>Address Line 1 *</FormLabel>
               <FormControl>
-                <Input placeholder="Enter address line 1" {...field} />
+                <Input 
+                  placeholder="Enter your street address" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
         <FormField
           control={form.control}
           name="line2"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Address Line 2</FormLabel>
+              <FormLabel>Address Line 2 (Optional)</FormLabel>
               <FormControl>
-                <Input placeholder="Enter address line 2" {...field} />
+                <Input 
+                  placeholder="Apartment, suite, unit, building, floor, etc." 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
         <FormField
           control={form.control}
           name="city"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>City</FormLabel>
+              <FormLabel>City *</FormLabel>
               <FormControl>
-                <Input placeholder="Enter city" {...field} />
+                <Input 
+                  placeholder="Enter your city" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
+        
         <FormField
           control={form.control}
           name="phone"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Phone</FormLabel>
+              <FormLabel>Phone Number *</FormLabel>
               <FormControl>
-                <Input placeholder="Enter phone number" {...field} />
+                <Input 
+                  type="tel"
+                  placeholder="Enter your phone number" 
+                  {...field} 
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
           )}
         />
-        <Button type="submit">Submit</Button>
+        
+        <Button type="submit" className="w-full">
+          Save Address Information
+        </Button>
       </form>
     </Form>
   );
-
 };
-
 
 export default ShippingAddressForm;

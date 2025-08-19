@@ -1,20 +1,23 @@
-// Updated ProductDetail component with Review Form
+// Updated ProductDetail component with better cart handling and review functionality
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
-import { useGetProductByIdQuery, useGetProductReviewsQuery} from '../lib/api';
+// import { useGetProductByIdQuery, useGetProductReviewsQuery, useAddToCartMutation } from '../lib/api';
 import { addToCart } from "@/lib/features/cartSlice";
-import { 
-  addToWishlist, 
-  removeFromWishlist, 
-  selectIsInWishlist 
-} from "@/lib/features/wishlistSlice"; // 👈 ADD THIS LINE
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReviewCard from "@/components/ReviewCard";
-import ReviewForm from "@/components/ReviewForm"; // Import the new component
+import ReviewForm from "@/components/ReviewForm";
+import { 
+  useGetProductByIdQuery, 
+  useGetProductReviewsQuery, 
+  useAddToCartMutation,
+  useGetWishlistQuery,
+  useAddToWishlistMutation,
+  useRemoveFromWishlistMutation,
+} from '../lib/api';
 import { 
   Star, 
   Heart, 
@@ -27,7 +30,7 @@ import {
   ArrowLeft,
   Loader2,
   AlertTriangle,
-  Edit3 // Add edit icon for review button
+  Edit3
 } from "lucide-react";
 
 const ShopProductDetailPage = () => {
@@ -44,17 +47,23 @@ const ShopProductDetailPage = () => {
     data: reviews = [], 
     isLoading: reviewsLoading,
     error: reviewsError,
-    refetch: refetchReviews // Add refetch function
+    refetch: refetchReviews
   } = useGetProductReviewsQuery(id);
+
+    // 🔧 ADD THESE WISHLIST HOOKS
+  const { data: wishlist = [], isLoading: wishlistLoading } = useGetWishlistQuery();
+  const [addToWishlist, { isLoading: isAddingToWishlist }] = useAddToWishlistMutation();
+  const [removeFromWishlist, { isLoading: isRemovingFromWishlist }] = useRemoveFromWishlistMutation();
+
+  const [addToCartMutation] = useAddToCartMutation();
 
   // Component state
   const [selectedImage, setSelectedImage] = useState(0);
   const [selectedSize, setSelectedSize] = useState('');
   const [selectedColor, setSelectedColor] = useState('');
   const [quantity, setQuantity] = useState(1);
-  // WITH THIS LINE:
-  const isWishlisted = useSelector(state => selectIsInWishlist(state, product?._id)); // ✅ ADD THIS
-  const [showReviewForm, setShowReviewForm] = useState(false); // NEW: Review form visibility
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
 
   useEffect(() => {
     if (product) {
@@ -79,24 +88,95 @@ const ShopProductDetailPage = () => {
     }
   };
 
-  const handleAddToCart = () => {
-    if (!product) return;
+  // 🔧 Improved add to cart with better error handling
+  const handleAddToCart = async () => {
+    if (!product || isAddingToCart) return;
 
-    dispatch(
-      addToCart({
+    setIsAddingToCart(true);
+
+    try {
+      // Always update Redux state first for immediate UI feedback
+      dispatch(addToCart({
         _id: product._id,
         name: product.name,
-        price: product.discount > 0 ? calculateFinalPrice(product.price, product.discount) : product.price,
+        price: product.price,
+        discount: product.discount || 0,
         originalPrice: product.price,
         image: product.images ? product.images[0] : product.image,
         brand: product.brand,
-        selectedSize,
-        selectedColor,
-        quantity,
-      })
-    );
+        sizes: product.sizes,
+        colors: product.colors,
+        stock: product.stock,
+        size: selectedSize,
+        color: selectedColor,
+        quantity: quantity,
+      }));
 
-    alert(`Added ${quantity} item(s) to cart!`);
+      // Try to sync with server (this will gracefully fail if endpoint doesn't exist)
+      try {
+        await addToCartMutation({
+          productId: product._id,
+          quantity: quantity,
+          size: selectedSize,
+          color: selectedColor,
+        }).unwrap();
+        
+        console.log('✅ Product synced with server cart');
+      } catch (serverError) {
+        // Server sync failed, but Redux state is already updated
+        console.warn('⚠️ Server sync failed, using local cart only:', serverError);
+      }
+
+      // Show success feedback
+      alert(`Added ${quantity} item(s) to cart!`);
+      
+    } catch (error) {
+      console.error('❌ Error adding to cart:', error);
+      // Even if there's an error, the Redux state should be updated
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  // 🔧 ADD THIS WISHLIST STATE
+  const [wishlistMessage, setWishlistMessage] = useState('');
+
+  // 🔧 ADD THIS HELPER FUNCTION
+  const isInWishlist = () => {
+    if (!wishlist || !Array.isArray(wishlist) || !product?._id) return false;
+    return wishlist.some(item => {
+      const itemId = item.productId?._id || item.productId || item._id;
+      return itemId === product._id;
+    });
+  };
+
+  // 🔧 ADD THIS WISHLIST HANDLER
+  const handleWishlistToggle = async () => {
+    if (!product?._id || isAddingToWishlist || isRemovingFromWishlist) return;
+
+    try {
+      if (isInWishlist()) {
+        await removeFromWishlist(product._id).unwrap();
+        console.log('✅ Removed from wishlist:', product.name);
+        setWishlistMessage('💔 Removed from wishlist');
+      } else {
+        await addToWishlist(product._id).unwrap();
+        console.log('✅ Added to wishlist:', product.name);
+        setWishlistMessage('❤️ Added to wishlist!');
+      }
+      
+      // Clear message after 2 seconds
+      setTimeout(() => setWishlistMessage(''), 2000);
+      
+    } catch (error) {
+      console.error('❌ Wishlist error:', error);
+      if (error.status === 401) {
+        setWishlistMessage('⚠️ Please log in to use wishlist');
+      } else {
+        setWishlistMessage('❌ Wishlist action failed');
+      }
+      setTimeout(() => setWishlistMessage(''), 3000);
+    }
   };
 
   const calculateAverageRating = (reviews) => {
@@ -105,20 +185,8 @@ const ShopProductDetailPage = () => {
     return (sum / reviews.length).toFixed(1);
   };
 
-  // NEW: Handle review form submission
   const handleReviewSubmitted = (newReview) => {
-    refetchReviews(); // Refresh reviews after new submission
-  };
-
-  // 3️⃣ ADD THIS NEW FUNCTION (replace any existing wishlist toggle):
-  const handleWishlistToggle = () => {
-    if (!product) return;
-    
-    if (isWishlisted) {
-      dispatch(removeFromWishlist(product._id));
-    } else {
-      dispatch(addToWishlist(product));
-    }
+    refetchReviews();
   };
 
   if (productLoading) {
@@ -340,28 +408,58 @@ const ShopProductDetailPage = () => {
               </div>
             </div>
 
+             {/* 🔧 ADD WISHLIST MESSAGE DISPLAY */}
+            {wishlistMessage && (
+              <div className={`text-sm px-3 py-2 rounded-md text-center font-medium ${
+                wishlistMessage.includes('❤️') ? 'bg-green-100 text-green-800' :
+                wishlistMessage.includes('💔') ? 'bg-pink-100 text-pink-800' :
+                wishlistMessage.includes('⚠️') ? 'bg-yellow-100 text-yellow-800' :
+                'bg-red-100 text-red-800'
+              }`}>
+                {wishlistMessage}
+              </div>
+            )}
+
             {/* Action Buttons */}
             <div className="flex gap-3">
               <Button
                 onClick={handleAddToCart}
-                disabled={product.stock === 0}
+                disabled={product.stock === 0 || isAddingToCart}
                 className="flex-1"
                 size="lg"
               >
-                <ShoppingCart className="mr-2 h-5 w-5" />
-                Add to Cart
+                {isAddingToCart ? (
+                  <>
+                    <div className="animate-spin rounded-full h-5 w-5 border-2 border-white border-t-transparent mr-2" />
+                    Adding...
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart className="mr-2 h-5 w-5" />
+                    Add to Cart
+                  </>
+                )}
               </Button>
               
-              {/* // 4️⃣ UPDATE YOUR WISHLIST BUTTON (find this button and update it): */}
+             {/* 🔧 UPDATED: Wishlist Button */}
               <Button
                 variant="outline"
                 size="lg"
                 onClick={handleWishlistToggle}
-                className={`px-4 ${isWishlisted ? 'border-red-200 bg-red-50' : ''}`}
+                disabled={isAddingToWishlist || isRemovingFromWishlist || wishlistLoading}
+                className={`px-4 ${
+                  isInWishlist() 
+                    ? 'border-pink-300 bg-pink-50 text-pink-700 hover:bg-pink-100' 
+                    : 'hover:bg-gray-50'
+                }`}
               >
-                <Heart 
-                  className={`h-5 w-5 ${isWishlisted ? 'fill-red-500 text-red-500' : ''}`} 
-                />
+                {isAddingToWishlist || isRemovingFromWishlist ? (
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent" />
+                ) : (
+                  <Heart className={`h-5 w-5 ${
+                    isInWishlist() ? 'fill-pink-600 text-pink-600' : ''
+                  }`} />
+                )}
               </Button>
             </div>
 

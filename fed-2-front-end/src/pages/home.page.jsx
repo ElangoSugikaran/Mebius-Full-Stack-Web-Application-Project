@@ -1,18 +1,25 @@
 import CasualInspirations from "@/components/CasualInspirations";
-import HeroGrid from "@/components/HeroGrid";
+import HeroSection from "@/components/HeroSection";
 import TrendingSection from "@/components/TrendingSection";
+import CategoriesShowcase from "@/components/CategoriesShowcase";
 
 const HomePage = () => {
-
   return (
-    <>
-      <main className="flex flex-col gap-8 md:gap-12 pb-8">
-        <HeroGrid />
-        <CasualInspirations />
-        <TrendingSection/>
-      </main>
-    </>
-  )
-}
+    <div className="min-h-screen bg-white">
+      {/* 🎯 HERO SECTION - First impression matters! */}
+      <HeroSection />
+      
+      {/* 🏷️ CATEGORIES SHOWCASE - Help users find what they want */}
+      <CategoriesShowcase />
+      
+      {/* 🔥 TRENDING PRODUCTS - Show popular items */}
+      <TrendingSection />
+      
+      {/* 💡 CASUAL INSPIRATIONS - Lifestyle content */}
+      <CasualInspirations />
+      
+    </div>
+  );
+};
 
-export default HomePage
+export default HomePage;

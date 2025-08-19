@@ -1,4 +1,3 @@
-// This module defines the routes for product-related operations in an Express application
 import Product from '../infrastructure/db/entities/Product';
 // Import custom error classes for validation and not found errors
 import ValidationError from "../domain/errors/validation-error";
@@ -9,6 +8,7 @@ import { randomUUID } from 'crypto';
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import s3 from '../infrastructure/s3';
+import stripe from "../infrastructure/stripe";
 
 // Get all products, optionally filtered by categoryId
 const getAllProducts = async (req: Request, res: Response, next: NextFunction) => {
@@ -54,37 +54,25 @@ const createProduct = async (req: Request, res: Response, next: NextFunction) =>
       throw new ValidationError('Invalid product data');
     }
 
-    // Create and save the product
-    const createdProduct = await Product.create(result.data);
-    res.status(201).json(createdProduct);
-  } catch (error) {
-    next(error);
-  }
-};
+    const stripeProduct = await stripe.products.create({
+      name: result.data.name,
+      description: result.data.description,
+      default_price_data: {
+        currency: "usd",
+        unit_amount: result.data.price * 100, // Convert to cents
+      },
+    });
 
-// Update a product by ID
-// const updateProductById = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const { id } = req.params;
-//     const { name, price, description, categoryId, image } = req.body;
-//     if (!name || !price || !categoryId || !image) {
-//       throw new ValidationError('Name, price, categoryId, and image are required');
-//     }
-//     const product = await Product.findById(id);
-//     if (!product) {
-//       throw new NotFoundError('Product not found');
-//     }
-//     product.name = name;
-//     product.price = price;
-//     // product.description = description;
-//     product.categoryId = categoryId;
-//     product.image = image;
-//     await product.save();
-//     res.status(200).json(product);
-//   } catch (error) {
-//     next(error);
-//   }
-// };
+    // Create product in your database with Stripe price ID
+    const createdProduct = await Product.create({ 
+      ...result.data, 
+      stripePriceId: stripeProduct.default_price 
+    });
+    res.status(201).json(createdProduct);
+      } catch (error) {
+        next(error);
+      }
+    };
 
 // Update a product by ID
 const updateProductById = async (req: Request, res: Response, next: NextFunction) => {
@@ -134,33 +122,6 @@ const deleteProductById = async (req: Request, res: Response, next: NextFunction
   }
 };
 
-
-// const uploadProductImage = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const body = req.body;
-//     const { fileType } = body;
-
-//     const id = randomUUID();
-
-//     const url = await getSignedUrl(
-//       s3,
-//       new PutObjectCommand({
-//         Bucket: process.env.CLOUDFLARE_BUCKET_NAME,
-//         Key: id,
-//         ContentType: fileType,
-//       }),
-//       {
-//         expiresIn: 60, // URL expires in 60 seconds
-//       }
-//     );
-//     res.status(200).json({
-//       url,
-//       publicURL: `${process.env.CLOUDFLARE_PUBLIC_DOMAIN}/${id}`,
-//     });
-//   } catch (error) {
-//     next(error);
-//   }
-// };
 
 // NEW: Generic upload for products without ID (CREATE mode)
 const uploadProductImageGeneric = async (req: Request, res: Response, next: NextFunction) => {
@@ -235,6 +196,44 @@ const uploadProductImage = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
+const getProductsForSearchQuery = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { search } = req.query; // Backend expects 'search'
+    
+    if (!search) {
+      return res.json([]);
+    }
+
+    const results = await Product.aggregate([
+      {
+        $search: {
+          index: "default",
+          autocomplete: {
+            path: "name",
+            query: search, // Use the search parameter here
+            tokenOrder: "any",
+            fuzzy: {
+              maxEdits: 1,
+              prefixLength: 2,
+              maxExpansions: 256,
+            },
+          },
+          highlight: {
+            path: "name",
+          },
+        },
+      },
+    ]);
+    res.json(results);
+  } catch (error) {
+    next(error);
+  }
+};
+
 
 export {
   getAllProducts,
@@ -244,6 +243,7 @@ export {
   deleteProductById,
   uploadProductImage,
   uploadProductImageGeneric, // Export the generic upload function
+  getProductsForSearchQuery,
 };
 // products.js
 // This file contains the product-related logic for an Express application.

@@ -1,89 +1,86 @@
-// lib/features/wishlistSlice.js - Redux slice for wishlist management
-import { createSlice } from "@reduxjs/toolkit";
-
-// 📝 LEARNING: This is our wishlist state management
-// Think of Redux like a global storage box that all components can access
+// Simplified wishlistSlice.js - Only for optimistic updates
+import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  items: [], // Array to store all wishlist products
-  totalItems: 0, // Count of items in wishlist
+  items: [],
+  totalItems: 0,
+  loading: false,
+  error: null,
 };
 
 const wishlistSlice = createSlice({
-  name: "wishlist", // Name of this slice
+  name: 'wishlist',
   initialState,
   reducers: {
-    // 📝 LEARNING: Reducers are functions that modify our state
+    // 🔧 FIX: Only keep optimistic update actions
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    },
+    setError: (state, action) => {
+      state.error = action.payload;
+      state.loading = false;
+    },
+    clearError: (state) => {
+      state.error = null;
+    },
     
-    // Add product to wishlist
-    addToWishlist: (state, action) => {
-      const product = action.payload;
+    // 🔧 REMOVE: All the local CRUD operations since we use API now
+    // These are only for optimistic UI updates before API responds
+    optimisticAdd: (state, action) => {
+      const item = action.payload;
+      const exists = state.items.some(i => {
+        const existingId = i.productId?._id || i.productId;
+        const newId = item.productId?._id || item.productId;
+        return existingId === newId;
+      });
       
-      // Check if product already exists in wishlist
-      const existingItem = state.items.find(item => item._id === product._id);
-      
-      if (!existingItem) {
-        // Add new product to wishlist
+      if (!exists) {
         state.items.push({
-          _id: product._id,
-          name: product.name,
-          price: product.price,
-          discount: product.discount || 0,
-          image: product.image,
-          brand: product.brand,
-          colors: product.colors,
-          sizes: product.sizes,
-          stock: product.stock,
-          averageRating: product.averageRating,
-          addedAt: new Date().toISOString(), // Track when added
+          ...item,
+          addedAt: new Date().toISOString()
         });
-        
-        // Update total count
         state.totalItems = state.items.length;
       }
     },
-
-    // Remove product from wishlist
-    removeFromWishlist: (state, action) => {
+    optimisticRemove: (state, action) => {
       const productId = action.payload;
-      
-      // Filter out the product with matching ID
-      state.items = state.items.filter(item => item._id !== productId);
-      
-      // Update total count
+      state.items = state.items.filter(item => {
+        const itemId = item.productId?._id || item.productId;
+        return itemId !== productId;
+      });
       state.totalItems = state.items.length;
     },
-
-    // Clear entire wishlist
-    clearWishlist: (state) => {
-      state.items = [];
-      state.totalItems = 0;
-    },
-
-    // Move item from wishlist to cart (optional feature)
-    moveToCart: (state, action) => {
-      const productId = action.payload;
-      
-      // Remove from wishlist when moved to cart
-      state.items = state.items.filter(item => item._id !== productId);
-      state.totalItems = state.items.length;
-    },
+    
+    // 🔧 NEW: Sync with server data when API calls complete
+    syncWithServer: (state, action) => {
+      const serverData = action.payload;
+      state.items = serverData.items || [];
+      state.totalItems = serverData.totalItems || 0;
+      state.loading = false;
+      state.error = null;
+    }
   },
 });
 
-// 📝 LEARNING: Export actions so components can use them
-export const { 
-  addToWishlist, 
-  removeFromWishlist, 
-  clearWishlist, 
-  moveToCart 
+export const {
+  setLoading,
+  setError,
+  clearError,
+  optimisticAdd,
+  optimisticRemove,
+  syncWithServer,
 } = wishlistSlice.actions;
 
-// 📝 LEARNING: Selectors help us get specific data from state
-export const selectWishlistItems = (state) => state.wishlist.items;
-export const selectWishlistTotal = (state) => state.wishlist.totalItems;
-export const selectIsInWishlist = (state, productId) => 
-  state.wishlist.items.some(item => item._id === productId);
-
-// Export the reducer to add to store
 export default wishlistSlice.reducer;
+
+// 🔧 UPDATED: Selectors work with server data structure
+export const selectWishlistItems = (state) => state.wishlist.items;
+export const selectWishlistItemCount = (state) => state.wishlist.totalItems;
+export const selectWishlistLoading = (state) => state.wishlist.loading;
+export const selectWishlistError = (state) => state.wishlist.error;
+export const selectIsInWishlist = (state, productId) => {
+  return state.wishlist.items.some(item => {
+    const itemId = item.productId?._id || item.productId;
+    return itemId === productId;
+  });
+};

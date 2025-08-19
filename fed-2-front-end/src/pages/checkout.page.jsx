@@ -1,57 +1,34 @@
-// import { useSelector } from 'react-redux';
-// import { Navigate } from 'react-router';
-// import CartItem from '@/components/CartItem';
-// import ShippingAddressForm from '@/components/ShippingAddressForm';
-
-
-// const CheckoutPage = () => {
-
-//   // Get cart items from Redux store
-//   const cart = useSelector((state) => state.cart.cartItems);
-
-//   if (cart.length === 0) {
-//     return <Navigate to="/" />;
-//   } 
-//   // If cart is empty, redirect to home page
-//   // This ensures that the user cannot access the checkout page without items in the cart
-//   return (
-//     <main className="px-16 min-h-screen py-8">
-//       <h2 className="text-4xl font-bold">Checkout Page</h2>
-//       <div className="mt-4">
-//         <h3 className="text-3xl font-semibold">Order Details</h3>
-//         <div className="mt-2 grid grid-cols-4 gap-x-4">
-//           {cart.map((item, index) => (
-//             <CartItem key={index} item={item} />
-//           ))}
-//         </div>
-//       </div>
-//       <div className="mt-4">
-//         <h3 className="text-3xl font-semibold">Enter Shipping Address</h3>
-//         <div className="mt-2 w-1/2">
-//           <ShippingAddressForm />
-//         </div>
-//       </div>
-//     </main>
-//   )
-// }
-
-// export default CheckoutPage
-
-// pages/CheckoutPage.jsx - Enhanced checkout page with better UI
-import { useSelector } from 'react-redux';
-import { Navigate, Link } from 'react-router';
+// 🔧 FIXED: Enhanced checkout page with proper Stripe payment flow
+import { useState } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { Navigate, useNavigate } from 'react-router-dom';
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import CartItem from '@/components/CartItem';
 import ShippingAddressForm from '@/components/ShippingAddressForm';
-import { ArrowLeft, CreditCard, Truck, MapPin, Package } from 'lucide-react';
+import { ArrowLeft, CreditCard, Truck, MapPin, Package, Banknote } from 'lucide-react';
+import { clearCart } from '@/lib/features/cartSlice';
+import { useCreateOrderMutation, useClearCartMutation } from '@/lib/api';
 
 const CheckoutPage = () => {
-  // 📝 LEARNING: Get cart items from Redux store
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  
+  // RTK Query hook
+  const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
+  // Add this hook inside the CheckoutPage component (after other hooks)
+  const [clearCartMutation] = useClearCartMutation();
+  
+  // Get cart items from Redux store
   const cart = useSelector((state) => state.cart.cartItems);
+  
+  // State for payment method and form validation
+  const [paymentMethod, setPaymentMethod] = useState('CREDIT_CARD');
+  const [shippingAddress, setShippingAddress] = useState(null);
+  const [isProcessingOrder, setIsProcessingOrder] = useState(false);
 
-  // 📝 LEARNING: Calculate order summary (same logic as CartPage)
+  // Calculate order summary
   const orderSummary = {
     subtotal: cart.reduce((total, item) => {
       const price = item.product.discount > 0 
@@ -69,41 +46,143 @@ const CheckoutPage = () => {
     }, 0)
   };
 
-  const shipping = orderSummary.subtotal > 75 ? 0 : 9.99;
-  const tax = orderSummary.subtotal * 0.08;
-  const total = orderSummary.subtotal + shipping + tax;
+  const total = orderSummary.subtotal;
 
-  // 📝 LEARNING: Redirect if cart is empty
+  // Redirect if cart is empty
   if (cart.length === 0) {
     return <Navigate to="/shop" replace />;
   }
 
+  // Handle shipping address form submission
+  const handleShippingAddressSubmit = (addressData) => {
+    console.log("📍 Shipping address received:", addressData);
+    setShippingAddress(addressData);
+  };
+
+  // 🔧 ENHANCED: COD Navigation in CheckoutPage - Replace the handlePlaceOrder function
+  const handlePlaceOrder = async () => {
+    if (!shippingAddress) {
+      alert("Please fill in your shipping address first!");
+      return;
+    }
+
+    setIsProcessingOrder(true);
+
+    try {
+      console.log("🚀 Creating order with payment method:", paymentMethod);
+
+      const orderData = {
+        items: cart.map(item => ({
+          productId: item.product._id,
+          quantity: item.quantity,
+          price: item.product.discount > 0 
+            ? item.product.price * (1 - item.product.discount / 100)
+            : item.product.price
+        })),
+        shippingAddress,
+        paymentMethod,
+        totalAmount: total,
+        orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
+        paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
+      };
+
+      console.log("📦 Order data being sent:", orderData);
+
+      const result = await createOrder(orderData).unwrap();
+      console.log("✅ Order created successfully:", result);
+
+      if (paymentMethod === 'COD') {
+        // Clear both Redux and server cart
+        try {
+          await clearCartMutation().unwrap();
+          console.log("✅ Server cart cleared");
+        } catch (cartError) {
+          console.warn("⚠️ Failed to clear server cart:", cartError);
+        }
+        
+        dispatch(clearCart());
+        console.log("✅ Redux cart cleared");
+        
+        const orderId = result.order?._id || result.orderId || result._id;
+        
+        if (orderId) {
+          console.log("🎉 COD Order successful, navigating with orderId:", orderId);
+          
+          // 🔧 ENHANCED: Multiple navigation strategies
+          const successURL = `/order-success?orderId=${orderId}&paymentMethod=COD&status=confirmed&orderType=cod&totalAmount=${total}&timestamp=${Date.now()}`;
+          
+          // Strategy 1: Navigate with state backup
+          navigate(successURL, { 
+            replace: true,
+            state: {
+              orderData: {
+                orderId,
+                paymentMethod: 'COD',
+                status: 'confirmed',
+                totalAmount: total
+              }
+            }
+          });
+          
+          // Strategy 2: Fallback using window.location (if navigate fails)
+          setTimeout(() => {
+            if (window.location.pathname !== '/order-success') {
+              console.log("🔄 Fallback: Using window.location for navigation");
+              window.location.href = successURL;
+            }
+          }, 100);
+          
+        } else {
+          console.error("❌ No orderId found in response:", result);
+          alert("Order created successfully! Redirecting to orders page.");
+          navigate('/orders', { replace: true });
+        }
+        
+      } else if (paymentMethod === 'CREDIT_CARD') {
+        const orderId = result.order?._id || result.orderId || result._id;
+        console.log("💳 Redirecting to payment page with orderId:", orderId);
+        
+        if (orderId) {
+          navigate(`/payment?orderId=${orderId}`);
+        } else {
+          console.error("❌ No orderId found for payment:", result);
+          alert("Order created but payment setup failed. Please contact support.");
+        }
+      }
+
+    } catch (error) {
+      console.error('❌ Order creation failed:', error);
+      const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
+      alert(`Order creation failed: ${errorMessage}`);
+    } finally {
+      setIsProcessingOrder(false);
+    }
+  };
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* 📱 HEADER & BREADCRUMB */}
+        {/* HEADER & BREADCRUMB */}
         <div className="mb-8">
           <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
-            <Link to="/" className="hover:text-blue-600">Home</Link>
+            <button onClick={() => navigate('/')} className="hover:text-blue-600">Home</button>
             <span>/</span>
-            <Link to="/cart" className="hover:text-blue-600">Cart</Link>
+            <button onClick={() => navigate('/shop/cart')} className="hover:text-blue-600">Cart</button>
             <span>/</span>
             <span className="text-gray-900">Checkout</span>
           </div>
           
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
-            <Button variant="outline" asChild>
-              <Link to="/cart">
-                <ArrowLeft className="h-4 w-4 mr-2" />
-                Back to Cart
-              </Link>
+            <Button variant="outline" onClick={() => navigate('/shop/cart')}>
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back to Cart
             </Button>
           </div>
         </div>
 
-        {/* 📊 PROGRESS STEPS */}
+        {/* PROGRESS STEPS */}
         <div className="mb-8">
           <div className="flex items-center justify-center space-x-4 md:space-x-8">
             <div className="flex items-center">
@@ -114,10 +193,10 @@ const CheckoutPage = () => {
             </div>
             <div className="flex-1 h-px bg-gray-300"></div>
             <div className="flex items-center">
-              <div className="w-8 h-8 bg-gray-300 text-gray-600 rounded-full flex items-center justify-center text-sm font-medium">
+              <div className="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-medium">
                 2
               </div>
-              <span className="ml-2 text-sm font-medium text-gray-500">Payment</span>
+              <span className="ml-2 text-sm font-medium text-blue-600">Payment</span>
             </div>
             <div className="flex-1 h-px bg-gray-300"></div>
             <div className="flex items-center">
@@ -131,10 +210,10 @@ const CheckoutPage = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* 📋 CHECKOUT FORM */}
+          {/* CHECKOUT FORM */}
           <div className="lg:col-span-2 space-y-6">
             
-            {/* 🚚 SHIPPING ADDRESS */}
+            {/* SHIPPING ADDRESS */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
@@ -146,10 +225,10 @@ const CheckoutPage = () => {
                 </div>
               </div>
               
-              <ShippingAddressForm />
+              <ShippingAddressForm onSubmit={handleShippingAddressSubmit} />
             </Card>
 
-            {/* 🚛 DELIVERY OPTIONS */}
+            {/* DELIVERY OPTIONS */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
@@ -162,29 +241,27 @@ const CheckoutPage = () => {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border-2 border-blue-500 bg-blue-50 rounded-lg p-4 cursor-pointer">
+                <div className="border-2 border-blue-500 bg-blue-50 rounded-lg p-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">Standard Delivery</h3>
                     <Badge variant="secondary">Selected</Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">5-7 business days</p>
-                  <p className="font-bold text-blue-600">
-                    {shipping === 0 ? 'FREE' : `$${shipping.toFixed(2)}`}
-                  </p>
+                  <p className="font-bold text-green-600">FREE</p>
                 </div>
 
-                <div className="border border-gray-300 rounded-lg p-4 cursor-pointer hover:border-gray-400">
+                <div className="border border-gray-300 rounded-lg p-4 opacity-50">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="font-semibold text-gray-900">Express Delivery</h3>
-                    <Badge variant="outline">Available</Badge>
+                    <Badge variant="outline">Coming Soon</Badge>
                   </div>
                   <p className="text-sm text-gray-600 mb-2">2-3 business days</p>
-                  <p className="font-bold text-gray-900">$15.99</p>
+                  <p className="font-bold text-gray-900">Not Available</p>
                 </div>
               </div>
             </Card>
 
-            {/* 💳 PAYMENT METHOD */}
+            {/* PAYMENT METHOD */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
                 <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
@@ -192,35 +269,78 @@ const CheckoutPage = () => {
                 </div>
                 <div>
                   <h2 className="text-xl font-semibold text-gray-900">Payment Method</h2>
-                  <p className="text-sm text-gray-600">All transactions are secure and encrypted</p>
+                  <p className="text-sm text-gray-600">Choose your preferred payment option</p>
                 </div>
               </div>
 
               <div className="space-y-4">
-                <div className="border-2 border-blue-500 bg-blue-50 rounded-lg p-4">
+                {/* Online Payment Option */}
+                <div 
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                    paymentMethod === 'CREDIT_CARD' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onClick={() => setPaymentMethod('CREDIT_CARD')}
+                >
                   <div className="flex items-center space-x-3">
-                    <input type="radio" name="payment" className="text-blue-600" defaultChecked />
-                    <label className="font-medium text-gray-900">Credit/Debit Card</label>
-                    <div className="flex space-x-2 ml-auto">
-                      <img src="/api/placeholder/32/20" alt="Visa" className="h-5" />
-                      <img src="/api/placeholder/32/20" alt="Mastercard" className="h-5" />
-                      <img src="/api/placeholder/32/20" alt="American Express" className="h-5" />
+                    <input 
+                      type="radio" 
+                      name="payment" 
+                      value="CREDIT_CARD"
+                      checked={paymentMethod === 'CREDIT_CARD'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-blue-600" 
+                    />
+                    <CreditCard className="h-5 w-5 text-gray-600" />
+                    <div className="flex-1">
+                      <label className="font-medium text-gray-900 cursor-pointer">
+                        Online Payment (Credit/Debit Card)
+                      </label>
+                      <p className="text-sm text-gray-600">Secure payment via Stripe</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <div className="w-8 h-5 bg-blue-600 rounded text-white text-xs flex items-center justify-center font-bold">VISA</div>
+                      <div className="w-8 h-5 bg-red-600 rounded text-white text-xs flex items-center justify-center font-bold">MC</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="border border-gray-300 rounded-lg p-4">
+                {/* COD Payment Option */}
+                <div 
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                    paymentMethod === 'COD' 
+                      ? 'border-blue-500 bg-blue-50' 
+                      : 'border-gray-300 hover:border-gray-400'
+                  }`}
+                  onClick={() => setPaymentMethod('COD')}
+                >
                   <div className="flex items-center space-x-3">
-                    <input type="radio" name="payment" className="text-blue-600" />
-                    <label className="font-medium text-gray-900">PayPal</label>
-                    <img src="/api/placeholder/60/20" alt="PayPal" className="h-5 ml-auto" />
+                    <input 
+                      type="radio" 
+                      name="payment" 
+                      value="COD"
+                      checked={paymentMethod === 'COD'}
+                      onChange={(e) => setPaymentMethod(e.target.value)}
+                      className="text-blue-600" 
+                    />
+                    <Banknote className="h-5 w-5 text-gray-600" />
+                    <div className="flex-1">
+                      <label className="font-medium text-gray-900 cursor-pointer">
+                        Cash on Delivery (COD)
+                      </label>
+                      <p className="text-sm text-gray-600">Pay when your order arrives</p>
+                    </div>
+                    <Badge variant="outline" className="text-green-600 border-green-600">
+                      Available
+                    </Badge>
                   </div>
                 </div>
               </div>
             </Card>
           </div>
 
-          {/* 📦 ORDER SUMMARY */}
+          {/* ORDER SUMMARY */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <div className="flex items-center space-x-3 mb-6">
@@ -233,7 +353,7 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
-              {/* 📱 COMPACT CART ITEMS */}
+              {/* COMPACT CART ITEMS */}
               <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item, index) => (
                   <CartItem 
@@ -244,7 +364,7 @@ const CheckoutPage = () => {
                 ))}
               </div>
 
-              {/* 💰 PRICE BREAKDOWN */}
+              {/* PRICE BREAKDOWN */}
               <div className="border-t border-gray-200 pt-4 space-y-3">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal</span>
@@ -260,18 +380,7 @@ const CheckoutPage = () => {
                 
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
-                  <span>
-                    {shipping === 0 ? (
-                      <span className="text-green-600 font-medium">FREE</span>
-                    ) : (
-                      `${shipping.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-                
-                <div className="flex justify-between text-gray-600">
-                  <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span className="text-green-600 font-medium">FREE</span>
                 </div>
                 
                 <hr className="border-gray-200" />
@@ -282,10 +391,27 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
-              {/* 🛒 PLACE ORDER BUTTON */}
-              <Button size="lg" className="w-full mt-6">
-                Place Order • ${total.toFixed(2)}
+              {/* 🔧 FIXED: PLACE ORDER BUTTON with proper logic */}
+              <Button 
+                size="lg" 
+                className="w-full mt-6" 
+                onClick={handlePlaceOrder}
+                disabled={isCreatingOrder || isProcessingOrder || !shippingAddress}
+              >
+                {isCreatingOrder || isProcessingOrder ? (
+                  'Processing...'
+                ) : paymentMethod === 'COD' ? (
+                  `Place COD Order • $${total.toFixed(2)}`
+                ) : (
+                  `Proceed to Payment • $${total.toFixed(2)}`
+                )}
               </Button>
+              
+              {!shippingAddress && (
+                <p className="text-sm text-red-600 mt-2 text-center">
+                  Please fill in your shipping address to continue
+                </p>
+              )}
               
               <div className="mt-4 text-center">
                 <p className="text-xs text-gray-500 mb-2">
@@ -293,8 +419,12 @@ const CheckoutPage = () => {
                 </p>
                 <div className="flex items-center justify-center space-x-2 text-xs text-gray-500">
                   <span>🔒 Secure checkout</span>
-                  <span>•</span>
-                  <span>SSL encrypted</span>
+                  {paymentMethod === 'CREDIT_CARD' && (
+                    <>
+                      <span>•</span>
+                      <span>SSL encrypted</span>
+                    </>
+                  )}
                 </div>
               </div>
             </Card>

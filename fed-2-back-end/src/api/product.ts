@@ -11,6 +11,7 @@ import {
   deleteProductById,
   uploadProductImage,
   uploadProductImageGeneric,
+  getProductsForSearchQuery,
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
 import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
@@ -24,6 +25,9 @@ productRouter
   .get( getAllProducts)
   // POST /api/products - Adds a new product
   .post( isAuthenticated, isAdmin, createProduct );
+
+  // Search endpoint - MUST come before /:id route
+productRouter.get("/search", getProductsForSearchQuery);
 
 productRouter
   // Define a route for individual product operations

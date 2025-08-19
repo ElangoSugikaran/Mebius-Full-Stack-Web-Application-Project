@@ -7,8 +7,15 @@ import productRouter from './api/product'; // Import product routes
 import categoryRouter from './api/category'; // Import category routes
 import reviewRouter from './api/review'; // Import review routes
 import orderRouter from "./api/order"; // Import order routes
+import wishlistRouter from "./api/wishlist";
+import cartRouter from "./api/cart";
+import customerRouter from "./api/customer";
+import settingsRouter from "./api/settings";
 import connectDB from './infrastructure/db/index';// Import the database connection function
 import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware";
+import { paymentsRouter } from "./api/payment";
+import { handleWebhook } from "./application/payment";
+import bodyParser from "body-parser";
 // Import global error handling middleware to manage errors across the application
 import cors from 'cors'; // Import CORS middleware to handle cross-origin requests
 import { clerkMiddleware } from '@clerk/express';// Import Clerk middleware for authentication
@@ -20,7 +27,15 @@ const app = express();
 app.use(express.json());
 // Use Clerk middleware for authentication
 app.use(clerkMiddleware());
-app.use(cors({origin: "http://localhost:5173"})); // Enable CORS to allow cross-origin requests
+app.use(cors({origin: process.env.FRONTEND_URL, credentials: true})); // Enable CORS to allow cross-origin requests
+
+
+// Webhook endpoint must be raw body
+app.post(
+  "/api/stripe/webhook",
+  bodyParser.raw({ type: "application/json" }),
+  handleWebhook
+);
 
 // Define the port number where the server will listen for requests
 const PORT = process.env.PORT || 8000;
@@ -33,6 +48,16 @@ app.use('/api/categories', categoryRouter);
 app.use('/api/reviews', reviewRouter);
 // Use the order router for handling requests to the /api/orders endpoint
 app.use('/api/orders', orderRouter);
+
+app.use('/api/cart', cartRouter); // ✅ Changed from '/api/carts' to '/api/cart'
+
+app.use("/api/wishlist", wishlistRouter);
+
+app.use("/api/payments", paymentsRouter);
+
+app.use("/api/customers", customerRouter);
+
+app.use('/api/settings', settingsRouter); // Use the settings router for handling requests to the /api/settings endpoint
 
 app.use(globalErrorHandlingMiddleware); // Use global error handling middleware to catch and respond to errors
 

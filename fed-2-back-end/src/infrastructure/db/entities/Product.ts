@@ -20,6 +20,10 @@ const productSchema = new mongoose.Schema({
     required: true,
     min: [0, 'Price cannot be negative']
   },
+  stripePriceId: {
+    type: String,
+    required: true,
+  },
   image: {
     type: String,
     required: true
@@ -125,7 +129,7 @@ productSchema.pre('save', function(next) {
 });
 
 // Indexes for better query performance
-productSchema.index({ name: 'text' }); // Text search
+// productSchema.index({ name: 'text' }); // Text search
 productSchema.index({ finalPrice: 1 }); // Price sorting
 productSchema.index({ averageRating: -1 }); // Rating sorting
 productSchema.index({ salesCount: -1 }); // Popularity sorting

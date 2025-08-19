@@ -1,39 +1,5 @@
-// import { Button } from "@/components/ui/button"
-// import { Link } from "react-router"
-// import { useSelector } from "react-redux"
-// import CartItem from "@/components/CartItem"
-
-// const CartPage = () => {
-
-//     // Get cart items from Redux store
-//     const cart = useSelector((state) => state.cart.cartItems);
-
-//   return (
-//      <main className="px-16 min-h-screen py-8">
-//       <h2 className="text-4xl font-bold">My Cart</h2>
-//       <div className="mt-4 grid grid-cols-2 w-1/2 gap-x-4">
-//         {cart.map((item, index) => (
-//           <CartItem key={index} item={item} />
-//         ))}
-//       </div>
-
-//       <div className="mt-4">
-//         {cart.length > 0 ? (
-//           <Button asChild>
-//             <Link to="/shop/checkout">Proceed to Checkout</Link>
-//           </Button>
-//         ) : (
-//           <p>No items in cart</p>
-//         )}
-//       </div>
-//     </main>
-//   )
-// }
-
-// export default CartPage;
-
-
-// pages/CartPage.jsx - Enhanced cart page with better UI and functionality
+// pages/CartPage.jsx - Fixed version with proper RTK Query handling
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -41,58 +7,230 @@ import { Link } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import CartItem from "@/components/CartItem";
 import { ShoppingBag, ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react";
-import { updateCartItemQuantity, removeFromCart } from "@/lib/features/cartSlice"; // You'll need these actions
+import { 
+  useGetCartQuery, 
+  useUpdateCartItemMutation, 
+  useRemoveFromCartMutation,
+  useClearCartMutation 
+} from "@/lib/api";
+import { 
+  syncCartFromServer,
+  updateCartItemQuantity,
+  removeFromCart as removeFromCartAction,
+  clearCart
+} from "@/lib/features/cartSlice";
 
 const CartPage = () => {
   const dispatch = useDispatch();
+  const [useLocalCart, setUseLocalCart] = useState(false);
   
-  // 📝 LEARNING: Get cart items from Redux store
-  const cart = useSelector((state) => state.cart.cartItems);
+  // RTK Query hooks
+  const { 
+    data: serverCart, 
+    isLoading, 
+    error,
+    refetch 
+  } = useGetCartQuery(undefined, {
+    // Only try to fetch if we think server is available
+    skip: useLocalCart,
+    // Retry configuration
+    refetchOnMountOrArgChange: true,
+    refetchOnReconnect: true
+  });
+  
+  const [updateCartItem, { isLoading: isUpdating }] = useUpdateCartItemMutation();
+  const [removeFromCart, { isLoading: isRemoving }] = useRemoveFromCartMutation();
+  const [clearCartMutation, { isLoading: isClearing }] = useClearCartMutation();
 
-  // 📝 LEARNING: Calculate cart totals
+  // Get local cart from Redux store
+  const localCart = useSelector((state) => state.cart.cartItems || []);
+
+  // Determine which cart data to use
+  const cart = useLocalCart || error ? localCart : (serverCart?.items || localCart);
+
+  // Handle server connection and cart synchronization
+  useEffect(() => {
+    if (error) {
+      // Server is unavailable, switch to local cart
+      console.warn('⚠️ Server cart not available, using local cart only:', error);
+      setUseLocalCart(true);
+    } else if (serverCart) {
+      // Server is available, sync data
+      console.log('✅ Using server cart data');
+      if (serverCart.items && Array.isArray(serverCart.items)) {
+        dispatch(syncCartFromServer(serverCart));
+      }
+      setUseLocalCart(false);
+    }
+  }, [serverCart, error, dispatch]);
+
+  // Calculate cart summary with error handling
   const cartSummary = {
     subtotal: cart.reduce((total, item) => {
-      const price = item.product.discount > 0 
-        ? item.product.price * (1 - item.product.discount / 100)
-        : item.product.price;
-      return total + (price * item.quantity);
-    }, 0),
-    itemCount: cart.reduce((total, item) => total + item.quantity, 0),
-    savings: cart.reduce((total, item) => {
-      if (item.product.discount > 0) {
-        const savings = (item.product.price * item.product.discount / 100) * item.quantity;
-        return total + savings;
+      try {
+        const product = item.product || item;
+        const price = parseFloat(product.price) || 0;
+        const discount = parseFloat(product.discount) || 0;
+        const quantity = parseInt(item.quantity) || 1;
+        
+        const finalPrice = discount > 0 
+          ? price * (1 - discount / 100)
+          : price;
+        
+        return total + (finalPrice * quantity);
+      } catch (err) {
+        console.error('Error calculating item total:', err, item);
+        return total;
       }
-      return total;
+    }, 0),
+    
+    itemCount: cart.reduce((total, item) => {
+      try {
+        return total + (parseInt(item.quantity) || 1);
+      } catch (err) {
+        console.error('Error calculating item count:', err, item);
+        return total;
+      }
+    }, 0),
+    
+    savings: cart.reduce((total, item) => {
+      try {
+        const product = item.product || item;
+        const discount = parseFloat(product.discount) || 0;
+        
+        if (discount > 0) {
+          const price = parseFloat(product.price) || 0;
+          const quantity = parseInt(item.quantity) || 1;
+          const savings = (price * discount / 100) * quantity;
+          return total + savings;
+        }
+        return total;
+      } catch (err) {
+        console.error('Error calculating savings:', err, item);
+        return total;
+      }
     }, 0)
   };
 
-  const shipping = cartSummary.subtotal > 75 ? 0 : 9.99;
-  const tax = cartSummary.subtotal * 0.08; // 8% tax
-  const total = cartSummary.subtotal + shipping + tax;
+  // Handle quantity updates with proper error handling
+  const handleUpdateQuantity = async (productId, newQuantity, size, color) => {
+    if (newQuantity < 1) {
+      console.warn('Invalid quantity:', newQuantity);
+      return;
+    }
 
-  // 📝 LEARNING: Handle cart actions
-  const handleUpdateQuantity = async (productId, newQuantity) => {
-    dispatch(updateCartItemQuantity({ productId, quantity: newQuantity }));
+    try {
+      // Always update local state first for immediate UI response
+      dispatch(updateCartItemQuantity({ 
+        productId, 
+        quantity: newQuantity,
+        size,
+        color 
+      }));
+
+      // Try server update if available
+      if (!useLocalCart && !error) {
+        await updateCartItem({ 
+          productId, 
+          quantity: newQuantity,
+          size: size || undefined,
+          color: color || undefined
+        }).unwrap();
+        
+        console.log('✅ Server cart updated successfully');
+      }
+    } catch (serverError) {
+      console.warn('⚠️ Server update failed, using local update only:', serverError);
+      
+      // If server fails, make sure we switch to local cart mode
+      setUseLocalCart(true);
+      
+      // Local state was already updated, so no need to revert
+    }
   };
 
-  const handleRemoveItem = (productId) => {
-    dispatch(removeFromCart(productId));
+  // Handle item removal with proper error handling
+  const handleRemoveItem = async (productId, size, color) => {
+    if (!productId) {
+      console.error('No product ID provided for removal');
+      return;
+    }
+
+    try {
+      // Always update local state first
+      dispatch(removeFromCartAction({ 
+        productId,
+        size,
+        color 
+      }));
+
+      // Try server removal if available
+      if (!useLocalCart && !error) {
+        await removeFromCart({ 
+          productId,
+          size: size || undefined,
+          color: color || undefined
+        }).unwrap();
+        
+        console.log('✅ Item removed from server cart');
+      }
+    } catch (serverError) {
+      console.warn('⚠️ Server removal failed, using local removal only:', serverError);
+      
+      // Switch to local cart mode if server fails
+      setUseLocalCart(true);
+      
+      // Local state was already updated
+    }
   };
 
-  // 📝 LEARNING: Empty cart state
-  if (cart.length === 0) {
+  // Handle cart clearing
+  const handleClearCart = async () => {
+    try {
+      // Clear local cart first
+      dispatch(clearCart());
+
+      // Try server clear if available
+      if (!useLocalCart && !error) {
+        await clearCartMutation().unwrap();
+        console.log('✅ Server cart cleared');
+      }
+    } catch (serverError) {
+      console.warn('⚠️ Server clear failed, local cart cleared:', serverError);
+      setUseLocalCart(true);
+    }
+  };
+
+  // Loading state - only show if we're actually waiting for server data
+  if (isLoading && !useLocalCart && localCart.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading your cart...</p>
+          <Button 
+            variant="outline" 
+            className="mt-4"
+            onClick={() => setUseLocalCart(true)}
+          >
+            Use Local Cart
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Empty cart state
+  if (!cart || cart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-6xl mx-auto px-4 py-8">
-          {/* 📱 BREADCRUMB */}
           <div className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
             <Link to="/" className="hover:text-blue-600">Home</Link>
             <span>/</span>
             <span className="text-gray-900">Cart</span>
           </div>
 
-          {/* 🛒 EMPTY CART */}
           <div className="text-center py-16">
             <div className="max-w-md mx-auto">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -119,7 +257,7 @@ const CartPage = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
         
-        {/* 📱 HEADER & BREADCRUMB */}
+        {/* Header & Breadcrumb */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
@@ -133,38 +271,79 @@ const CartPage = () => {
                 {cartSummary.itemCount} {cartSummary.itemCount === 1 ? 'item' : 'items'}
               </Badge>
             </h1>
+            
+            {/* Cart Status Indicator */}
+            {useLocalCart && (
+              <div className="flex items-center space-x-2 mt-2">
+                <p className="text-sm text-amber-600">
+                  ⚠️ Using local cart (server unavailable)
+                </p>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => {
+                    setUseLocalCart(false);
+                    refetch();
+                  }}
+                  disabled={isLoading}
+                >
+                  Retry Server
+                </Button>
+              </div>
+            )}
           </div>
           
-          <Button variant="outline" asChild>
-            <Link to="/shop">
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Continue Shopping
-            </Link>
-          </Button>
+          <div className="flex space-x-2">
+            <Button variant="outline" asChild>
+              <Link to="/shop">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Continue Shopping
+              </Link>
+            </Button>
+            
+            {cart.length > 0 && (
+              <Button 
+                variant="outline" 
+                onClick={handleClearCart}
+                disabled={isClearing}
+                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+              >
+                {isClearing ? "Clearing..." : "Clear Cart"}
+              </Button>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* 🛍️ CART ITEMS */}
+          {/* Cart Items */}
           <div className="lg:col-span-2">
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Cart Items</h2>
               
               <div className="space-y-6">
-                {cart.map((item, index) => (
-                  <div key={`${item.product._id}-${index}`}>
-                    <CartItem 
-                      item={item} 
-                      onUpdateQuantity={handleUpdateQuantity}
-                      onRemoveItem={handleRemoveItem}
-                    />
-                    {index < cart.length - 1 && <hr className="my-6 border-gray-200" />}
-                  </div>
-                ))}
+                {cart.map((item, index) => {
+                  // Create a unique key for each item
+                  const product = item.product || item;
+                  const uniqueKey = `${product._id || product.id || index}-${item.size || ''}-${item.color || ''}-${index}`;
+                  
+                  return (
+                    <div key={uniqueKey}>
+                      <CartItem 
+                        item={item} 
+                        onUpdateQuantity={handleUpdateQuantity}
+                        onRemoveItem={handleRemoveItem}
+                        isUpdating={isUpdating}
+                        isRemoving={isRemoving}
+                      />
+                      {index < cart.length - 1 && <hr className="my-6 border-gray-200" />}
+                    </div>
+                  );
+                })}
               </div>
             </Card>
 
-            {/* 🚚 SHIPPING INFO */}
+            {/* Shipping Info */}
             <Card className="p-6 mt-6">
               <h3 className="font-semibold text-gray-900 mb-4">Shipping & Returns</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
@@ -174,7 +353,7 @@ const CartPage = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">Free Shipping</p>
-                    <p className="text-gray-600">On orders over $75</p>
+                    <p className="text-gray-600">Always free delivery</p>
                   </div>
                 </div>
                 
@@ -201,7 +380,7 @@ const CartPage = () => {
             </Card>
           </div>
 
-          {/* 💰 ORDER SUMMARY */}
+          {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
@@ -214,50 +393,38 @@ const CartPage = () => {
                 
                 {cartSummary.savings > 0 && (
                   <div className="flex justify-between text-green-600">
-                    <span>Savings</span>
+                    <span>You saved</span>
                     <span>-${cartSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
-                  <span>
-                    {shipping === 0 ? (
-                      <span className="text-green-600 font-medium">FREE</span>
-                    ) : (
-                      `$${shipping.toFixed(2)}`
-                    )}
-                  </span>
-                </div>
-                
-                {shipping > 0 && (
-                  <div className="text-sm text-gray-500 bg-blue-50 p-3 rounded-md">
-                    💡 Add ${(75 - cartSummary.subtotal).toFixed(2)} more for free shipping!
-                  </div>
-                )}
-                
-                <div className="flex justify-between text-gray-600">
-                  <span>Tax</span>
-                  <span>${tax.toFixed(2)}</span>
+                  <span className="text-green-600 font-medium">FREE</span>
                 </div>
                 
                 <hr className="border-gray-200" />
                 
                 <div className="flex justify-between text-lg font-bold text-gray-900">
                   <span>Total</span>
-                  <span>${total.toFixed(2)}</span>
+                  <span>${cartSummary.subtotal.toFixed(2)}</span>
                 </div>
               </div>
 
-              {/* 🛒 CHECKOUT BUTTON */}
-              <Button asChild size="lg" className="w-full mt-6">
-                <Link to="/shop/checkout">
+              {/* Checkout Button */}
+              <Button 
+                asChild 
+                size="lg" 
+                className="w-full mt-6"
+                disabled={cart.length === 0}
+              >
+                <Link to="/checkout">
                   Proceed to Checkout
                 </Link>
               </Button>
               
               <p className="text-xs text-gray-500 text-center mt-3">
-                Shipping and taxes calculated at checkout
+                All prices include any applicable taxes
               </p>
             </Card>
           </div>

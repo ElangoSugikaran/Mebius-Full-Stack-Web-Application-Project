@@ -272,7 +272,10 @@ const ProductForm = ({
         const selectedCategory = categories.find(cat => cat._id === categoryId);
         if (!selectedCategory) return [];
         
-        return materialOptionsByCategory[selectedCategory.name] || [];
+        const materials = materialOptionsByCategory[selectedCategory.name] || [];
+        
+        // Add "None" as first option for optional selection
+        return ["none", ...materials];
     };
 
     return (
@@ -466,7 +469,7 @@ const ProductForm = ({
                                                     placeholder="0.00" 
                                                     {...field} 
                                                     onChange={(e) => {
-                                                        field.onChange(parseFloat(e.target.value) || 0);
+                                                        field.onChange(parseFloat(e.target.value));
                                                     }}
                                                 />
                                             </FormControl>
@@ -491,7 +494,7 @@ const ProductForm = ({
                                                     placeholder="0" 
                                                     {...field} 
                                                     onChange={(e) => {
-                                                        field.onChange(parseInt(e.target.value) || 0);
+                                                        field.onChange(parseInt(e.target.value));
                                                     }}
                                                 />
                                             </FormControl>
@@ -514,7 +517,7 @@ const ProductForm = ({
                                                     placeholder="0" 
                                                     {...field} 
                                                     onChange={(e) => {
-                                                        field.onChange(parseInt(e.target.value) || 0);
+                                                        field.onChange(parseInt(e.target.value));
                                                     }}
                                                 />
                                             </FormControl>
@@ -617,7 +620,10 @@ const ProductForm = ({
                                                 <SelectContent>
                                                     {getMaterialOptions(form.watch("categoryId")).map((material) => (
                                                         <SelectItem key={material} value={material}>
-                                                            {material.charAt(0).toUpperCase() + material.slice(1)}
+                                                            {material === "none" 
+                                                                ? "None / Not Specified" 
+                                                                : material.charAt(0).toUpperCase() + material.slice(1)
+                                                            }
                                                         </SelectItem>
                                                     ))}
                                                 </SelectContent>
@@ -625,7 +631,7 @@ const ProductForm = ({
                                             <FormDescription>
                                                 {!form.watch("categoryId") 
                                                     ? "Select a category to see available materials" 
-                                                    : "Primary fabric material"
+                                                    : "Primary fabric material (optional)"
                                                 }
                                             </FormDescription>
                                             <FormMessage />

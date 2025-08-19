@@ -1,0 +1,398 @@
+import { useForm } from "react-hook-form";
+import z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import {  useEffect } from 'react';
+import { Save, Store, Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { toast } from 'react-toastify';
+import { useUpdateStoreSettingsMutation, useGetSettingsQuery } from '@/lib/api';
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+
+// VALIDATION SCHEMA
+const storeSettingsSchema = z.object({
+  name: z.string()
+    .min(2, "Store name must be at least 2 characters")
+    .max(100, "Store name cannot exceed 100 characters"),
+  description: z.string()
+    .max(500, "Description cannot exceed 500 characters")
+    .optional(),
+  email: z.string()
+    .email("Please enter a valid email address")
+    .optional(),
+  phone: z.string()
+    .min(10, "Phone number must be at least 10 characters")
+    .optional(),
+  address: z.string()
+    .max(200, "Address cannot exceed 200 characters")
+    .optional(),
+  city: z.string()
+    .max(50, "City name cannot exceed 50 characters")
+    .optional(),
+  state: z.string()
+    .max(50, "State name cannot exceed 50 characters")
+    .optional(),
+  zipCode: z.string()
+    .max(20, "ZIP code cannot exceed 20 characters")
+    .optional(),
+  openTime: z.string(),
+  closeTime: z.string(),
+  isOpen: z.boolean().default(true),
+});
+
+const StoreSettingsPage = () => {
+
+  const { data: settings, isLoading, error } = useGetSettingsQuery();
+  const [updateStoreSettings] = useUpdateStoreSettingsMutation();
+
+  // FORM SETUP
+  const form = useForm({
+    resolver: zodResolver(storeSettingsSchema),
+    defaultValues: {
+      name: '',
+      description: '',
+      email: '',
+      phone: '',
+      address: '',
+      city: '',
+      state: '',
+      zipCode: '',
+      openTime: '09:00',
+      closeTime: '18:00',
+      isOpen: true
+    }
+  });
+
+  useEffect(() => {
+    if (settings?.store) {
+      form.reset(settings.store);
+    }
+  }, [settings, form]);
+
+  const onSubmit = async (values) => {
+    try {
+      await updateStoreSettings(values).unwrap();
+      toast.success('✅ Store Settings Saved Successfully!');
+    } catch (error) {
+      console.error('Failed to save settings:', error);
+      toast.error('❌ Failed to Save Store Settings\nPlease try again.');
+    }
+  };
+
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center justify-center h-64">
+            <div className="flex items-center space-x-3">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+              <span className="text-lg text-gray-600">Loading settings...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gray-50 p-6">
+      <div className="max-w-4xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-900 flex items-center">
+                <Store className="mr-3 h-8 w-8 text-blue-600" />
+                Store Settings
+              </h1>
+              <p className="text-gray-600 mt-2">
+                Manage your store basic information and brand details
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            
+            {/* Basic Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Store className="mr-2 h-5 w-5 text-blue-600" />
+                  Basic Information
+                </CardTitle>
+                <CardDescription>
+                  Essential details about your store and brand
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Store Name *</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="Enter your store/brand name"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        This will be displayed across your store
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Store Description</FormLabel>
+                      <FormControl>
+                        <Textarea
+                          placeholder="Describe your store and what makes it special..."
+                          rows={3}
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Brief description of your brand and products
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Contact Information Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <Phone className="mr-2 h-5 w-5 text-green-600" />
+                  Contact Information
+                </CardTitle>
+                <CardDescription>
+                  How customers can reach you
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email Address</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input 
+                            type="email"
+                            placeholder="store@example.com"
+                            className="pl-10"
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Primary contact email for customer inquiries
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Phone Number</FormLabel>
+                      <FormControl>
+                        <div className="relative">
+                          <Phone className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+                          <Input 
+                            type="tel"
+                            placeholder="+1 (555) 123-4567"
+                            className="pl-10"
+                            {...field} 
+                          />
+                        </div>
+                      </FormControl>
+                      <FormDescription>
+                        Customer support phone number
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="openTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Opening Time</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="time"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="closeTime"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Closing Time</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="time"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Store Address Card */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="mr-2 h-5 w-5 text-red-600" />
+                  Store Address
+                </CardTitle>
+                <CardDescription>
+                  Physical location details
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Street Address</FormLabel>
+                      <FormControl>
+                        <Input 
+                          placeholder="123 Main Street"
+                          {...field} 
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="New York"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State/Province</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="NY"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="zipCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>ZIP/Postal Code</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="10001"
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Submit Button */}
+            <div className="flex justify-end pt-6">
+              <Button 
+                type="submit" 
+                disabled={form.formState.isSubmitting}
+                className="px-8"
+              >
+                {form.formState.isSubmitting ? (
+                  <>
+                    <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-4 w-4" />
+                    Save Store Settings
+                  </>
+                )}
+              </Button>
+            </div>
+          </form>
+        </Form>
+      </div>
+    </div>
+  );
+};
+
+export default StoreSettingsPage;

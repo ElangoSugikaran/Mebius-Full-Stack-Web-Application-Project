@@ -1,54 +1,58 @@
-// import Navigation from "@/components/Navigation"
-// import { Outlet } from "react-router"
-
-// const RootLayout = () => {
-//   return (
-//     <>
-//       <Navigation />
-//       <Outlet />
-//     </>
-//   )
-// }
-
-// export default RootLayout
-
 // RootLayout.jsx - Smart layout that adapts to user role and current route
 
+import { useEffect } from "react"; // ← ADD THIS IMPORT
 import Navigation from "@/components/Navigation";
+import Footer from "@/components/Footer";
 import AdminFloatingButton from "@/components/AdminFloatingButton";
 import { Outlet, useLocation } from "react-router";
 import { useUser } from "@clerk/clerk-react";
+import { useSyncCurrentUserMutation } from "@/lib/api";
 
 const RootLayout = () => {
   const { user } = useUser();
   const location = useLocation();
+  const [syncUser] = useSyncCurrentUserMutation();
+
+  // Add this useEffect after other useEffects:
+  useEffect(() => {
+    // Auto-sync user when app loads and user is signed in
+    const syncUserData = async () => {
+      try {
+        await syncUser().unwrap();
+        console.log("✅ User synced automatically");
+      } catch (error) {
+        console.error("❌ Auto-sync failed:", error);
+      }
+    };
+    
+    // Only sync if user is signed in
+    if (user?.id) {
+      syncUserData();
+    }
+  }, [user?.id, syncUser]);
   
-  // 🔍 Check if user is admin
   const isAdmin = user?.publicMetadata?.role === 'admin';
-  
-  // 🔍 Check if currently on admin routes
   const isOnAdminRoute = location.pathname.startsWith('/admin');
   
-  // 🎯 LOGIC: When to show navigation bar
   const shouldShowNavigation = () => {
-    // Always show navigation for non-admin users
     if (!isAdmin) return true;
-    
-    // For admin users:
-    // - Hide navigation when on admin routes
-    // - Show navigation when on client routes (so admin can use client UI)
     return !isOnAdminRoute;
   };
 
   return (
     <>
-      {/* 🎭 CONDITIONAL NAVIGATION - Only show when appropriate */}
+      {/* Navigation - Only show when appropriate */}
       {shouldShowNavigation() && <Navigation />}
       
-      {/* 📄 PAGE CONTENT - Always show */}
-      <Outlet />
+      {/* Main Content */}
+      <main className="min-h-screen">
+        <Outlet />
+      </main>
       
-      {/* ⚡ FLOATING ADMIN BUTTON - Quick access for admins on client pages */}
+      {/* Footer - Show on all client pages, hide on admin pages */}
+      {shouldShowNavigation() && <Footer />}
+      
+      {/* Admin Floating Button */}
       {shouldShowNavigation() && <AdminFloatingButton />}
     </>
   );
