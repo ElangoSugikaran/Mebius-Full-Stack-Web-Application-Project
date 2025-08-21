@@ -86,21 +86,27 @@ async function fulfillCheckout(sessionId: string) {
       });
 
       console.log("✅ Order fulfilled successfully:", order._id);
-    }
-  } catch (error) {
+     }
+    } catch (error) {
     console.error("❌ Error in fulfillCheckout:", error);
     
-    // 🔧 NEW: Handle failed payments by cancelling the order
-    if (checkoutSession.metadata?.orderId) {
-      await Order.findByIdAndUpdate(
-        checkoutSession.metadata.orderId,
-        {
-          orderStatus: 'CANCELLED',
-          paymentStatus: 'FAILED',
-          updatedAt: new Date()
-        }
-      );
-      console.log("📝 Order cancelled due to payment processing error");
+    // 🔧 FIXED: Get checkoutSession in catch block scope
+    try {
+      const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId);
+      
+      if (checkoutSession.metadata?.orderId) {
+        await Order.findByIdAndUpdate(
+          checkoutSession.metadata.orderId,
+          {
+            orderStatus: 'CANCELLED',
+            paymentStatus: 'FAILED',
+            updatedAt: new Date()
+          }
+        );
+        console.log("📝 Order cancelled due to payment processing error");
+      }
+    } catch (retrieveError) {
+      console.error("❌ Error retrieving session for cancellation:", retrieveError);
     }
     
     throw error;
