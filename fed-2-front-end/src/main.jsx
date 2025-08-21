@@ -44,7 +44,6 @@ import OrdersPage from './pages/admin/order-management.page.jsx';
 import OrderDetailPage from './pages/admin/order-details.page.jsx';
 import CustomerManagementPage from './pages/admin/customer-management.page.jsx';
 import SalesDashboard from './pages/admin/admin-sales-dashboard.page.jsx';
-import AdminHomeManagement from './pages/admin/admin-homepage-management.page';
 
 // admin side settings 
 import StoreSettingsPage from './pages/admin/store-settings.page.jsx';
@@ -95,9 +94,6 @@ createRoot(document.getElementById('root')).render(
                     {/* 📊 Admin Dashboard Home */}
                     <Route index element={<AdminDashboardPage />} />
                     <Route path='/admin/sales' element={<SalesDashboard />} />
-
-                    {/* 🏠 HOME PAGE MANAGEMENT - New Route */}
-                    <Route path='/admin/home' element={<AdminHomeManagement />} />
 
                     {/* 📦 PRODUCT MANAGEMENT ROUTES */}
                     <Route path="products" element={<ProductsPage />} />

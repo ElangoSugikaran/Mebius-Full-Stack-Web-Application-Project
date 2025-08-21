@@ -46,7 +46,6 @@ const AdminDashboardLayout = () => {
     { name: 'Products', href: '/admin/products', icon: Package },
     { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/customers', icon: Users },
-    { name: "Home", href: "/admin/home", icon: Home, current: location.pathname === "/admin/home" },
   ];
 
   // 🎛️ SETTINGS SUBMENU ITEMS

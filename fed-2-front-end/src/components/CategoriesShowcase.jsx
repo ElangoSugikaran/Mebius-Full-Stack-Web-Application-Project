@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import { useGetAllCategoriesQuery } from "../lib/api";
-import {ShoppingBag } from "lucide-react";
+
 // 🏷️ CATEGORIES SHOWCASE COMPONENT
 function CategoriesShowcase() {
   const { data: categories = [] } = useGetAllCategoriesQuery();
@@ -24,8 +24,23 @@ function CategoriesShowcase() {
             className="group"
           >
             <div className="bg-white rounded-2xl p-6 text-center hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
-              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
-                <ShoppingBag className="w-8 h-8 text-blue-600" />
+              <div className="w-16 h-16 rounded-full overflow-hidden mx-auto mb-4 group-hover:scale-110 transition-transform duration-300">
+                {category.image ? (
+                  <img 
+                    src={category.image} 
+                    alt={category.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to a placeholder if image fails to load
+                      e.target.src = `https://via.placeholder.com/64x64/3B82F6/FFFFFF?text=${category.name.charAt(0)}`;
+                    }}
+                  />
+                ) : (
+                  // Fallback placeholder when no image is provided
+                  <div className="w-full h-full bg-gradient-to-br from-blue-100 to-purple-100 flex items-center justify-center text-blue-600 font-semibold text-lg">
+                    {category.name.charAt(0)}
+                  </div>
+                )}
               </div>
               <h3 className="font-semibold text-gray-900 group-hover:text-blue-600 transition-colors">
                 {category.name}

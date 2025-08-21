@@ -683,4 +683,5 @@ export const {
   useGetSettingsQuery,
   useUpdateStoreSettingsMutation,
   useUpdatePaymentSettingsMutation,
+
 } = Api;
