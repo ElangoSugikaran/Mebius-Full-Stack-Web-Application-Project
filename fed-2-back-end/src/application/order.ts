@@ -73,9 +73,9 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       }
 
       // Calculate price with discount
-      let itemPrice = parseFloat(product.price);
+      let itemPrice = parseFloat(product.price.toString());
       if (product.discount && product.discount > 0) {
-        itemPrice = parseFloat(product.price) * (1 - product.discount / 100);
+        itemPrice = parseFloat(product.price.toString()) * (1 - product.discount / 100);
       }
       
       const itemTotal = itemPrice * item.quantity;
@@ -96,13 +96,15 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       
       // For COD: Deduct stock immediately since payment is guaranteed on delivery
       for (const item of data.items) {
-        const product = await Product.findById(item.productId);
-        product.stock -= item.quantity;
-        product.salesCount = (product.salesCount || 0) + item.quantity;
-        await product.save();
-        
-        console.log(`📦 Stock updated for ${product.name}: Remaining ${product.stock}`);
+       const product = await Product.findById(item.productId);
+       if (product) {
+         product.stock -= item.quantity;
+         product.salesCount = (product.salesCount || 0) + item.quantity;
+         await product.save();
+         console.log(`📦 Stock updated for ${product.name}: Remaining ${product.stock}`);
+       }
       }
+
     } else {
       console.log("💳 Online Payment Order - Stock will be deducted after payment confirmation");
     }
@@ -148,11 +150,7 @@ const getUserOrders = async (req: Request, res: Response, next: NextFunction) =>
     if (!userId) {
       throw new UnauthorizedError("Authentication required");
     }
-    
-    // const orders = await Order.find({ userId })
-    //   .populate("items.productId")
-    //   .populate("addressId")
-    //   .sort({ createdAt: -1 });
+  
     const orders = await Order.find()
       .populate({
         path: "items.productId",
@@ -507,12 +505,17 @@ const updatePaymentStatus = async (req: Request, res: Response, next: NextFuncti
       }
     ).populate("items.productId").populate("addressId");
     
-    console.log("✅ Payment status updated successfully:", {
-      orderId: order._id,
-      paymentStatus: order.paymentStatus,
-      orderStatus: order.orderStatus
-    });
-    
+    // console.log("✅ Payment status updated successfully:", {
+    //   orderId: order._id,
+    //   paymentStatus: order.paymentStatus,
+    //   orderStatus: order.orderStatus
+    // });
+
+    if (order && order.paymentMethod === "COD" && order.paymentStatus !== "PAID") {
+      console.log("💰 COD Payment completed - order already confirmed, just updating payment status");
+      // For COD, stock was already deducted when order was created
+    }
+
     res.status(200).json({
       success: true,
       message: "Payment status updated successfully",
@@ -701,27 +704,31 @@ const updateOrderStatusAfterPayment = async (req: Request, res: Response, next: 
     
     console.log("📊 Payment completion update data:", updateData);
     
-    const order = await Order.findByIdAndUpdate(
-      orderId,
-      updateData,
-      { 
-        new: true,
-        runValidators: true
-      }
-    ).populate("items.productId").populate("addressId");
-    
-    console.log("✅ Customer payment completion successful:", {
-      orderId: order._id,
-      orderStatus: order.orderStatus,
-      paymentStatus: order.paymentStatus,
-      userId: order.userId
-    });
-    
-    res.status(200).json({
-      success: true,
-      message: "Payment confirmed and order updated successfully",
-      order: order
-    });
+  const order = await Order.findByIdAndUpdate(
+    orderId,
+    updateData,
+    { 
+      new: true,
+      runValidators: true
+    }
+  ).populate("items.productId").populate("addressId");
+
+  if (!order) {
+    throw new NotFoundError("Order not found after update");
+  }
+
+  console.log("✅ Customer payment completion successful:", {
+    orderId: order._id,
+    orderStatus: order.orderStatus,
+    paymentStatus: order.paymentStatus,
+    userId: order.userId
+  });
+
+  res.status(200).json({
+    success: true,
+    message: "Payment confirmed and order updated successfully",
+    order: order
+  });
     
   } catch (error) {
     console.error("❌ Error in customer payment completion:", error);
