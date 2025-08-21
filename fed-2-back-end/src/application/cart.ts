@@ -187,28 +187,24 @@ const removeCartItem = async (req: Request, res: Response, next: NextFunction) =
     // 🔧 CRITICAL FIX: Better filtering logic
     const initialLength = cart.items.length;
     
-    cart.items = cart.items.filter(item => {
+      const itemsToRemove = cart.items.filter(item => {
       const productMatch = item.productId.toString() === productId;
-      
-      // Handle undefined values properly for size/color matching
       const sizeMatch = (size === undefined && item.size === undefined) || (size !== undefined && item.size === size);
       const colorMatch = (color === undefined && item.color === undefined) || (color !== undefined && item.color === color);
-      
-      const shouldRemove = productMatch && sizeMatch && colorMatch;
-      
-      console.log('🔍 Item filter check:', {
-        productId: item.productId.toString(),
-        itemSize: item.size,
-        itemColor: item.color,
-        targetProductId: productId,
-        targetSize: size,
-        targetColor: color,
-        matches: { productMatch, sizeMatch, colorMatch },
-        shouldRemove
-      });
-      
-      return !shouldRemove; // Keep items that don't match
+      return productMatch && sizeMatch && colorMatch;
     });
+
+    if (itemsToRemove.length === 0) {
+      console.log('❌ No matching item found to remove');
+      throw new NotFoundError('Item not found in cart with specified variant');
+    }
+
+    // Remove items using Mongoose DocumentArray methods
+    itemsToRemove.forEach(itemToRemove => {
+      cart.items.pull(itemToRemove._id);
+    });
+
+console.log(`📊 Removed ${itemsToRemove.length} item(s)`);
     
     if (cart.items.length === initialLength) {
       console.log('❌ No matching item found to remove');
@@ -342,7 +338,7 @@ const clearCart = async (req: Request, res: Response, next: NextFunction) => {
       throw new NotFoundError('Cart not found');
     }
     
-    cart.items = [];
+   cart.items.splice(0, cart.items.length); 
     const clearedCart = await cart.save();
     console.log('✅ Cart cleared successfully');
     
@@ -356,26 +352,6 @@ const clearCart = async (req: Request, res: Response, next: NextFunction) => {
     next(error);
   }
 };
-
-// Get cart item count (useful for cart badge)
-// const getCartItemCount = async (req: Request, res: Response, next: NextFunction) => {
-//   try {
-//     const userId = getUserId(req);
-    
-//     const cart = await Cart.findOne({ userId });
-//     const itemCount = cart ? cart.totalItems : 0;
-    
-//     console.log('📊 Cart item count:', itemCount);
-    
-//     res.json({ 
-//       success: true,
-//       itemCount 
-//     });
-//   } catch (error) {
-//     console.error('❌ Error getting cart count:', error);
-//     next(error);
-//   }
-// };
 
 // Get cart item count (useful for cart badge)
 const getCartItemCount = async (req: Request, res: Response, next: NextFunction) => {

@@ -9,22 +9,12 @@ import { addToWishlistDTO } from '../domain/dto/wishlist';
 import { getAuth } from "@clerk/express";
 
 // ✅ Helper function like Cart
-// const getUserId = (req: Request): string => {
-//   const { userId } = getAuth(req);
-//   if (!userId) {
-//     throw new UnauthorizedError('User not authenticated');
-//   }
-//   return userId;
-// };
-
-const getUserId = (req: Request): string | null => {
-  try {
-    const { userId } = getAuth(req);
-    return userId || null;
-  } catch (error) {
-    console.warn('⚠️ Auth error:', error);
-    return null;
+const getUserId = (req: Request): string => {
+  const { userId } = getAuth(req);
+  if (!userId) {
+    throw new UnauthorizedError('User not authenticated');
   }
+  return userId;
 };
 
 // Get user's wishlist
@@ -129,10 +119,9 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
     }
     
     const initialLength = wishlist.items.length;
-    wishlist.items = wishlist.items.filter(item => 
-      item.productId.toString() !== productId
-    );
-    
+
+    wishlist.items.pull({ productId });
+
     if (wishlist.items.length === initialLength) {
       throw new NotFoundError('Item not found in wishlist');
     }
@@ -163,8 +152,8 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
     if (!wishlist) {
       throw new NotFoundError('Wishlist not found');
     }
-    
-    wishlist.items = [];
+
+    wishlist.items.splice(0, wishlist.items.length);
     const clearedWishlist = await wishlist.save();
     console.log('✅ Wishlist cleared successfully');
     
