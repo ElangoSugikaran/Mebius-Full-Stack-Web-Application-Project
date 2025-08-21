@@ -37,9 +37,6 @@ app.post(
   handleWebhook
 );
 
-// Define the port number where the server will listen for requests
-const PORT = process.env.PORT || 8000;
-
 // Use the product router for handling requests to the /api/products endpoint
 app.use('/api/products', productRouter);
 // Use the category router for handling requests to the /api/categories endpoint
@@ -63,6 +60,8 @@ app.use(globalErrorHandlingMiddleware); // Use global error handling middleware 
 
 connectDB();
 
+// Define the port number where the server will listen for requests
+const PORT = process.env.PORT || 8000;
 
 // Start the server and listen on the specified port
 app.listen(PORT, () => {
