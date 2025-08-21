@@ -126,7 +126,7 @@ const addToCart = async (req: Request, res: Response, next: NextFunction) => {
     } else {
       // Add new item to cart
       cart.items.push({
-        productId: product._id,
+        productId: product._id as any,
         name: product.name,
         price: product.price,
         finalPrice: product.finalPrice || product.price,
@@ -168,8 +168,8 @@ const removeCartItem = async (req: Request, res: Response, next: NextFunction) =
     const { productId } = req.params;
     
     // 🔧 CRITICAL FIX: Handle query parameters as strings and convert properly
-    let size = req.query.size as string;
-    let color = req.query.color as string;
+    let size: string | undefined = req.query.size as string | undefined;
+    let color: string | undefined = req.query.color as string | undefined;
     
     // Convert string 'undefined' to actual undefined
     size = (size === 'undefined' || size === '') ? undefined : size;

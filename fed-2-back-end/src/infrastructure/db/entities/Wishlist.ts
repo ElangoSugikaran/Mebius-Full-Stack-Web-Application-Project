@@ -1,60 +1,66 @@
-// 🔧 FIXED: Proper Wishlist entity following Cart structure
-import mongoose, { Document, Schema } from 'mongoose';
+import mongoose from "mongoose";
 
-export interface IWishlistItem {
-  productId: mongoose.Schema.Types.ObjectId; // ✅ Use ObjectId like Cart
-  name: string;
-  price: number;
-  finalPrice: number; // ✅ Add finalPrice like Cart
-  image: string;
-  inStock: boolean;
-  addedAt: Date;
-}
-
-export interface IWishlist extends Document {
-  userId: string; // Clerk user ID
-  items: IWishlistItem[];
-  totalItems: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
-const wishlistItemSchema = new Schema<IWishlistItem>({
-  productId: { 
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Product', // ✅ Add ref like Cart
-    required: true 
-  },
-  name: { type: String, required: true, trim: true },
-  price: { type: Number, required: true, min: 0 },
-  finalPrice: { type: Number, required: true, min: 0 }, // ✅ Add finalPrice
-  image: { type: String, required: true },
-  inStock: { type: Boolean, default: true },
-  addedAt: { type: Date, default: Date.now }
+const wishlistItemSchema = new mongoose.Schema({
+    productId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Product',
+        required: true
+    },
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    price: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    finalPrice: {
+        type: Number,
+        required: true,
+        min: 0
+    },
+    image: {
+        type: String,
+        required: true
+    },
+    inStock: {
+        type: Boolean,
+        default: true
+    },
+    addedAt: {
+        type: Date,
+        default: Date.now
+    }
 });
 
-const wishlistSchema = new Schema<IWishlist>({
-  userId: { 
-    type: String, 
-    required: true, 
-    unique: true, // ✅ One wishlist per user like Cart
-    index: true 
-  },
-  items: [wishlistItemSchema],
-  totalItems: { type: Number, default: 0 }
+const wishlistSchema = new mongoose.Schema({
+    userId: {
+        type: String,
+        required: true,
+        unique: true,
+        index: true
+    },
+    items: [wishlistItemSchema],
+    totalItems: {
+        type: Number,
+        default: 0
+    }
 }, {
-  timestamps: true // ✅ Add timestamps like Cart
+    timestamps: true
 });
 
-// ✅ Pre-save middleware like Cart
+// Pre-save middleware
 wishlistSchema.pre('save', function() {
-  this.totalItems = this.items.length;
+    this.totalItems = this.items.length;
 });
 
-// ✅ Virtual for checking if empty like Cart
+// Virtual for checking if empty
 wishlistSchema.virtual('isEmpty').get(function() {
-  return this.items.length === 0;
+    return this.items.length === 0;
 });
 
-const Wishlist = mongoose.model<IWishlist>('Wishlist', wishlistSchema);
+const Wishlist = mongoose.model("Wishlist", wishlistSchema);
+
 export default Wishlist;
