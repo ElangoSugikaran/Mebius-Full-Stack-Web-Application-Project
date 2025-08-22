@@ -122,12 +122,41 @@ export const Api = createApi({
       query: (sessionId) => `/payments/session-status?session_id=${sessionId}`,
     }),
     
-   // 🔧 CUSTOMER ORDER ENDPOINTS
+    // 🔧 CUSTOMER ORDER ENDPOINTS
+    // 🔧 ENHANCED: getUserOrders query with better error handling
     getUserOrders: build.query({
-      query: () => '/orders',  // GET /api/orders
+      query: () => '/orders',
       providesTags: ['Order'],
+      transformResponse: (response) => {
+        // 🔧 Handle different response structures
+        console.log('✅ Orders API response:', response);
+        
+        if (Array.isArray(response)) return response;
+        if (response.orders && Array.isArray(response.orders)) return response.orders;
+        if (response.data && Array.isArray(response.data)) return response.data;
+        if (response.success && response.orders) return response.orders;
+        
+        // Return empty array if no valid orders found
+        return [];
+      },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ Orders fetch error:', {
+          status: response?.status,
+          data: response?.data,
+          message: response?.data?.message || 'Failed to fetch orders'
+        });
+        
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to fetch your orders. Please try again.'
+        };
+      },
+      // 🔧 Enhanced retry logic
+      extraOptions: {
+        maxRetries: 2,
+        backoff: (attempt) => Math.pow(2, attempt) * 1000
+      }
     }),
-    
     // 🔧 FIXED: Customer order by ID
     getCustomerOrderById: build.query({
       query: (id) => `/orders/${id}`,  // GET /api/orders/:id

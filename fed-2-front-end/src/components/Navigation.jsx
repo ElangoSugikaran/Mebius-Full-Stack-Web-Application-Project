@@ -1,3 +1,4 @@
+// 🔧 FIXED: Navigation component with proper user ID access
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ShoppingBag, Search, User, Heart, Package } from "lucide-react";
@@ -9,15 +10,14 @@ export default function Navigation() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   
+  // 🔧 FIX: Get user data from Clerk
+  const { user } = useUser();
+  
   const { data: cartItemCount = 0 } = useGetCartItemCountQuery();
-
-   // 🔧 ADD: Fetch wishlist count using RTK Query
   const { data: wishlistItemCount = 0 } = useGetWishlistItemCountQuery();
 
-  // ✅ GOOD: Function to close mobile menu
   const closeMobileMenu = () => setIsMenuOpen(false);
 
-  // ✅ ORGANIZED: Navigation items in a constant for reusability
   const navigationItems = [
     { path: "/shop/shoes", label: "Shoes" },
     { path: "/shop/tshirts", label: "T-Shirt" },
@@ -87,7 +87,7 @@ export default function Navigation() {
               )}
             </Link>
 
-            {/* User Authentication Section - Fixed */}
+            {/* User Authentication Section - FIXED */}
             <SignedIn>
               <UserButton 
                 afterSignOutUrl="/"
@@ -97,12 +97,12 @@ export default function Navigation() {
                   }
                 }}
               >
-                {/* 🔧 FIX: Custom menu item for My Orders */}
+                {/* 🔧 FIXED: Use user.id from useUser hook */}
                 <UserButton.MenuItems>
                   <UserButton.Link
                     label="My Orders"
                     labelIcon={<Package size={16} />}
-                    href={`/orders/${id}`}
+                    href={`/orders/${user?.id || 'profile'}`}
                   />
                 </UserButton.MenuItems>
               </UserButton>
@@ -137,7 +137,7 @@ export default function Navigation() {
           </div>
         </div>
 
-        {/* Search Bar - Shows below header when toggled */}
+        {/* Search Bar */}
         {isSearchOpen && (
           <div className="border-t border-gray-200 py-4 animate-in slide-in-from-top duration-200">
             <ProductSearchForm onClose={() => setIsSearchOpen(false)} />
