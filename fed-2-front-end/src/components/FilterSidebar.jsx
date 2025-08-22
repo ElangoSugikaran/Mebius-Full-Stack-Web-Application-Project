@@ -1,20 +1,29 @@
-// components/FilterSidebar.jsx - Reusable filter sidebar component
-import { useState } from "react";
+// Updated FilterSidebar.jsx - Now uses dynamic data from database
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
-import { X, Filter, RotateCcw } from "lucide-react";
+import { X, Filter, RotateCcw, Loader2 } from "lucide-react";
+
+// 🔧 NEW: Import RTK Query hook for filter options
+import { useGetFilterOptionsQuery } from "../../api/api";
 
 function FilterSidebar({ 
   categories = [], 
-  brands = [], 
   onFiltersChange, 
   isOpen, 
   onClose 
 }) {
+  // 🔧 NEW: Fetch dynamic filter options from database
+  const { 
+    data: filterOptionsData, 
+    isLoading: isLoadingOptions, 
+    error: optionsError 
+  } = useGetFilterOptionsQuery();
+
   // 📝 LEARNING: Local state to manage all filter options
   const [filters, setFilters] = useState({
     categories: [],
@@ -27,10 +36,25 @@ function FilterSidebar({
     onSale: false,
   });
 
-  // 📝 LEARNING: Available options (you can make these dynamic from API later)
-  const availableSizes = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
-  const availableColors = ['Black', 'White', 'Red', 'Blue', 'Green', 'Gray', 'Brown'];
-  const availableGenders = ['Men', 'Women', 'Unisex'];
+  // 🔧 NEW: Update price range when data loads
+  useEffect(() => {
+    if (filterOptionsData?.priceRange) {
+      setFilters(prev => ({
+        ...prev,
+        priceRange: [
+          filterOptionsData.priceRange.min, 
+          filterOptionsData.priceRange.max
+        ]
+      }));
+    }
+  }, [filterOptionsData]);
+
+  // 🔧 NEW: Get dynamic options from API or fallback to defaults
+  const availableSizes = filterOptionsData?.sizes || ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+  const availableColors = filterOptionsData?.colors || ['Black', 'White', 'Red', 'Blue', 'Green', 'Gray', 'Brown'];
+  const availableGenders = filterOptionsData?.genders || ['Men', 'Women', 'Unisex'];
+  const availableBrands = filterOptionsData?.brands || [];
+  const priceRange = filterOptionsData?.priceRange || { min: 0, max: 1000 };
 
   // 📝 LEARNING: Handle array-based filters (categories, brands, sizes, etc.)
   const handleCheckboxChange = (filterType, value, checked) => {
@@ -75,7 +99,7 @@ function FilterSidebar({
     const clearedFilters = {
       categories: [],
       brands: [],
-      priceRange: [0, 1000],
+      priceRange: [priceRange.min, priceRange.max],
       sizes: [],
       colors: [],
       gender: [],
@@ -97,9 +121,33 @@ function FilterSidebar({
     count += filters.gender.length;
     if (filters.inStock) count++;
     if (filters.onSale) count++;
-    if (filters.priceRange[0] > 0 || filters.priceRange[1] < 1000) count++;
+    if (filters.priceRange[0] > priceRange.min || filters.priceRange[1] < priceRange.max) count++;
     return count;
   };
+
+  // 🔧 NEW: Show loading state while fetching filter options
+  if (isLoadingOptions) {
+    return (
+      <div className="fixed top-0 left-0 h-full w-80 bg-white border-r border-gray-200 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-gray-500">
+          <Loader2 className="h-5 w-5 animate-spin" />
+          <span>Loading filters...</span>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔧 NEW: Show error state if filter options fail to load
+  if (optionsError) {
+    return (
+      <div className="fixed top-0 left-0 h-full w-80 bg-white border-r border-gray-200 flex items-center justify-center">
+        <div className="text-center text-red-500 p-4">
+          <p>Failed to load filter options</p>
+          <p className="text-sm text-gray-500 mt-2">Using default values</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -159,7 +207,7 @@ function FilterSidebar({
         {/* FILTER CONTENT */}
         <div className="p-4 space-y-6">
           
-          {/* 💰 PRICE RANGE */}
+          {/* 💰 PRICE RANGE - Now uses dynamic range */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Price Range</CardTitle>
@@ -168,8 +216,8 @@ function FilterSidebar({
               <Slider
                 value={filters.priceRange}
                 onValueChange={handlePriceChange}
-                max={1000}
-                min={0}
+                max={priceRange.max}
+                min={priceRange.min}
                 step={10}
                 className="w-full"
               />
@@ -180,7 +228,7 @@ function FilterSidebar({
             </CardContent>
           </Card>
 
-          {/* 📂 CATEGORIES */}
+          {/* 📂 CATEGORIES - Uses props from parent */}
           {categories.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
@@ -208,14 +256,14 @@ function FilterSidebar({
             </Card>
           )}
 
-          {/* 🏷️ BRANDS */}
-          {brands.length > 0 && (
+          {/* 🏷️ BRANDS - Now dynamic from database */}
+          {availableBrands.length > 0 && (
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm">Brands</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
-                {brands.map((brand, index) => (
+                {availableBrands.map((brand, index) => (
                   <div key={index} className="flex items-center space-x-2">
                     <Checkbox
                       id={`brand-${index}`}
@@ -236,7 +284,7 @@ function FilterSidebar({
             </Card>
           )}
 
-          {/* 👥 GENDER */}
+          {/* 👥 GENDER - Now uses dynamic data */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Gender</CardTitle>
@@ -262,7 +310,7 @@ function FilterSidebar({
             </CardContent>
           </Card>
 
-          {/* 📏 SIZES */}
+          {/* 📏 SIZES - Now uses dynamic data */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Sizes</CardTitle>
@@ -295,7 +343,7 @@ function FilterSidebar({
             </CardContent>
           </Card>
 
-          {/* 🎨 COLORS */}
+          {/* 🎨 COLORS - Now uses dynamic data */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Colors</CardTitle>
@@ -338,7 +386,7 @@ function FilterSidebar({
             </CardContent>
           </Card>
 
-          {/* ✅ AVAILABILITY FILTERS */}
+          {/* ✅ AVAILABILITY FILTERS - Unchanged, no dynamic data needed */}
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">Availability</CardTitle>
@@ -371,7 +419,7 @@ function FilterSidebar({
               </div>
             </CardContent>
           </Card>
-
+          
         </div>
       </div>
     </>

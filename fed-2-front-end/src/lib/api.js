@@ -652,6 +652,74 @@ export const Api = createApi({
       },
     }),
 
+    // 🔧 NEW: Get available filter options from database
+  getFilterOptions: build.query({
+    query: () => '/products/filter-options',
+    providesTags: ['Product'],
+    transformResponse: (response) => {
+      console.log('✅ Filter options fetched:', response);
+      return response.data || response;
+    },
+  }),
+
+  // 🔧 NEW: Get filtered products with query parameters
+  getFilteredProducts: build.query({
+    query: (filters) => {
+      // Build query string from filters object
+      const params = new URLSearchParams();
+      
+      // Add array filters
+      if (filters.categories?.length > 0) {
+        params.append('categories', filters.categories.join(','));
+      }
+      if (filters.brands?.length > 0) {
+        params.append('brands', filters.brands.join(','));
+      }
+      if (filters.sizes?.length > 0) {
+        params.append('sizes', filters.sizes.join(','));
+      }
+      if (filters.colors?.length > 0) {
+        params.append('colors', filters.colors.join(','));
+      }
+      if (filters.gender?.length > 0) {
+        params.append('gender', filters.gender.join(','));
+      }
+      
+      // Add price range
+      if (filters.priceRange) {
+        params.append('minPrice', filters.priceRange[0].toString());
+        params.append('maxPrice', filters.priceRange[1].toString());
+      }
+      
+      // Add boolean filters
+      if (filters.inStock) {
+        params.append('inStock', 'true');
+      }
+      if (filters.onSale) {
+        params.append('onSale', 'true');
+      }
+      
+      // Add sorting
+      if (filters.sortBy) {
+        params.append('sortBy', filters.sortBy);
+        params.append('sortOrder', filters.sortOrder || 'asc');
+      }
+      
+      const queryString = params.toString();
+      console.log('🔍 Filtering products with:', queryString);
+      
+      return `/products/filtered?${queryString}`;
+    },
+    providesTags: ['Product'],
+    transformResponse: (response) => {
+      console.log('✅ Filtered products fetched:', response);
+      return response.data || response;
+    },
+    // Keep cache for 5 minutes to avoid frequent DB calls
+    keepUnusedDataFor: 300,
+  }),
+
+
   }),
 });
 
@@ -717,5 +785,9 @@ export const {
   useGetSettingsQuery,
   useUpdateStoreSettingsMutation,
   useUpdatePaymentSettingsMutation,
+
+  // filtersidebar hooks
+  useGetFilterOptionsQuery,
+  useGetFilteredProductsQuery,
 
 } = Api;
