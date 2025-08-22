@@ -1,4 +1,4 @@
-// 🔧 FIXED: Enhanced empty state handling for authenticated users
+// 🔧 FIXED: Complete MyOrdersPage with proper error handling
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGetUserOrdersQuery } from '@/lib/api';
@@ -62,11 +62,162 @@ const MyOrdersPage = () => {
     }
   }, [data]);
 
-  // 🔧 NEW: Enhanced empty state component for authenticated users
+  // 🎨 Status configuration
+  const getStatusConfig = (status) => {
+    const configs = {
+      'PENDING': { 
+        color: 'bg-yellow-100 text-yellow-800 border-yellow-200',
+        icon: Clock,
+        label: 'Pending',
+        description: 'Order is being processed'
+      },
+      'CONFIRMED': { 
+        color: 'bg-blue-100 text-blue-800 border-blue-200',
+        icon: CheckCircle,
+        label: 'Confirmed',
+        description: 'Order confirmed and being prepared'
+      },
+      'SHIPPED': { 
+        color: 'bg-purple-100 text-purple-800 border-purple-200',
+        icon: Truck,
+        label: 'Shipped',
+        description: 'Order is on its way'
+      },
+      'FULFILLED': { 
+        color: 'bg-green-100 text-green-800 border-green-200',
+        icon: CheckCircle,
+        label: 'Delivered',
+        description: 'Order successfully delivered'
+      },
+      'CANCELLED': { 
+        color: 'bg-red-100 text-red-800 border-red-200',
+        icon: XCircle,
+        label: 'Cancelled',
+        description: 'Order has been cancelled'
+      }
+    };
+    return configs[status] || configs['PENDING'];
+  };
+
+  // 💳 Payment configuration
+  const getPaymentConfig = (method, status) => {
+    const paymentMethods = {
+      'COD': {
+        icon: Banknote,
+        label: 'Cash on Delivery',
+        color: status === 'PAID' ? 'text-green-600' : 'text-orange-600'
+      },
+      'CREDIT_CARD': {
+        icon: CreditCard,
+        label: 'Credit Card',
+        color: status === 'PAID' ? 'text-green-600' : 'text-blue-600'
+      },
+      'STRIPE': {
+        icon: CreditCard,
+        label: 'Online Payment',
+        color: status === 'PAID' ? 'text-green-600' : 'text-blue-600'
+      }
+    };
+    
+    return paymentMethods[method] || paymentMethods['CREDIT_CARD'];
+  };
+
+  // 🖼️ Product image component
+  const ProductImage = ({ src, alt, className = '' }) => {
+    const [imageError, setImageError] = useState(false);
+
+    return (
+      <div className={`relative ${className}`}>
+        {!imageError && src ? (
+          <img
+            src={src}
+            alt={alt}
+            className="w-full h-full object-cover rounded"
+            onError={() => setImageError(true)}
+            loading="lazy"
+          />
+        ) : (
+          <div className="w-full h-full bg-gray-100 rounded flex items-center justify-center">
+            <ImageIcon className="h-4 w-4 text-gray-400" />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // 🔍 Enhanced filtering
+  const filteredOrders = useMemo(() => {
+    if (!Array.isArray(orders)) return [];
+    
+    try {
+      return selectedStatus === 'ALL' 
+        ? orders.filter(order => order && order._id)
+        : orders.filter(order => 
+            order && 
+            order._id && 
+            order.orderStatus === selectedStatus
+          );
+    } catch (err) {
+      console.error('Error filtering orders:', err);
+      return [];
+    }
+  }, [orders, selectedStatus]);
+
+  // 📅 Date formatting
+  const formatDate = (dateString) => {
+    if (!dateString) return 'Date unavailable';
+    
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZoneName: 'short'
+      });
+    } catch (error) {
+      console.error('Date formatting error:', error);
+      return 'Date error';
+    }
+  };
+
+  // 🔄 Order again functionality
+  const handleOrderAgain = async (order) => {
+    try {
+      if (!order?.items?.length) {
+        alert('No items found in this order');
+        return;
+      }
+
+      console.log('Order again clicked for order:', order._id);
+      
+      const cartItems = order.items
+        .filter(item => item.productId && item.quantity > 0)
+        .map(item => ({
+          productId: item.productId._id || item.productId,
+          quantity: item.quantity,
+          price: item.price
+        }));
+      
+      if (cartItems.length > 0) {
+        alert(`Would add ${cartItems.length} items to cart (implementation pending)`);
+      } else {
+        alert('No valid items found to add to cart');
+      }
+    } catch (error) {
+      console.error('Error processing order again:', error);
+      alert('Failed to add items to cart. Please try again.');
+    }
+  };
+
+  // 🔧 NEW: Enhanced empty state component
   const EmptyOrdersState = ({ selectedStatus }) => (
     <Card className="p-12 text-center max-w-2xl mx-auto">
       <div className="space-y-6">
-        {/* Icon and Welcome Message */}
         <div>
           <Package className="h-20 w-20 text-gray-300 mx-auto mb-6" />
           <h3 className="text-2xl font-bold text-gray-900 mb-3">
@@ -83,7 +234,6 @@ const MyOrdersPage = () => {
           </p>
         </div>
 
-        {/* Call to Action Buttons */}
         <div className="flex flex-col sm:flex-row justify-center gap-4">
           <Button 
             onClick={() => navigate('/shop')}
@@ -105,7 +255,6 @@ const MyOrdersPage = () => {
           </Button>
         </div>
 
-        {/* Feature Highlights for New Users */}
         {selectedStatus === 'ALL' && (
           <div className="mt-8 pt-6 border-t border-gray-200">
             <h4 className="text-lg font-semibold text-gray-900 mb-4">
@@ -134,7 +283,7 @@ const MyOrdersPage = () => {
     </Card>
   );
 
-  // 🔄 Loading state - Show loading only when user is authenticated
+  // Loading state
   if (!isLoaded || (isSignedIn && isLoading)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -146,7 +295,7 @@ const MyOrdersPage = () => {
     );
   }
 
-  // 🔐 Not signed in state
+  // Not signed in state
   if (!isSignedIn) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -176,7 +325,7 @@ const MyOrdersPage = () => {
     );
   }
 
-  // ❌ Enhanced error state
+  // Error state
   if (isError) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -202,24 +351,6 @@ const MyOrdersPage = () => {
       </div>
     );
   }
-
-  // 🔍 Enhanced filtering
-  const filteredOrders = useMemo(() => {
-    if (!Array.isArray(orders)) return [];
-    
-    try {
-      return selectedStatus === 'ALL' 
-        ? orders.filter(order => order && order._id)
-        : orders.filter(order => 
-            order && 
-            order._id && 
-            order.orderStatus === selectedStatus
-          );
-    } catch (err) {
-      console.error('Error filtering orders:', err);
-      return [];
-    }
-  }, [orders, selectedStatus]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -273,7 +404,7 @@ const MyOrdersPage = () => {
           </div>
         </div>
 
-        {/* 🔧 FIXED: Show filter tabs only when there are orders */}
+        {/* Filter tabs - only show when there are orders */}
         {orders.length > 0 && (
           <div className="mb-6">
             <div className="flex flex-wrap gap-2">
@@ -310,13 +441,171 @@ const MyOrdersPage = () => {
           </div>
         )}
 
-        {/* 📦 Orders List or Empty State */}
+        {/* Orders List or Empty State */}
         {filteredOrders.length === 0 ? (
           <EmptyOrdersState selectedStatus={selectedStatus} />
         ) : (
           <div className="space-y-4">
-            {/* Your existing orders rendering code goes here */}
-            {/* This remains the same as your original implementation */}
+            {filteredOrders.map((order) => {
+              if (!order?._id) return null;
+              
+              const statusConfig = getStatusConfig(order.orderStatus);
+              const paymentConfig = getPaymentConfig(order.paymentMethod, order.paymentStatus);
+              const StatusIcon = statusConfig.icon;
+              const PaymentIcon = paymentConfig.icon;
+
+              return (
+                <Card key={order._id} className="p-6 hover:shadow-lg transition-all duration-200">
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between space-y-4 lg:space-y-0">
+                    
+                    {/* Order Info */}
+                    <div className="flex-1 space-y-3">
+                      <div className="flex items-center justify-between flex-wrap gap-2">
+                        <h3 className="font-semibold text-lg text-gray-900">
+                          Order #{order._id?.slice(-8)?.toUpperCase() || 'N/A'}
+                        </h3>
+                        <Badge className={`${statusConfig.color} px-3 py-1 text-sm`}>
+                          <StatusIcon className="h-3 w-3 mr-1" />
+                          {statusConfig.label}
+                        </Badge>
+                      </div>
+                      
+                      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
+                        <div className="flex items-center">
+                          <Calendar className="h-4 w-4 mr-1" />
+                          {formatDate(order.createdAt)}
+                        </div>
+                        
+                        <div className="flex items-center">
+                          <Package className="h-4 w-4 mr-1" />
+                          {order.items?.length || 0} item{(order.items?.length || 0) !== 1 ? 's' : ''}
+                        </div>
+                        
+                        <div className={`flex items-center ${paymentConfig.color}`}>
+                          <PaymentIcon className="h-4 w-4 mr-1" />
+                          {paymentConfig.label}
+                        </div>
+                        
+                        {order.paymentStatus === 'PAID' && (
+                          <Badge variant="outline" className="text-green-600 border-green-600">
+                            Paid
+                          </Badge>
+                        )}
+                      </div>
+                      
+                      {/* Order Total */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <span className="text-2xl font-bold text-gray-900">
+                            ${(order.totalAmount || 0).toFixed(2)}
+                          </span>
+                          <p className="text-xs text-gray-500 mt-1">
+                            {statusConfig.description}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex items-center space-x-3">
+                      <Link to={`/orders/${order._id}`}>
+                        <Button variant="outline" size="sm" className="hover:bg-blue-50">
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </Button>
+                      </Link>
+                      
+                      {order.orderStatus === 'FULFILLED' && (
+                        <Button 
+                          size="sm" 
+                          onClick={() => handleOrderAgain(order)}
+                          type="button"
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          Order Again
+                        </Button>
+                      )}
+                      
+                      {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && 
+                        order.orderStatus !== 'CANCELLED' && (
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          className="text-red-600 border-red-200 hover:bg-red-50"
+                          onClick={() => {
+                            const confirmCancel = window.confirm(
+                              `Are you sure you want to cancel order #${order._id?.slice(-8)?.toUpperCase()}?`
+                            );
+                            if (confirmCancel) {
+                              alert('Cancel order functionality will be implemented with backend integration');
+                            }
+                          }}
+                          type="button"
+                        >
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Order Items Preview */}
+                  {order.items && order.items.length > 0 && (
+                    <div className="mt-6 pt-4 border-t border-gray-200">
+                      <h4 className="text-sm font-medium text-gray-900 mb-3">Order Items</h4>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        {order.items.slice(0, 6).map((item, index) => {
+                          const productName = item.productId?.name || item.productName || 'Unknown Product';
+                          const quantity = item.quantity || 0;
+                          const price = item.price || 0;
+                          const imageUrl = item.productId?.images?.[0]?.url || 
+                                          item.productId?.image || 
+                                          item.productImage || 
+                                          item.image;
+                          
+                          return (
+                            <div 
+                              key={`${item.productId?._id || item.productId || index}`} 
+                              className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg border hover:bg-gray-100 transition-colors"
+                            >
+                              <ProductImage
+                                src={imageUrl}
+                                alt={productName}
+                                className="w-12 h-12 flex-shrink-0"
+                              />
+                              
+                              <div className="flex-1 min-w-0">
+                                <h5 className="text-sm font-medium text-gray-900 truncate">
+                                  {productName}
+                                </h5>
+                                <div className="flex items-center justify-between mt-1">
+                                  <span className="text-xs text-gray-600">
+                                    Qty: {quantity}
+                                  </span>
+                                  <span className="text-sm font-semibold text-gray-900">
+                                    ${price.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                        
+                        {order.items.length > 6 && (
+                          <div className="flex items-center justify-center p-3 bg-gray-100 rounded-lg border border-dashed border-gray-300">
+                            <div className="text-center">
+                              <Package className="h-6 w-6 text-gray-400 mx-auto mb-1" />
+                              <span className="text-xs text-gray-500">
+                                +{order.items.length - 6} more item{order.items.length - 6 !== 1 ? 's' : ''}
+                              </span>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
         )}
         
