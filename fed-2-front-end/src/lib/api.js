@@ -127,9 +127,9 @@ export const Api = createApi({
     getUserOrders: build.query({
       query: () => '/orders',
       providesTags: ['Order'],
+      forceRefetch: true, // Add this to prevent wrong caching
       transformResponse: (response) => {
-        // 🔧 Handle different response structures
-        console.log('✅ Orders API response:', response);
+        console.log('Orders response:', response);
         
         if (Array.isArray(response)) return response;
         if (response.orders && Array.isArray(response.orders)) return response.orders;
