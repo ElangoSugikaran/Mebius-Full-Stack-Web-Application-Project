@@ -123,12 +123,6 @@ function WishlistPage() {
                     Sign In
                   </Link>
                 </Button>
-                <Button asChild variant="outline" size="lg" className="px-8">
-                  <Link to="/shop">
-                    <ShoppingBag className="h-5 w-5 mr-2" />
-                    Continue Shopping
-                  </Link>
-                </Button>
               </div>
             </div>
           </div>
