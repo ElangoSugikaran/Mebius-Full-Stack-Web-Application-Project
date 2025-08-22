@@ -27,25 +27,7 @@ const app = express();
 app.use(express.json());
 // Use Clerk middleware for authentication
 app.use(clerkMiddleware());
-// app.use(cors({origin: process.env.FRONTEND_URL, credentials: true})); // Enable CORS to allow cross-origin requests
-
-const allowedOrigins = [
-  process.env.FRONTEND_URL,
-  "http://localhost:5173"
-];
-
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      callback(new Error("Not allowed by CORS"));
-    }
-  },
-  credentials: true
-}));
-
-
+app.use(cors({origin: process.env.FRONTEND_URL, credentials: true})); // Enable CORS to allow cross-origin request
 
 // Webhook endpoint must be raw body
 app.post(
