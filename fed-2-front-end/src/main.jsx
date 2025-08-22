@@ -71,29 +71,27 @@ createRoot(document.getElementById('root')).render(
                 <Route path="product-details/:id" element={<ShopProductDetailPage />} />
                 <Route path='cart' element={<CartPage />} />
                 <Route path='wishlist' element={<WishlistPage />} />
-                
-                {/* 🔧 FIXED: Move protected routes outside of /shop path */}
               </Route>
               
-              {/* 🔧 FIXED: Payment routes should be at root level, not nested under /shop */}
+              {/* 🔧 CUSTOMER PROTECTED ROUTES */}
               <Route element={<ProtectedLayout />}>
                 <Route path="/checkout" element={<CheckoutPage />} />
                 <Route path="/payment" element={<PaymentPage />} />
                 <Route path="/payment-complete" element={<PaymentCompletePage />} />
 
-                {/* 🆕 CUSTOMER ORDER ROUTES */}
+                {/* 🆕 CUSTOMER ORDER ROUTES - Fixed */}
                 <Route path="/orders" element={<MyOrdersPage />} />
                 <Route path="/orders/:id" element={<OrderDetailsPage />} />
                 <Route path="/order-success" element={<OrderSuccessPage />} />
               </Route>
               
-              {/* 🔐 ADMIN ROUTES - Protected by AdminProtectedLayout */}
+              {/* 🔐 ADMIN ROUTES - Fixed nested structure */}
               <Route element={<ProtectedLayout />}>
                 <Route element={<AdminProtectedLayout />}>
                   <Route path="/admin" element={<AdminDashboardLayout />}>
                     {/* 📊 Admin Dashboard Home */}
                     <Route index element={<AdminDashboardPage />} />
-                    <Route path='/admin/sales' element={<SalesDashboard />} />
+                    <Route path="sales" element={<SalesDashboard />} />
 
                     {/* 📦 PRODUCT MANAGEMENT ROUTES */}
                     <Route path="products" element={<ProductsPage />} />
@@ -107,9 +105,9 @@ createRoot(document.getElementById('root')).render(
                     <Route path="categories/create" element={<CreateCategoryPage />} />
                     <Route path="categories/edit/:id" element={<EditCategoryPage />} />
 
-                    {/* 🛒 ORDER MANAGEMENT ROUTES */}
-                    <Route path="orders" element={<OrdersPage />} />
-                    <Route path="orders/:id" element={<OrderDetailPage />} />
+                    {/* 🛒 ADMIN ORDER MANAGEMENT ROUTES */}
+                    <Route path="admin-orders" element={<OrdersPage />} />
+                    <Route path="admin-orders/:id" element={<OrderDetailPage />} />
 
                     {/* CUSTOMER MANAGEMENT ROUTES */}
                     <Route path="customers" element={<CustomerManagementPage />} />
