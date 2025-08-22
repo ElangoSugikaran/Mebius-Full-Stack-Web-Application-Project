@@ -675,6 +675,7 @@ export const {
   useGetWishlistItemCountQuery,
 
   //customer hook
+  useGetCustomerByClerkIdQuery,
   useSyncCurrentUserMutation,
   useGetAllCustomersQuery,
   useGetCustomerByIdQuery,
