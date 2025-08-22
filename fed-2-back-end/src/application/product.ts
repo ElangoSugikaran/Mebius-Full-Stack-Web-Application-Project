@@ -27,17 +27,30 @@ const getAllProducts = async (req: Request, res: Response, next: NextFunction) =
 };
 
 // Get a product by ID
+// Get a product by ID
 const getProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
     const product = await Product.findById(id)
       .populate('reviews')
-      .populate('categoryId', 'name'); // Add this line to populate category
+      .populate({
+        path: 'categoryId',
+        select: 'name',
+        options: { lean: true }
+      });
     
     if (!product) {
       throw new NotFoundError('Product not found');
     }
-    res.json(product);
+
+    // Transform the response to match frontend expectations
+    const { categoryId, ...productData } = product.toObject();
+    const productResponse = {
+      ...productData,
+      category: categoryId // Rename categoryId to category
+    };
+
+    res.json(productResponse);
   } catch (error) {
     next(error);
   }
