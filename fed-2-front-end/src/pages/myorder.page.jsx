@@ -1,4 +1,3 @@
-// 🔧 FIXED: Complete MyOrdersPage with proper error handling
 import React, { useState, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useGetUserOrdersQuery } from '@/lib/api';
@@ -21,17 +20,19 @@ import {
   RefreshCw,
   ImageIcon,
   ShoppingBag,
-  Heart
+  Heart,
+  Star,
+  Gift
 } from 'lucide-react';
 
 const MyOrdersPage = () => {
   const navigate = useNavigate();
   const [selectedStatus, setSelectedStatus] = useState('ALL');
   
-  // 🔧 FIX: Get user data from Clerk
+  // Get user data from Clerk
   const { user, isSignedIn, isLoaded } = useUser();
   
-  // 🔄 Fetch user's orders using RTK Query
+  // Fetch user's orders using RTK Query
   const { 
     data, 
     isLoading, 
@@ -40,19 +41,18 @@ const MyOrdersPage = () => {
     refetch,
     isFetching
   } = useGetUserOrdersQuery(undefined, {
-    // 🔧 FIX: Only fetch orders when user is signed in
     skip: !isSignedIn || !user?.id
   });
 
-  // 🛡️ Enhanced orders processing
+  // Enhanced orders processing
   const orders = useMemo(() => {
     if (!data) return [];
     
     try {
-      if (Array.isArray(data)) return data;
+      // Handle the new API response structure
       if (data.orders && Array.isArray(data.orders)) return data.orders;
+      if (Array.isArray(data)) return data;
       if (data.data && Array.isArray(data.data)) return data.data;
-      if (data.success && data.orders && Array.isArray(data.orders)) return data.orders;
       
       console.warn('Unexpected orders data structure:', data);
       return [];
@@ -62,7 +62,7 @@ const MyOrdersPage = () => {
     }
   }, [data]);
 
-  // 🎨 Status configuration
+  // Status configuration
   const getStatusConfig = (status) => {
     const configs = {
       'PENDING': { 
@@ -99,7 +99,7 @@ const MyOrdersPage = () => {
     return configs[status] || configs['PENDING'];
   };
 
-  // 💳 Payment configuration
+  // Payment configuration
   const getPaymentConfig = (method, status) => {
     const paymentMethods = {
       'COD': {
@@ -122,7 +122,7 @@ const MyOrdersPage = () => {
     return paymentMethods[method] || paymentMethods['CREDIT_CARD'];
   };
 
-  // 🖼️ Product image component
+  // Product image component
   const ProductImage = ({ src, alt, className = '' }) => {
     const [imageError, setImageError] = useState(false);
 
@@ -145,7 +145,7 @@ const MyOrdersPage = () => {
     );
   };
 
-  // 🔍 Enhanced filtering
+  // Enhanced filtering
   const filteredOrders = useMemo(() => {
     if (!Array.isArray(orders)) return [];
     
@@ -163,7 +163,7 @@ const MyOrdersPage = () => {
     }
   }, [orders, selectedStatus]);
 
-  // 📅 Date formatting
+  // Date formatting
   const formatDate = (dateString) => {
     if (!dateString) return 'Date unavailable';
     
@@ -176,8 +176,7 @@ const MyOrdersPage = () => {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit',
-        timeZoneName: 'short'
+        minute: '2-digit'
       });
     } catch (error) {
       console.error('Date formatting error:', error);
@@ -185,7 +184,7 @@ const MyOrdersPage = () => {
     }
   };
 
-  // 🔄 Order again functionality
+  // Order again functionality
   const handleOrderAgain = async (order) => {
     try {
       if (!order?.items?.length) {
@@ -214,73 +213,128 @@ const MyOrdersPage = () => {
     }
   };
 
-  // 🔧 NEW: Enhanced empty state component
+  // ENHANCED: Better empty state component for new customers
   const EmptyOrdersState = ({ selectedStatus }) => (
-    <Card className="p-12 text-center max-w-2xl mx-auto">
-      <div className="space-y-6">
-        <div>
-          <Package className="h-20 w-20 text-gray-300 mx-auto mb-6" />
-          <h3 className="text-2xl font-bold text-gray-900 mb-3">
-            {selectedStatus === 'ALL' 
-              ? `Welcome ${user?.firstName || 'Customer'}!` 
-              : `No ${selectedStatus.toLowerCase()} orders`
-            }
-          </h3>
-          <p className="text-lg text-gray-600 mb-6">
-            {selectedStatus === 'ALL' 
-              ? "You haven't placed any orders yet. Start exploring our amazing products!"
-              : `You don't have any ${selectedStatus.toLowerCase()} orders at the moment.`
-            }
-          </p>
-        </div>
+    <div className="min-h-[60vh] flex items-center justify-center">
+      <Card className="p-12 text-center max-w-2xl mx-auto">
+        <div className="space-y-6">
+          {/* Welcome message for new customers */}
+          <div className="space-y-4">
+            {selectedStatus === 'ALL' ? (
+              <>
+                <div className="relative">
+                  <Package className="h-24 w-24 text-blue-300 mx-auto mb-6" />
+                  <div className="absolute -top-2 -right-2">
+                    <Star className="h-8 w-8 text-yellow-400 fill-current" />
+                  </div>
+                </div>
+                <h3 className="text-3xl font-bold text-gray-900 mb-4">
+                  Welcome to Your Orders, {user?.firstName || 'Valued Customer'}!
+                </h3>
+                <div className="bg-blue-50 p-6 rounded-lg border-l-4 border-blue-400 mb-6">
+                  <div className="flex items-start">
+                    <Gift className="h-6 w-6 text-blue-600 mt-1 mr-3 flex-shrink-0" />
+                    <div>
+                      <h4 className="font-semibold text-blue-900 mb-2">Ready to start your shopping journey?</h4>
+                      <p className="text-blue-800">
+                        You haven't placed any orders yet, but that's about to change! 
+                        Discover amazing products and start building your order history.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <Package className="h-20 w-20 text-gray-300 mx-auto mb-6" />
+                <h3 className="text-2xl font-bold text-gray-900 mb-3">
+                  No {selectedStatus.toLowerCase()} orders found
+                </h3>
+                <p className="text-lg text-gray-600">
+                  You don't have any {selectedStatus.toLowerCase()} orders at the moment.
+                </p>
+              </>
+            )}
+          </div>
 
-        <div className="flex flex-col sm:flex-row justify-center gap-4">
-          <Button 
-            onClick={() => navigate('/shop')}
-            size="lg"
-            className="bg-blue-600 hover:bg-blue-700"
-          >
-            <ShoppingBag className="h-5 w-5 mr-2" />
-            Start Shopping
-          </Button>
-          
-          <Button 
-            onClick={() => navigate('/shop/wishlist')}
-            variant="outline"
-            size="lg"
-            className="border-gray-300"
-          >
-            <Heart className="h-5 w-5 mr-2" />
-            View Wishlist
-          </Button>
-        </div>
+          {/* Action buttons */}
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <Button 
+              onClick={() => navigate('/shop')}
+              size="lg"
+              className="bg-blue-600 hover:bg-blue-700 text-lg px-8 py-3"
+            >
+              <ShoppingBag className="h-5 w-5 mr-2" />
+              {selectedStatus === 'ALL' ? 'Start Shopping Now' : 'Browse Products'}
+            </Button>
+            
+            <Button 
+              onClick={() => navigate('/shop/wishlist')}
+              variant="outline"
+              size="lg"
+              className="border-gray-300 text-lg px-8 py-3"
+            >
+              <Heart className="h-5 w-5 mr-2" />
+              View Wishlist
+            </Button>
+          </div>
 
-        {selectedStatus === 'ALL' && (
-          <div className="mt-8 pt-6 border-t border-gray-200">
-            <h4 className="text-lg font-semibold text-gray-900 mb-4">
-              What you can do:
-            </h4>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
-              <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
-                <ShoppingBag className="h-8 w-8 text-blue-600 mb-2" />
-                <h5 className="font-medium text-gray-900">Browse Products</h5>
-                <p className="text-gray-600 text-center">Explore our wide range of quality products</p>
-              </div>
-              <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
-                <Heart className="h-8 w-8 text-red-600 mb-2" />
-                <h5 className="font-medium text-gray-900">Save Favorites</h5>
-                <p className="text-gray-600 text-center">Add items to your wishlist for later</p>
-              </div>
-              <div className="flex flex-col items-center p-4 bg-gray-50 rounded-lg">
-                <Package className="h-8 w-8 text-green-600 mb-2" />
-                <h5 className="font-medium text-gray-900">Track Orders</h5>
-                <p className="text-gray-600 text-center">Monitor your purchases in real-time</p>
+          {/* Benefits section for new customers */}
+          {selectedStatus === 'ALL' && (
+            <div className="mt-10 pt-8 border-t border-gray-200">
+              <h4 className="text-xl font-semibold text-gray-900 mb-6">
+                Why shop with us?
+              </h4>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+                <div className="flex flex-col items-center p-4 bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl border border-blue-200">
+                  <ShoppingBag className="h-10 w-10 text-blue-600 mb-3" />
+                  <h5 className="font-semibold text-gray-900 mb-2">Premium Quality</h5>
+                  <p className="text-gray-600 text-center text-sm">
+                    Discover our carefully curated collection of high-quality products
+                  </p>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-gradient-to-br from-green-50 to-green-100 rounded-xl border border-green-200">
+                  <Package className="h-10 w-10 text-green-600 mb-3" />
+                  <h5 className="font-semibold text-gray-900 mb-2">Fast Shipping</h5>
+                  <p className="text-gray-600 text-center text-sm">
+                    Quick and reliable delivery right to your doorstep
+                  </p>
+                </div>
+                <div className="flex flex-col items-center p-4 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl border border-purple-200">
+                  <Heart className="h-10 w-10 text-purple-600 mb-3" />
+                  <h5 className="font-semibold text-gray-900 mb-2">Easy Returns</h5>
+                  <p className="text-gray-600 text-center text-sm">
+                    Hassle-free returns and customer satisfaction guarantee
+                  </p>
+                </div>
               </div>
             </div>
-          </div>
-        )}
-      </div>
-    </Card>
+          )}
+
+          {/* Featured categories for new customers */}
+          {selectedStatus === 'ALL' && (
+            <div className="mt-8 pt-6 border-t border-gray-200">
+              <h4 className="text-lg font-semibold text-gray-900 mb-4">
+                Popular Categories
+              </h4>
+              <div className="flex flex-wrap justify-center gap-3">
+                {['Shoes', 'T-Shirts', 'Shorts', 'Pants', 'Socks'].map((category) => (
+                  <Button
+                    key={category}
+                    variant="outline"
+                    size="sm"
+                    onClick={() => navigate(`/shop/${category.toLowerCase().replace('-', '')}`)}
+                    className="hover:bg-blue-50 hover:border-blue-300"
+                  >
+                    {category}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      </Card>
+    </div>
   );
 
   // Loading state
@@ -606,26 +660,6 @@ const MyOrdersPage = () => {
                 </Card>
               );
             })}
-          </div>
-        )}
-        
-        {/* Refresh Section */}
-        {filteredOrders.length > 0 && (
-          <div className="mt-8 text-center">
-            <p className="text-sm text-gray-500 mb-4">
-              Last updated: {new Date().toLocaleString()}
-            </p>
-            <Button 
-              variant="outline" 
-              onClick={refetch} 
-              disabled={isFetching}
-            >
-              {isFetching ? (
-                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                'Refresh Orders'
-              )}
-            </Button>
           </div>
         )}
       </div>

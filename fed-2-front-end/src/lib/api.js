@@ -123,24 +123,35 @@ export const Api = createApi({
     }),
     
     // 🔧 CUSTOMER ORDER ENDPOINTS
-    // 🔧 ENHANCED: getUserOrders query with better error handling
+    // ENHANCED: getUserOrders query with proper empty state handling
     getUserOrders: build.query({
       query: () => '/orders',
       providesTags: ['Order'],
-      forceRefetch: true, // Add this to prevent wrong caching
       transformResponse: (response) => {
-        console.log('Orders response:', response);
+        console.log('Orders API response:', response);
         
-        if (Array.isArray(response)) return response;
-        if (response.orders && Array.isArray(response.orders)) return response.orders;
-        if (response.data && Array.isArray(response.data)) return response.data;
-        if (response.success && response.orders) return response.orders;
+        // Handle different response structures
+        let orders = [];
+        if (Array.isArray(response)) {
+          orders = response;
+        } else if (response.orders && Array.isArray(response.orders)) {
+          orders = response.orders;
+        } else if (response.data && Array.isArray(response.data)) {
+          orders = response.data;
+        } else if (response.success && response.orders) {
+          orders = response.orders;
+        }
         
-        // Return empty array if no valid orders found
-        return [];
+        // Return consistent structure
+        return {
+          orders: orders,
+          count: orders.length,
+          success: true,
+          isEmpty: orders.length === 0
+        };
       },
       transformErrorResponse: (response, meta, arg) => {
-        console.error('❌ Orders fetch error:', {
+        console.error('Orders fetch error:', {
           status: response?.status,
           data: response?.data,
           message: response?.data?.message || 'Failed to fetch orders'
@@ -150,11 +161,6 @@ export const Api = createApi({
           ...response,
           message: response?.data?.message || 'Failed to fetch your orders. Please try again.'
         };
-      },
-      // 🔧 Enhanced retry logic
-      extraOptions: {
-        maxRetries: 2,
-        backoff: (attempt) => Math.pow(2, attempt) * 1000
       }
     }),
     // 🔧 FIXED: Customer order by ID
