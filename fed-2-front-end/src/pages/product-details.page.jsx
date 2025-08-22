@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import ReviewCard from "@/components/ReviewCard";
 import ReviewForm from "@/components/ReviewForm";
+import { toast } from 'react-toastify';
 import { 
   useGetProductByIdQuery, 
   useGetProductReviewsQuery, 
@@ -127,18 +128,28 @@ const ShopProductDetailPage = () => {
       }
 
       // Show success feedback
-      alert(`Added ${quantity} item(s) to cart!`);
+      // alert(`Added ${quantity} item(s) to cart!`);
+       // Show success toast instead of alert
+      toast.success(`Added ${quantity} ${product.name} to cart!`, {
+        position: "top-right",
+        autoClose: 3000,
+        hideProgressBar: false,
+        closeOnClick: true,
+        pauseOnHover: true,
+        draggable: true,
+      });
       
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
       // Even if there's an error, the Redux state should be updated
+       toast.error('Failed to add item to cart. Please try again.', {
+        position: "top-right",
+        autoClose: 3000,
+      });
     } finally {
       setIsAddingToCart(false);
     }
   };
-
-  // 🔧 ADD THIS WISHLIST STATE
-  const [wishlistMessage, setWishlistMessage] = useState('');
 
   // 🔧 ADD THIS HELPER FUNCTION
   const isInWishlist = () => {
@@ -157,24 +168,31 @@ const ShopProductDetailPage = () => {
       if (isInWishlist()) {
         await removeFromWishlist(product._id).unwrap();
         console.log('✅ Removed from wishlist:', product.name);
-        setWishlistMessage('💔 Removed from wishlist');
+        toast.info(`💔 Removed ${product.name} from wishlist`, {
+          position: "top-right",
+          autoClose: 2000,
+        });
       } else {
         await addToWishlist(product._id).unwrap();
         console.log('✅ Added to wishlist:', product.name);
-        setWishlistMessage('❤️ Added to wishlist!');
+         toast.success(`❤️ Added ${product.name} to wishlist!`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
       }
-      
-      // Clear message after 2 seconds
-      setTimeout(() => setWishlistMessage(''), 2000);
-      
     } catch (error) {
       console.error('❌ Wishlist error:', error);
-      if (error.status === 401) {
-        setWishlistMessage('⚠️ Please log in to use wishlist');
+        if (error.status === 401) {
+        toast.warn('⚠️ Please log in to use wishlist', {
+          position: "top-right",
+          autoClose: 3000,
+        });
       } else {
-        setWishlistMessage('❌ Wishlist action failed');
+        toast.error('❌ Wishlist action failed. Please try again.', {
+          position: "top-right",
+          autoClose: 3000,
+        });
       }
-      setTimeout(() => setWishlistMessage(''), 3000);
     }
   };
 
@@ -407,18 +425,6 @@ const ShopProductDetailPage = () => {
               </div>
             </div>
 
-             {/* 🔧 ADD WISHLIST MESSAGE DISPLAY */}
-            {wishlistMessage && (
-              <div className={`text-sm px-3 py-2 rounded-md text-center font-medium ${
-                wishlistMessage.includes('❤️') ? 'bg-green-100 text-green-800' :
-                wishlistMessage.includes('💔') ? 'bg-pink-100 text-pink-800' :
-                wishlistMessage.includes('⚠️') ? 'bg-yellow-100 text-yellow-800' :
-                'bg-red-100 text-red-800'
-              }`}>
-                {wishlistMessage}
-              </div>
-            )}
-
             {/* Action Buttons */}
             <div className="flex gap-3">
               <Button
@@ -448,7 +454,7 @@ const ShopProductDetailPage = () => {
                 disabled={isAddingToWishlist || isRemovingFromWishlist || wishlistLoading}
                 className={`px-4 ${
                   isInWishlist() 
-                    ? 'border-pink-300 bg-pink-50 text-pink-700 hover:bg-pink-100' 
+                    ? 'border-red-300 bg-red-50 text-red-700 hover:bg-red-100' 
                     : 'hover:bg-gray-50'
                 }`}
               >
@@ -456,7 +462,7 @@ const ShopProductDetailPage = () => {
                   <div className="animate-spin rounded-full h-5 w-5 border-2 border-current border-t-transparent" />
                 ) : (
                   <Heart className={`h-5 w-5 ${
-                    isInWishlist() ? 'fill-pink-600 text-pink-600' : ''
+                    isInWishlist() ? 'fill-red-500 text-red-500' : ''
                   }`} />
                 )}
               </Button>
@@ -503,7 +509,7 @@ const ShopProductDetailPage = () => {
           </TabsContent>
 
           {/* Specifications Tab */}
-          <TabsContent value="specifications" className="mt-6">
+         <TabsContent value="specifications" className="mt-6">
             <Card>
               <CardHeader>
                 <CardTitle>Specifications</CardTitle>
@@ -517,10 +523,9 @@ const ShopProductDetailPage = () => {
                         <dt className="text-gray-600">Brand:</dt>
                         <dd className="font-medium">{product.brand || 'N/A'}</dd>
                       </div>
-                      {/* category is not showing in the product detail */}
                       <div className="flex justify-between"> 
                         <dt className="text-gray-600">Category:</dt>
-                        <dd className="font-medium">{product.category || 'N/A'}</dd>
+                        <dd className="font-medium capitalize">{product.category?.name || product.category || 'N/A'}</dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-gray-600">SKU:</dt>

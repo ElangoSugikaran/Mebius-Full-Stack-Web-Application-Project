@@ -134,21 +134,21 @@ const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
   if (!isVisible) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Write a Review</CardTitle>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={onClose}
-              className="text-gray-500 hover:text-gray-700"
-            >
-              ✕
-            </Button>
-          </div>
-        </CardHeader>
+  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+    <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border-0">
+      <CardHeader className="bg-white">
+        <div className="flex items-center justify-between">
+          <CardTitle>Write a Review</CardTitle>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={onClose}
+            className="text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full w-8 h-8 p-0"
+          >
+            ✕
+          </Button>
+        </div>
+      </CardHeader>
         
         <CardContent>
           <div className="space-y-4">
