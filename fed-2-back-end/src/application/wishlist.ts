@@ -118,13 +118,16 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
       throw new NotFoundError('Wishlist not found');
     }
     
-    const initialLength = wishlist.items.length;
-
-    wishlist.items.pull({ productId });
-
-    if (wishlist.items.length === initialLength) {
+    // 🔧 FIX: Find and remove the specific item
+    const itemToRemove = wishlist.items.find(item => 
+      item.productId.toString() === productId
+    );
+    
+    if (!itemToRemove) {
       throw new NotFoundError('Item not found in wishlist');
     }
+    
+    wishlist.items.pull(itemToRemove._id);
     
     const updatedWishlist = await wishlist.save();
     await updatedWishlist.populate('items.productId');
