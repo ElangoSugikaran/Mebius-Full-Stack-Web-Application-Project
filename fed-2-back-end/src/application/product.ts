@@ -250,6 +250,243 @@ const getProductsForSearchQuery = async (
   }
 };
 
+// NEW: Get all available filter options from database
+const getFilterOptions = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log('🔍 Fetching filter options from database...');
+    
+    // Use MongoDB aggregation to get unique values efficiently
+    const filterOptions = await Product.aggregate([
+      {
+        $match: { isActive: true } // Only include active products
+      },
+      {
+        $group: {
+          _id: null,
+          brands: { $addToSet: "$brand" },
+          colors: { $addToSet: { $arrayElemAt: ["$colors", 0] } }, // Flatten colors array
+          sizes: { $addToSet: { $arrayElemAt: ["$sizes", 0] } },   // Flatten sizes array
+          genders: { $addToSet: "$gender" },
+          materials: { $addToSet: "$material" },
+          minPrice: { $min: "$finalPrice" },
+          maxPrice: { $max: "$finalPrice" }
+        }
+      },
+      {
+        $project: {
+          _id: 0,
+          brands: {
+            $filter: {
+              input: "$brands",
+              cond: { $ne: ["$$this", null] } // Remove null values
+            }
+          },
+          colors: {
+            $filter: {
+              input: "$colors",
+              cond: { $ne: ["$$this", null] }
+            }
+          },
+          sizes: {
+            $filter: {
+              input: "$sizes", 
+              cond: { $ne: ["$$this", null] }
+            }
+          },
+          genders: {
+            $filter: {
+              input: "$genders",
+              cond: { $ne: ["$$this", null] }
+            }
+          },
+          materials: {
+            $filter: {
+              input: "$materials",
+              cond: { $ne: ["$$this", null] }
+            }
+          },
+          priceRange: {
+            min: "$minPrice",
+            max: "$maxPrice"
+          }
+        }
+      }
+    ]);
+
+    // For colors and sizes, we need a better approach since they're arrays
+    const [colorsResult, sizesResult] = await Promise.all([
+      Product.aggregate([
+        { $match: { isActive: true } },
+        { $unwind: "$colors" },
+        { $group: { _id: "$colors" } },
+        { $sort: { _id: 1 } }
+      ]),
+      Product.aggregate([
+        { $match: { isActive: true } },
+        { $unwind: "$sizes" },
+        { $group: { _id: "$sizes" } },
+        { $sort: { _id: 1 } }
+      ])
+    ]);
+
+    const result = filterOptions[0] || {};
+    
+    // Replace with properly flattened arrays
+    result.colors = colorsResult.map(item => item._id).filter(Boolean);
+    result.sizes = sizesResult.map(item => item._id).filter(Boolean);
+    
+    // Ensure we have default values
+    const response = {
+      brands: result.brands || [],
+      colors: result.colors || [],
+      sizes: result.sizes || [],
+      genders: result.genders || [],
+      materials: result.materials || [],
+      priceRange: {
+        min: Math.floor(result.priceRange?.min || 0),
+        max: Math.ceil(result.priceRange?.max || 1000)
+      }
+    };
+
+    console.log('✅ Filter options:', response);
+    res.json({ data: response });
+    
+  } catch (error) {
+    console.error('❌ Error fetching filter options:', error);
+    next(error);
+  }
+};
+
+// NEW: Get filtered products based on query parameters
+const getFilteredProducts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const {
+      categories,
+      brands,
+      sizes,
+      colors,
+      gender,
+      minPrice,
+      maxPrice,
+      inStock,
+      onSale,
+      sortBy = 'createdAt',
+      sortOrder = 'desc'
+    } = req.query;
+
+    console.log('🔍 Filtering products with params:', req.query);
+
+    // Build filter object
+    const filter: any = { isActive: true };
+
+    // Category filter
+    if (categories) {
+      const categoryArray = (categories as string).split(',');
+      filter.categoryId = { $in: categoryArray };
+    }
+
+    // Brand filter
+    if (brands) {
+      const brandArray = (brands as string).split(',');
+      filter.brand = { $in: brandArray };
+    }
+
+    // Size filter (product must have at least one matching size)
+    if (sizes) {
+      const sizeArray = (sizes as string).split(',');
+      filter.sizes = { $in: sizeArray };
+    }
+
+    // Color filter (product must have at least one matching color)
+    if (colors) {
+      const colorArray = (colors as string).split(',');
+      filter.colors = { $in: colorArray };
+    }
+
+    // Gender filter
+    if (gender) {
+      const genderArray = (gender as string).split(',').map(g => g.toLowerCase());
+      filter.gender = { $in: genderArray };
+    }
+
+    // Price range filter
+    if (minPrice || maxPrice) {
+      filter.finalPrice = {};
+      if (minPrice) filter.finalPrice.$gte = parseFloat(minPrice as string);
+      if (maxPrice) filter.finalPrice.$lte = parseFloat(maxPrice as string);
+    }
+
+    // Stock filter
+    if (inStock === 'true') {
+      filter.stock = { $gt: 0 };
+    }
+
+    // Sale filter (discount > 0)
+    if (onSale === 'true') {
+      filter.discount = { $gt: 0 };
+    }
+
+    // Build sort object
+    const sortObj: any = {};
+    
+    // Handle different sort options
+    switch (sortBy) {
+      case 'price':
+        sortObj.finalPrice = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'name':
+        sortObj.name = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'rating':
+        sortObj.averageRating = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'popularity':
+        sortObj.salesCount = sortOrder === 'desc' ? -1 : 1;
+        break;
+      default:
+        sortObj.createdAt = sortOrder === 'desc' ? -1 : 1;
+    }
+
+    console.log('🔍 MongoDB filter:', JSON.stringify(filter, null, 2));
+    console.log('🔍 MongoDB sort:', sortObj);
+
+    // Execute query with population
+    const products = await Product.find(filter)
+      .populate({
+        path: 'categoryId',
+        select: 'name',
+        options: { lean: true }
+      })
+      .sort(sortObj)
+      .lean(); // Use lean for better performance
+
+    // Transform response to match frontend expectations
+    const transformedProducts = products.map(product => {
+      const { categoryId, ...productData } = product;
+      return {
+        ...productData,
+        category: categoryId // Rename categoryId to category
+      };
+    });
+
+    console.log(`✅ Found ${transformedProducts.length} filtered products`);
+
+    res.json({
+      data: transformedProducts,
+      count: transformedProducts.length,
+      filters: {
+        applied: req.query,
+        total: await Product.countDocuments({ isActive: true })
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ Error filtering products:', error);
+    next(error);
+  }
+};
+
+
 
 export {
   getAllProducts,
@@ -260,6 +497,8 @@ export {
   uploadProductImage,
   uploadProductImageGeneric, // Export the generic upload function
   getProductsForSearchQuery,
+  getFilterOptions,
+  getFilteredProducts,
 };
 // products.js
 // This file contains the product-related logic for an Express application.

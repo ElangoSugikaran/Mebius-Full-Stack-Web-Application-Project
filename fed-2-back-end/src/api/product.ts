@@ -12,6 +12,8 @@ import {
   uploadProductImage,
   uploadProductImageGeneric,
   getProductsForSearchQuery,
+  getFilterOptions,        // NEW
+  getFilteredProducts,     // NEW
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
 import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
@@ -28,6 +30,12 @@ productRouter
 
   // Search endpoint - MUST come before /:id route
 productRouter.get("/search", getProductsForSearchQuery);
+
+// NEW: Get available filter options
+productRouter.get("/filter-options", getFilterOptions);
+
+// NEW: Get filtered products
+productRouter.get("/filtered", getFilteredProducts);
 
 productRouter
   // Define a route for individual product operations
