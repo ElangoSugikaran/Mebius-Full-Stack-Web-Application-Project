@@ -3,9 +3,9 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Heart, ShoppingCart, Eye, X, Star } from "lucide-react";
-import { useState } from "react";
 import { Link } from "react-router";
 import { useRemoveFromWishlistMutation, useAddToCartMutation } from "@/lib/api";
+import { toast } from 'react-toastify';
 
 function WishlistItem({ item }) {
   const [removeFromWishlist, { isLoading: isRemoving }] = useRemoveFromWishlistMutation();
@@ -24,27 +24,50 @@ function WishlistItem({ item }) {
   const handleRemove = async () => {
     try {
       await removeFromWishlist(productId).unwrap();
+      toast.success('Item removed from wishlist', {
+        position: "top-right",
+        autoClose: 2000,
+      });
     } catch (error) {
       console.error('Failed to remove from wishlist:', error);
+      toast.error('Failed to remove item from wishlist', {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
   };
 
+
   // Handle move to cart
   const handleMoveToCart = async () => {
-    if (stock > 0) {
-      try {
-        await addToCart({
-          productId: productId,
-          quantity: 1
-        }).unwrap();
-        
-        // Remove from wishlist after successful cart add
-        await removeFromWishlist(productId).unwrap();
-      } catch (error) {
-        console.error('Failed to move to cart:', error);
-      }
+  if (stock > 0) {
+    try {
+      await addToCart({
+        productId: productId,
+        quantity: 1
+      }).unwrap();
+      
+      toast.success('Item added to cart', {
+        position: "top-right",
+        autoClose: 2000,
+      });
+      
+      // Remove from wishlist after successful cart add
+      await removeFromWishlist(productId).unwrap();
+      
+      toast.info('Item removed from wishlist', {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (error) {
+      console.error('Failed to move to cart:', error);
+      toast.error('Failed to add item to cart', {
+        position: "top-right",
+        autoClose: 3000,
+      });
     }
-  };
+  }
+};
 
   return (
     <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 bg-white">
