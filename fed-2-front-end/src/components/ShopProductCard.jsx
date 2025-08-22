@@ -7,6 +7,7 @@ import { useAddToCartMutation } from "@/lib/api";
 import { addToCart } from "@/lib/features/cartSlice";
 import { Heart, ShoppingCart, Eye, Star } from "lucide-react";
 import { Link } from "react-router";
+import { toast } from 'react-toastify';
 import { useAddToWishlistMutation, useRemoveFromWishlistMutation, useGetWishlistQuery } from "@/lib/api";
 
 
@@ -34,7 +35,6 @@ function ProductCard({ product }) {
     if (!product || isAddingToCart) return;
     
     setIsAddingToCart(true);
-    setMessage('');
     
     try {
       // 📝 STEP 1: Always update Redux state first for immediate UI feedback
@@ -60,39 +60,48 @@ function ProductCard({ product }) {
         }).unwrap();
         
         console.log('✅ Product synced with server cart:', result);
-        setMessage('✅ Product added to cart!');
-        
-        // Clear success message after 2 seconds
-        setTimeout(() => setMessage(''), 2000);
-        
+        toast.success(`${product.name} added to cart! 🛒`, {
+            position: "top-right",
+            autoClose: 3000,
+        });
+          
       } catch (serverError) {
         console.warn('⚠️ Server sync failed, using local cart only:', serverError);
-        
-        // Check if it's a specific error we can handle
-        if (serverError.status === 404) {
-          setMessage('⚠️ Server unavailable, added to local cart');
-        } else if (serverError.status === 400) {
-          setMessage('⚠️ ' + (serverError.data?.message || 'Invalid request'));
-        } else if (serverError.status === 401) {
-          setMessage('⚠️ Please log in to sync cart');
-        } else {
-          setMessage('⚠️ Added to local cart only');
-        }
-        
-        // Clear warning message after 3 seconds
-        setTimeout(() => setMessage(''), 3000);
+  
+      // Check if it's a specific error we can handle
+      if (serverError.status === 404) {
+        toast.error('Server unavailable, added to local cart only', {
+          position: "top-right",
+          autoClose: 4000,
+        });
+      } else if (serverError.status === 400) {
+        toast.error(serverError.data?.message || 'Invalid request', {
+          position: "top-right",
+          autoClose: 4000,
+        });
+      } else if (serverError.status === 401) {
+        toast.error('Please log in to sync cart', {
+          position: "top-right",
+          autoClose: 4000,
+        });
+      } else {
+        toast.error('Added to local cart only', {
+          position: "top-right",
+          autoClose: 4000,
+        });
       }
+    } // <- Add this missing closing brace
 
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
-      setMessage('❌ Failed to add to cart');
-      
-      // Clear error message after 3 seconds
-      setTimeout(() => setMessage(''), 3000);
+      toast.error('Failed to add to cart. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+      });
     } finally {
       setIsAddingToCart(false);
     }
-  };
+  }
 
   // 🔧 ADD THIS HELPER FUNCTION
   const isInWishlist = () => {
@@ -108,44 +117,32 @@ function ProductCard({ product }) {
     if (!product?._id || isAddingToWishlist || isRemovingFromWishlist) return;
 
     try {
-      if (isInWishlist()) {
+     if (isInWishlist()) {
         await removeFromWishlist(product._id).unwrap();
         console.log('✅ Removed from wishlist:', product.name);
-        setMessage('💔 Removed from wishlist');
+        toast.success(`${product.name} removed from wishlist! 💔`, {
+          position: "top-right",
+          autoClose: 3000,
+        });
       } else {
         await addToWishlist(product._id).unwrap();
         console.log('✅ Added to wishlist:', product.name);
-        setMessage('❤️ Added to wishlist!');
+        toast.success(`${product.name} added to wishlist! ❤️`, {
+          position: "top-right",  
+          autoClose: 3000,
+        });
       }
-      
-      // Clear message after 2 seconds
-      setTimeout(() => setMessage(''), 2000);
       
     } catch (error) {
-      console.error('❌ Wishlist error:', error);
-      if (error.status === 401) {
-        setMessage('⚠️ Please log in to use wishlist');
-      } else {
-        setMessage('❌ Wishlist action failed');
-      }
-      setTimeout(() => setMessage(''), 3000);
+      toast.error(error?.data?.message || 'Wishlist operation failed. Please try again.', {
+        position: "top-right",
+        autoClose: 4000,
+      });
     }
   };
 
   return (
     <div className="group relative bg-white rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 overflow-hidden border border-gray-100">
-      
-      {/* Status Messages - UPDATED */}
-      {message && (
-        <div className={`absolute top-2 left-2 right-2 z-10 text-xs px-2 py-1 rounded text-center font-medium ${
-          message.includes('✅') || message.includes('❤️') ? 'bg-green-100 text-green-800' :
-          message.includes('💔') ? 'bg-pink-100 text-pink-800' :
-          message.includes('⚠️') ? 'bg-yellow-100 text-yellow-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          {message}
-        </div>
-      )}
       
       {/* 🖼️ PRODUCT IMAGE */}
       <div className="relative aspect-square overflow-hidden bg-gray-100">
@@ -195,14 +192,14 @@ function ProductCard({ product }) {
               disabled={isAddingToWishlist || isRemovingFromWishlist || wishlistLoading}
               className={`w-10 h-10 rounded-full p-0 ${
                 isInWishlist() 
-                  ? 'bg-pink-100 hover:bg-pink-200 border-pink-300' 
+                  ? 'bg-red-50 hover:bg-red-100 border-red-200' 
                   : 'bg-white/90 hover:bg-white'
               }`}
             >
-              <Heart className={`h-4 w-4 ${
+             <Heart className={`h-4 w-4 transition-colors duration-200 ${
                 isInWishlist() 
-                  ? 'text-pink-600 fill-pink-600' 
-                  : 'text-gray-600'
+                  ? 'fill-red-500 text-red-500' 
+                  : 'text-gray-600 hover:text-red-500'
               }`} />
             </Button>
 
