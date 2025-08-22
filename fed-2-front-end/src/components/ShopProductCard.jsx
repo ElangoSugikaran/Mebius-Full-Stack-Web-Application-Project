@@ -15,8 +15,6 @@ function ProductCard({ product }) {
   const dispatch = useDispatch();
   const [imageLoading, setImageLoading] = useState(true);
   const [isAddingToCart, setIsAddingToCart] = useState(false);
-  const [message, setMessage] = useState('');
-
   const [addToCartMutation] = useAddToCartMutation();
 
   // 🔧 ADD THESE WISHLIST HOOKS
