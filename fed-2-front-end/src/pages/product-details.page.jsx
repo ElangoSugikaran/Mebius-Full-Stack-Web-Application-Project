@@ -2,7 +2,6 @@
 import { useState, useEffect } from "react";
 import { useParams, Link } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
-// import { useGetProductByIdQuery, useGetProductReviewsQuery, useAddToCartMutation } from '../lib/api';
 import { addToCart } from "@/lib/features/cartSlice";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -518,7 +517,8 @@ const ShopProductDetailPage = () => {
                         <dt className="text-gray-600">Brand:</dt>
                         <dd className="font-medium">{product.brand || 'N/A'}</dd>
                       </div>
-                      <div className="flex justify-between">
+                      {/* category is not showing in the product detail */}
+                      <div className="flex justify-between"> 
                         <dt className="text-gray-600">Category:</dt>
                         <dd className="font-medium">{product.category || 'N/A'}</dd>
                       </div>
