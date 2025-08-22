@@ -377,11 +377,11 @@ const AdminDashboardLayout = () => {
                   }
                 }}
                 showName={false}
-                afterSignOutUrl="/admin/login"
+                afterSignOutUrl="/"
               />
             </SignedIn>
             <SignedOut>
-              <Link to="/admin/login">
+              <Link to="/">
                 <Button>Sign In</Button>
               </Link>
             </SignedOut>
