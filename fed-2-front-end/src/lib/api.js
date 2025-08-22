@@ -1,8 +1,8 @@
-// 🔧 FIXED: Updated api.js with correct cart endpoint paths
+// 🔧 FIXED: Updated api.js with consolidated endpoints and no duplicate properties
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
 const BASE_URL = import.meta.env.VITE_BASE_URL;
-console.log('🔍 API Base URL:', BASE_URL); // Add this to debug
+console.log('🔍 API Base URL:', BASE_URL);
 
 export const Api = createApi({
   reducerPath: "Api",
@@ -27,7 +27,7 @@ export const Api = createApi({
       });
     },
   }),
-  tagTypes: ['Product', 'Review', 'Order', 'Cart', 'Wishlist', 'Customer'],
+  tagTypes: ['Product', 'Review', 'Order', 'Cart', 'Wishlist', 'Customer', 'Settings'],
   endpoints: (build) => ({
     // 🔧 PRODUCT ENDPOINTS
     getAllProducts: build.query({
@@ -63,6 +63,73 @@ export const Api = createApi({
         method: "DELETE",
       }),
       invalidatesTags: ['Product'],
+    }),
+
+    // 🔧 NEW: Get available filter options from database
+    getFilterOptions: build.query({
+      query: () => '/products/filter-options',
+      providesTags: ['Product'],
+      transformResponse: (response) => {
+        console.log('✅ Filter options fetched:', response);
+        return response.data || response;
+      },
+    }),
+
+    // 🔧 NEW: Get filtered products with query parameters
+    getFilteredProducts: build.query({
+      query: (filters) => {
+        // Build query string from filters object
+        const params = new URLSearchParams();
+        
+        // Add array filters
+        if (filters.categories?.length > 0) {
+          params.append('categories', filters.categories.join(','));
+        }
+        if (filters.brands?.length > 0) {
+          params.append('brands', filters.brands.join(','));
+        }
+        if (filters.sizes?.length > 0) {
+          params.append('sizes', filters.sizes.join(','));
+        }
+        if (filters.colors?.length > 0) {
+          params.append('colors', filters.colors.join(','));
+        }
+        if (filters.gender?.length > 0) {
+          params.append('gender', filters.gender.join(','));
+        }
+        
+        // Add price range
+        if (filters.priceRange) {
+          params.append('minPrice', filters.priceRange[0].toString());
+          params.append('maxPrice', filters.priceRange[1].toString());
+        }
+        
+        // Add boolean filters
+        if (filters.inStock) {
+          params.append('inStock', 'true');
+        }
+        if (filters.onSale) {
+          params.append('onSale', 'true');
+        }
+        
+        // Add sorting
+        if (filters.sortBy) {
+          params.append('sortBy', filters.sortBy);
+          params.append('sortOrder', filters.sortOrder || 'asc');
+        }
+        
+        const queryString = params.toString();
+        console.log('🔍 Filtering products with:', queryString);
+        
+        return `/products/filtered?${queryString}`;
+      },
+      providesTags: ['Product'],
+      transformResponse: (response) => {
+        console.log('✅ Filtered products fetched:', response);
+        return response.data || response;
+      },
+      // Keep cache for 5 minutes to avoid frequent DB calls
+      keepUnusedDataFor: 300,
     }),
 
     // 🔧 CATEGORY ENDPOINTS
@@ -123,7 +190,6 @@ export const Api = createApi({
     }),
     
     // 🔧 CUSTOMER ORDER ENDPOINTS
-    // ENHANCED: getUserOrders query with proper empty state handling
     getUserOrders: build.query({
       query: () => '/orders',
       providesTags: ['Order'],
@@ -163,72 +229,38 @@ export const Api = createApi({
         };
       }
     }),
-    // 🔧 FIXED: Customer order by ID
+
+    // 🔧 Customer order by ID
     getCustomerOrderById: build.query({
-      query: (id) => `/orders/${id}`,  // GET /api/orders/:id
+      query: (id) => `/orders/${id}`,
       providesTags: (result, error, id) => [{ type: 'Order', id }],
     }),
     
     // 🔧 ADMIN ORDER ENDPOINTS  
     getAllOrders: build.query({
-      query: () => '/orders/admin/all',  // GET /api/orders/admin/all
+      query: () => '/orders/admin/all',
       providesTags: ['Order'],
     }),
     
-    // 🔧 FIXED: Admin order by ID (different from customer)
+    // 🔧 Admin order by ID
     getOrderById: build.query({
-      query: (id) => `/orders/admin/${id}`,  // GET /api/orders/admin/:id
+      query: (id) => `/orders/admin/${id}`,
       providesTags: (result, error, id) => [{ type: 'Order', id }],
     }),
     
-    // 🔧 ORDER STATUS UPDATES
-    updateOrderStatus: build.mutation({
-      query: ({ orderId, status }) => ({
-        url: `/orders/admin/${orderId}/status`,  // PUT /api/orders/admin/:id/status
-        method: 'PUT',
-        body: { orderStatus: status }  // Use 'orderStatus' field
-      }),
-      invalidatesTags: (result, error, { orderId }) => [
-        'Order', 
-        { type: 'Order', id: orderId }
-      ],
-    }),
-    
-    // 🔧 CANCEL ORDER (Customer)
-    cancelOrder: build.mutation({
-      query: (orderId) => ({
-        url: `/orders/${orderId}/cancel`,  // PUT /api/orders/:id/cancel
-        method: 'PUT',
-      }),
-      invalidatesTags: (result, error, orderId) => [
-        'Order', 
-        { type: 'Order', id: orderId }
-      ],
-    }),
-    
-    // 🔧 CREATE ORDER
-    createOrder: build.mutation({
-      query: (orderData) => ({
-        url: '/orders',  // POST /api/orders
-        method: 'POST',
-        body: orderData,
-      }),
-      invalidatesTags: ['Order'],
-    }),
-
-    // Replace the existing updateOrderStatus mutation with this:
+    // 🔧 CONSOLIDATED ORDER STATUS UPDATE - FIXED: Single definition
     updateOrderStatus: build.mutation({
       query: ({ orderId, status, orderStatus, id, isPaymentComplete = false, paymentStatus }) => {
-        // 🔧 Handle multiple possible parameter names with validation
+        // Handle multiple possible parameter names with validation
         const targetOrderId = orderId || id;
         
-        // 🔧 Enhanced validation
+        // Enhanced validation
         if (!targetOrderId || targetOrderId === 'undefined' || targetOrderId === 'null' || targetOrderId === '') {
           console.error('❌ updateOrderStatus: Invalid order ID:', { orderId, id, targetOrderId });
           throw new Error('Valid order ID is required');
         }
 
-        // 🔧 NEW: Handle payment status updates separately
+        // Handle payment status updates separately
         if (paymentStatus) {
           console.log('💳 Payment status update:', {
             targetOrderId,
@@ -248,7 +280,7 @@ export const Api = createApi({
           };
         }
 
-        // 🔧 Handle order status updates
+        // Handle order status updates
         const targetStatus = orderStatus || status;
         
         if (!targetStatus || targetStatus === 'undefined' || targetStatus === 'null' || targetStatus === '') {
@@ -256,7 +288,7 @@ export const Api = createApi({
           throw new Error('Valid order status is required');
         }
 
-        // 🔧 FIXED: Use different endpoints for admin vs payment completion
+        // Use different endpoints for admin vs payment completion
         const endpoint = isPaymentComplete 
           ? `/orders/${targetOrderId}/payment-complete`  // Customer endpoint for payment completion
           : `/orders/admin/${targetOrderId}/status`;     // Admin endpoint for status changes
@@ -273,7 +305,7 @@ export const Api = createApi({
           body: { 
             orderStatus: targetStatus,
             status: targetStatus, // Send both for backend compatibility
-            // 🔧 NEW: Add payment completion flag
+            // Add payment completion flag
             ...(isPaymentComplete && { paymentStatus: 'PAID' })
           },
           headers: {
@@ -322,6 +354,45 @@ export const Api = createApi({
         backoff: (attempt) => Math.pow(2, attempt) * 1000
       }
     }),
+    
+    // 🔧 CANCEL ORDER (Customer)
+    cancelOrder: build.mutation({
+      query: (orderId) => ({
+        url: `/orders/${orderId}/cancel`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, orderId) => [
+        'Order', 
+        { type: 'Order', id: orderId }
+      ],
+    }),
+    
+    // 🔧 CREATE ORDER
+    createOrder: build.mutation({
+      query: (orderData) => ({
+        url: '/orders',
+        method: 'POST',
+        body: orderData,
+      }),
+      invalidatesTags: ['Order'],
+    }),
+
+    // 🔧 CART ENDPOINTS
+    getCart: build.query({
+      query: () => '/cart',
+      providesTags: ['Cart'],
+      transformResponse: (response) => {
+        return response.data || response;
+      },
+      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
+        try {
+          const result = await queryFulfilled;
+          console.log('✅ Cart fetched successfully:', result.data);
+        } catch (error) {
+          console.error('❌ Failed to fetch cart:', error);
+        }
+      },
+    }),
 
     addToCart: build.mutation({
       query: (item) => {
@@ -350,7 +421,6 @@ export const Api = createApi({
           console.log('✅ Added to cart successfully:', result.data);
         } catch (error) {
           console.error('❌ Failed to add to cart:', error);
-          // Re-throw to let component handle it
           throw error;
         }
       },
@@ -439,23 +509,6 @@ export const Api = createApi({
       },
     }),
 
-    // 🔧 MISSING: Add this getCart query endpoint
-    getCart: build.query({
-      query: () => '/cart',
-      providesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          console.log('✅ Cart fetched successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to fetch cart:', error);
-        }
-      },
-    }),
-
     getCartItemCount: build.query({
       query: () => '/cart/count',
       providesTags: ['Cart'],
@@ -472,7 +525,7 @@ export const Api = createApi({
       },
     }),
 
-    // 🔧 WISHLIST ENDPOINTS (Add these to your existing Api.createApi)
+    // 🔧 WISHLIST ENDPOINTS
     getWishlist: build.query({
       query: () => '/wishlist',
       providesTags: ['Wishlist'],
@@ -495,7 +548,7 @@ export const Api = createApi({
         return {
           url: '/wishlist/add',
           method: 'POST',
-          body: { productId }, // Backend expects { productId: "..." }
+          body: { productId },
         };
       },
       invalidatesTags: ['Wishlist'],
@@ -564,7 +617,7 @@ export const Api = createApi({
       },
     }),
 
-    // customer
+    // 🔧 CUSTOMER ENDPOINTS
     syncCurrentUser: build.mutation({
       query: () => ({
         url: '/customers/sync',
@@ -583,7 +636,6 @@ export const Api = createApi({
         return response.data || response;
       },
     }),
-    // In your api.js file, you could add a new endpoint:
     getCustomerByClerkId: build.query({
       query: (clerkId) => `/customers/admin/clerk/${clerkId}`,
       providesTags: (result, error, clerkId) => [{ type: 'Customer', id: clerkId }],
@@ -593,6 +645,7 @@ export const Api = createApi({
       },
     }),
 
+    // 🔧 SETTINGS ENDPOINTS
     getSettings: build.query({
       query: () => '/settings',
       providesTags: ['Settings'],
@@ -608,7 +661,7 @@ export const Api = createApi({
         return {
           url: '/settings/store',
           method: 'PUT',
-          body: { store: storeData }, // Wrap in 'store' object as expected by DTO
+          body: { store: storeData },
         };
       },
       invalidatesTags: ['Settings'],
@@ -633,7 +686,7 @@ export const Api = createApi({
         return {
           url: '/settings/payment',
           method: 'PUT',
-          body: { payment: paymentData }, // Wrap in 'payment' object as expected by DTO
+          body: { payment: paymentData },
         };
       },
       invalidatesTags: ['Settings'],
@@ -651,75 +704,6 @@ export const Api = createApi({
         }
       },
     }),
-
-    // 🔧 NEW: Get available filter options from database
-  getFilterOptions: build.query({
-    query: () => '/products/filter-options',
-    providesTags: ['Product'],
-    transformResponse: (response) => {
-      console.log('✅ Filter options fetched:', response);
-      return response.data || response;
-    },
-  }),
-
-  // 🔧 NEW: Get filtered products with query parameters
-  getFilteredProducts: build.query({
-    query: (filters) => {
-      // Build query string from filters object
-      const params = new URLSearchParams();
-      
-      // Add array filters
-      if (filters.categories?.length > 0) {
-        params.append('categories', filters.categories.join(','));
-      }
-      if (filters.brands?.length > 0) {
-        params.append('brands', filters.brands.join(','));
-      }
-      if (filters.sizes?.length > 0) {
-        params.append('sizes', filters.sizes.join(','));
-      }
-      if (filters.colors?.length > 0) {
-        params.append('colors', filters.colors.join(','));
-      }
-      if (filters.gender?.length > 0) {
-        params.append('gender', filters.gender.join(','));
-      }
-      
-      // Add price range
-      if (filters.priceRange) {
-        params.append('minPrice', filters.priceRange[0].toString());
-        params.append('maxPrice', filters.priceRange[1].toString());
-      }
-      
-      // Add boolean filters
-      if (filters.inStock) {
-        params.append('inStock', 'true');
-      }
-      if (filters.onSale) {
-        params.append('onSale', 'true');
-      }
-      
-      // Add sorting
-      if (filters.sortBy) {
-        params.append('sortBy', filters.sortBy);
-        params.append('sortOrder', filters.sortOrder || 'asc');
-      }
-      
-      const queryString = params.toString();
-      console.log('🔍 Filtering products with:', queryString);
-      
-      return `/products/filtered?${queryString}`;
-    },
-    providesTags: ['Product'],
-    transformResponse: (response) => {
-      console.log('✅ Filtered products fetched:', response);
-      return response.data || response;
-    },
-    // Keep cache for 5 minutes to avoid frequent DB calls
-    keepUnusedDataFor: 300,
-  }),
-
-
   }),
 });
 
@@ -732,6 +716,8 @@ export const {
   useCreateProductMutation,
   useUpdateProductMutation,
   useDeleteProductMutation,
+  useGetFilterOptionsQuery,
+  useGetFilteredProductsQuery,
   
   // Category hooks
   useGetAllCategoriesQuery,
@@ -748,18 +734,18 @@ export const {
   // Payment hooks
   useGetCheckoutSessionStatusQuery,
   
-  // Customer hooks
+  // Customer order hooks
   useGetUserOrdersQuery,
   useGetCustomerOrderByIdQuery,  
   useCancelOrderMutation,
   useCreateOrderMutation,
   
-  // Admin hooks  
+  // Admin order hooks  
   useGetAllOrdersQuery,
   useGetOrderByIdQuery,
-  useUpdateOrderStatusMutation,
+  useUpdateOrderStatusMutation, // FIXED: Only one definition now
 
- // Cart hooks - Updated
+  // Cart hooks
   useGetCartQuery,
   useAddToCartMutation,
   useUpdateCartItemMutation,
@@ -767,7 +753,6 @@ export const {
   useClearCartMutation,
   useGetCartItemCountQuery,
 
-  // Also add these to your export hooks section:
   // Wishlist hooks
   useGetWishlistQuery,
   useAddToWishlistMutation,
@@ -775,19 +760,15 @@ export const {
   useClearWishlistMutation,
   useGetWishlistItemCountQuery,
 
-  //customer hook
+  // Customer hooks
   useGetCustomerByClerkIdQuery,
   useSyncCurrentUserMutation,
   useGetAllCustomersQuery,
   useGetCustomerByIdQuery,
 
-  //admin settings hooks
+  // Settings hooks
   useGetSettingsQuery,
   useUpdateStoreSettingsMutation,
   useUpdatePaymentSettingsMutation,
-
-  // filtersidebar hooks
-  useGetFilterOptionsQuery,
-  useGetFilteredProductsQuery,
 
 } = Api;
