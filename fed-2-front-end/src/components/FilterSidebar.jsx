@@ -9,7 +9,7 @@ import { Slider } from "@/components/ui/slider";
 import { X, Filter, RotateCcw, Loader2 } from "lucide-react";
 
 // 🔧 NEW: Import RTK Query hook for filter options
-import { useGetFilterOptionsQuery } from "../../api/api";
+import { useGetFilterOptionsQuery } from "../lib/api";
 
 function FilterSidebar({ 
   categories = [], 
