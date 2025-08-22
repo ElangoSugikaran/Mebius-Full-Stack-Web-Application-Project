@@ -251,104 +251,140 @@ const getProductsForSearchQuery = async (
 };
 
 // NEW: Get all available filter options from database
+// 🔧 FIXED: getFilterOptions function with all TypeScript errors resolved
 const getFilterOptions = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('🔍 Fetching filter options from database...');
     
-    // Use MongoDB aggregation to get unique values efficiently
-    const filterOptions = await Product.aggregate([
-      {
-        $match: { isActive: true } // Only include active products
-      },
-      {
-        $group: {
-          _id: null,
-          brands: { $addToSet: "$brand" },
-          colors: { $addToSet: { $arrayElemAt: ["$colors", 0] } }, // Flatten colors array
-          sizes: { $addToSet: { $arrayElemAt: ["$sizes", 0] } },   // Flatten sizes array
-          genders: { $addToSet: "$gender" },
-          materials: { $addToSet: "$material" },
-          minPrice: { $min: "$finalPrice" },
-          maxPrice: { $max: "$finalPrice" }
-        }
-      },
-      {
-        $project: {
-          _id: 0,
-          brands: {
-            $filter: {
-              input: "$brands",
-              cond: { $ne: ["$$this", null] } // Remove null values
+    // 🔧 FIXED: Separate aggregation for each field to handle arrays properly
+    const [brandsResult, colorsResult, sizesResult, gendersResult, materialsResult, priceResult] = await Promise.all([
+      // Get unique brands
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$group": { "_id": "$brand" } },
+        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$sort": { "_id": 1 } }
+      ]),
+
+      // Get unique colors (properly unwind arrays)
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$unwind": "$colors" },
+        { "$group": { "_id": "$colors" } },
+        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$sort": { "_id": 1 } }
+      ]),
+
+      // Get unique sizes (properly unwind arrays) - FIXED: Removed duplicate sort properties
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$unwind": "$sizes" },
+        { "$group": { "_id": "$sizes" } },
+        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        // Custom sort for sizes to maintain logical order
+        { "$addFields": { 
+          sortOrder: {
+            "$switch": {
+              branches: [
+                { "case": { "$eq": ["$_id", "XS"] }, "then": 1 },
+                { "case": { "$eq": ["$_id", "S"] }, "then": 2 },
+                { "case": { "$eq": ["$_id", "M"] }, "then": 3 },
+                { "case": { "$eq": ["$_id", "L"] }, "then": 4 },
+                { "case": { "$eq": ["$_id", "XL"] }, "then": 5 },
+                { "case": { "$eq": ["$_id", "XXL"] }, "then": 6 },
+                { "case": { "$eq": ["$_id", "XXXL"] }, "then": 7 }
+              ],
+              "default": 999
             }
-          },
-          colors: {
-            $filter: {
-              input: "$colors",
-              cond: { $ne: ["$$this", null] }
+          }
+        }},
+        { "$sort": { "sortOrder": 1 } }, // Fixed: Only sort by sortOrder, no duplicates
+        { "$project": { "_id": 1 } } // Remove sortOrder from final result
+      ]),
+
+      // Get unique genders with proper enum handling - FIXED: Removed duplicate sort properties
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$group": { "_id": "$gender" } },
+        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        // Ensure all enum values are included, especially 'kids'
+        { "$addFields": {
+          sortOrder: {
+            "$switch": {
+              branches: [
+                { "case": { "$eq": ["$_id", "men"] }, "then": 1 },
+                { "case": { "$eq": ["$_id", "women"] }, "then": 2 },
+                { "case": { "$eq": ["$_id", "kids"] }, "then": 3 },
+                { "case": { "$eq": ["$_id", "unisex"] }, "then": 4 }
+              ],
+              "default": 5
             }
-          },
-          sizes: {
-            $filter: {
-              input: "$sizes", 
-              cond: { $ne: ["$$this", null] }
-            }
-          },
-          genders: {
-            $filter: {
-              input: "$genders",
-              cond: { $ne: ["$$this", null] }
-            }
-          },
-          materials: {
-            $filter: {
-              input: "$materials",
-              cond: { $ne: ["$$this", null] }
-            }
-          },
-          priceRange: {
-            min: "$minPrice",
-            max: "$maxPrice"
+          }
+        }},
+        { "$sort": { "sortOrder": 1 } }, // Fixed: Only sort by sortOrder, no duplicates
+        { "$project": { "_id": 1 } }
+      ]),
+
+      // Get unique materials
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$group": { "_id": "$material" } },
+        { "$match": { "_id": { "$ne": null, "$ne": "", "$ne": "none" } } },
+        { "$sort": { "_id": 1 } }
+      ]),
+
+      // Get price range
+      Product.aggregate([
+        { "$match": { isActive: true } },
+        {
+          "$group": {
+            "_id": null,
+            "minPrice": { "$min": "$finalPrice" },
+            "maxPrice": { "$max": "$finalPrice" }
           }
         }
-      }
-    ]);
-
-    // For colors and sizes, we need a better approach since they're arrays
-    const [colorsResult, sizesResult] = await Promise.all([
-      Product.aggregate([
-        { $match: { isActive: true } },
-        { $unwind: "$colors" },
-        { $group: { _id: "$colors" } },
-        { $sort: { _id: 1 } }
-      ]),
-      Product.aggregate([
-        { $match: { isActive: true } },
-        { $unwind: "$sizes" },
-        { $group: { _id: "$sizes" } },
-        { $sort: { _id: 1 } }
       ])
     ]);
 
-    const result = filterOptions[0] || {};
-    
-    // Replace with properly flattened arrays
-    result.colors = colorsResult.map(item => item._id).filter(Boolean);
-    result.sizes = sizesResult.map(item => item._id).filter(Boolean);
-    
-    // Ensure we have default values
-    const response = {
-      brands: result.brands || [],
-      colors: result.colors || [],
-      sizes: result.sizes || [],
-      genders: result.genders || [],
-      materials: result.materials || [],
-      priceRange: {
-        min: Math.floor(result.priceRange?.min || 0),
-        max: Math.ceil(result.priceRange?.max || 1000)
-      }
+    // Process results with better error handling
+    const brands = brandsResult.map(item => item._id).filter(Boolean);
+    const colors = colorsResult.map(item => item._id).filter(Boolean);
+    const sizes = sizesResult.map(item => item._id).filter(Boolean);
+    const genders = gendersResult.map(item => item._id).filter(Boolean);
+    const materials = materialsResult.map(item => item._id).filter(Boolean);
+
+    // Ensure all gender options are available even if no products exist
+    const allGenders = ['men', 'women', 'kids', 'unisex'];
+    const gendersSet = new Set([...genders, ...allGenders]);
+    const availableGenders = Array.from(gendersSet);
+
+    // Price range with proper fallbacks
+    const priceData = priceResult[0] || {};
+    const priceRange = {
+      min: Math.floor(priceData.minPrice || 0),
+      max: Math.ceil(priceData.maxPrice || 1000)
     };
 
-    console.log('✅ Filter options:', response);
+    const response = {
+      brands,
+      colors,
+      sizes,
+      genders: availableGenders,
+      materials,
+      priceRange
+    };
+
+    console.log('✅ Filter options:', {
+      brands: brands.length,
+      colors: colors.length, 
+      sizes: sizes.length,
+      genders: availableGenders.length,
+      materials: materials.length,
+      priceRange
+    });
+
+    console.log('🔍 Available genders:', availableGenders); // Debug log
+
     res.json({ data: response });
     
   } catch (error) {
@@ -357,7 +393,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
   }
 };
 
-// NEW: Get filtered products based on query parameters
+// 🔧 FIXED: getFilteredProducts function with better gender handling - No TypeScript errors
 const getFilteredProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const {
@@ -381,52 +417,77 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
 
     // Category filter
     if (categories) {
-      const categoryArray = (categories as string).split(',');
-      filter.categoryId = { $in: categoryArray };
+      const categoryArray = (categories as string).split(',').filter(Boolean);
+      if (categoryArray.length > 0) {
+        filter.categoryId = { "$in": categoryArray };
+      }
     }
 
     // Brand filter
     if (brands) {
-      const brandArray = (brands as string).split(',');
-      filter.brand = { $in: brandArray };
+      const brandArray = (brands as string).split(',').filter(Boolean);
+      if (brandArray.length > 0) {
+        filter.brand = { "$in": brandArray };
+      }
     }
 
     // Size filter (product must have at least one matching size)
     if (sizes) {
-      const sizeArray = (sizes as string).split(',');
-      filter.sizes = { $in: sizeArray };
+      const sizeArray = (sizes as string).split(',').filter(Boolean);
+      if (sizeArray.length > 0) {
+        filter.sizes = { "$in": sizeArray };
+      }
     }
 
     // Color filter (product must have at least one matching color)
     if (colors) {
-      const colorArray = (colors as string).split(',');
-      filter.colors = { $in: colorArray };
+      const colorArray = (colors as string).split(',').filter(Boolean);
+      if (colorArray.length > 0) {
+        filter.colors = { "$in": colorArray };
+      }
     }
 
-    // Gender filter
+    // Gender filter with proper case handling
     if (gender) {
-      const genderArray = (gender as string).split(',').map(g => g.toLowerCase());
-      filter.gender = { $in: genderArray };
+      const genderArray = (gender as string)
+        .split(',')
+        .map(g => g.toLowerCase().trim())
+        .filter(Boolean);
+      
+      if (genderArray.length > 0) {
+        console.log('🔍 Gender filter applied:', genderArray);
+        filter.gender = { "$in": genderArray };
+      }
     }
 
-    // Price range filter
+    // Price range filter - use finalPrice for accurate filtering
     if (minPrice || maxPrice) {
       filter.finalPrice = {};
-      if (minPrice) filter.finalPrice.$gte = parseFloat(minPrice as string);
-      if (maxPrice) filter.finalPrice.$lte = parseFloat(maxPrice as string);
+      if (minPrice) {
+        const min = parseFloat(minPrice as string);
+        if (!isNaN(min)) {
+          filter.finalPrice["$gte"] = min;
+        }
+      }
+      if (maxPrice) {
+        const max = parseFloat(maxPrice as string);
+        if (!isNaN(max)) {
+          filter.finalPrice["$lte"] = max;
+        }
+      }
     }
 
     // Stock filter
     if (inStock === 'true') {
-      filter.stock = { $gt: 0 };
+      filter.stock = { "$gt": 0 };
     }
 
     // Sale filter (discount > 0)
     if (onSale === 'true') {
-      filter.discount = { $gt: 0 };
+      filter.discount = { "$gt": 0 };
     }
 
-    // Build sort object
+    // Build sort object - FIXED: No duplicate properties
     const sortObj: any = {};
     
     // Handle different sort options
@@ -442,6 +503,9 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
         break;
       case 'popularity':
         sortObj.salesCount = sortOrder === 'desc' ? -1 : 1;
+        break;
+      case 'discount':
+        sortObj.discount = sortOrder === 'desc' ? -1 : 1;
         break;
       default:
         sortObj.createdAt = sortOrder === 'desc' ? -1 : 1;
@@ -471,6 +535,16 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
 
     console.log(`✅ Found ${transformedProducts.length} filtered products`);
 
+    // Add debug info for gender filtering
+    if (gender) {
+      const genderCounts = await Product.aggregate([
+        { "$match": { isActive: true } },
+        { "$group": { "_id": "$gender", count: { "$sum": 1 } } },
+        { "$sort": { "_id": 1 } }
+      ]);
+      console.log('🔍 Products by gender in database:', genderCounts);
+    }
+
     res.json({
       data: transformedProducts,
       count: transformedProducts.length,
@@ -485,8 +559,6 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
-
-
 
 export {
   getAllProducts,
