@@ -1,6 +1,5 @@
-// Fixed WishlistPage.jsx - Backend integration
-import React, { useState } from 'react';
-import { Link } from 'react-router';
+import { useEffect, useState } from "react";
+import { useUser } from '@clerk/clerk-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,19 +16,23 @@ import {
   ShoppingBag,
   ArrowLeft,
   Loader2,
-  X
+  X,
+  LogIn
 } from "lucide-react";
 
 function WishlistPage() {
+  const { isSignedIn, isLoaded } = useUser();
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   
-  // 🔧 FIX: Use actual API hooks
+  // 🔧 FIX: Only call API when user is signed in
   const { 
     data: wishlistData, 
     isLoading, 
     error,
     refetch 
-  } = useGetWishlistQuery();
+  } = useGetWishlistQuery(undefined, {
+    skip: !isSignedIn // Skip API call if user not signed in
+  });
   
   const [clearWishlist, { isLoading: isClearing }] = useClearWishlistMutation();
   const [addToCart] = useAddToCartMutation();
@@ -75,7 +78,64 @@ function WishlistPage() {
     }
   };
 
-  // Loading state
+  // 🔧 NEW: Loading state for Clerk
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔧 NEW: Unauthenticated user state
+  if (!isSignedIn) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4 py-8">
+          {/* Breadcrumb */}
+          <div className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
+            <Link to="/" className="hover:text-blue-600">Home</Link>
+            <span>/</span>
+            <span className="text-gray-900">Wishlist</span>
+          </div>
+
+          {/* Login Required State */}
+          <div className="text-center py-16">
+            <div className="max-w-md mx-auto">
+              <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                <LogIn className="h-12 w-12 text-blue-600" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                Sign in to view your wishlist
+              </h2>
+              <p className="text-gray-600 mb-8">
+                Create an account or sign in to save your favorite items and access them anywhere.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                <Button asChild size="lg" className="px-8">
+                  <Link to="/sign-in">
+                    <LogIn className="h-5 w-5 mr-2" />
+                    Sign In
+                  </Link>
+                </Button>
+                <Button asChild variant="outline" size="lg" className="px-8">
+                  <Link to="/shop">
+                    <ShoppingBag className="h-5 w-5 mr-2" />
+                    Continue Shopping
+                  </Link>
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Loading state for signed in users
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -87,8 +147,8 @@ function WishlistPage() {
     );
   }
 
-  // Error state
-  if (error) {
+  // 🔧 FIXED: Better error handling for signed in users
+  if (error && !error.status === 401) { // Don't show error for auth issues
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -109,7 +169,7 @@ function WishlistPage() {
     );
   }
 
-  // Empty wishlist state
+  // Empty wishlist state for signed in users
   if (totalItems === 0) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -121,7 +181,7 @@ function WishlistPage() {
             <span className="text-gray-900">Wishlist</span>
           </div>
 
-          {/* Empty state */}
+          {/* Empty state for signed in users */}
           <div className="text-center py-16">
             <div className="max-w-md mx-auto">
               <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -147,6 +207,7 @@ function WishlistPage() {
     );
   }
 
+  // Rest of the component remains the same...
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">

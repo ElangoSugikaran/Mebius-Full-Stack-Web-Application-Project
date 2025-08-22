@@ -1,12 +1,13 @@
-// pages/CartPage.jsx - Fixed version with proper RTK Query handling
+// Fixed CartPage.jsx - Handle unauthenticated users properly
 import { useEffect, useState } from "react";
+import { useUser } from '@clerk/clerk-react';
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import CartItem from "@/components/CartItem";
-import { ShoppingBag, ArrowLeft, Truck, Shield, RotateCcw } from "lucide-react";
+import { ShoppingBag, ArrowLeft, Truck, Shield, RotateCcw, LogIn, Loader2 } from "lucide-react";
 import { 
   useGetCartQuery, 
   useUpdateCartItemMutation, 
@@ -21,19 +22,18 @@ import {
 } from "@/lib/features/cartSlice";
 
 const CartPage = () => {
+  const { isSignedIn, isLoaded } = useUser();
   const dispatch = useDispatch();
   const [useLocalCart, setUseLocalCart] = useState(false);
   
-  // RTK Query hooks
+  // RTK Query hooks - only call when signed in
   const { 
     data: serverCart, 
     isLoading, 
     error,
     refetch 
   } = useGetCartQuery(undefined, {
-    // Only try to fetch if we think server is available
-    skip: useLocalCart,
-    // Retry configuration
+    skip: !isSignedIn, // 🔧 Skip API call if user not signed in
     refetchOnMountOrArgChange: true,
     refetchOnReconnect: true
   });
@@ -46,10 +46,12 @@ const CartPage = () => {
   const localCart = useSelector((state) => state.cart.cartItems || []);
 
   // Determine which cart data to use
-  const cart = useLocalCart || error ? localCart : (serverCart?.items || localCart);
+  const cart = useLocalCart || error || !isSignedIn ? localCart : (serverCart?.items || localCart);
 
   // Handle server connection and cart synchronization
   useEffect(() => {
+    if (!isSignedIn) return; // Don't try to sync if not signed in
+    
     if (error) {
       // Server is unavailable, switch to local cart
       console.warn('⚠️ Server cart not available, using local cart only:', error);
@@ -62,7 +64,7 @@ const CartPage = () => {
       }
       setUseLocalCart(false);
     }
-  }, [serverCart, error, dispatch]);
+  }, [serverCart, error, dispatch, isSignedIn]);
 
   // Calculate cart summary with error handling
   const cartSummary = {
@@ -128,8 +130,8 @@ const CartPage = () => {
         color 
       }));
 
-      // Try server update if available
-      if (!useLocalCart && !error) {
+      // Try server update if available and user is signed in
+      if (isSignedIn && !useLocalCart && !error) {
         await updateCartItem({ 
           productId, 
           quantity: newQuantity,
@@ -143,9 +145,9 @@ const CartPage = () => {
       console.warn('⚠️ Server update failed, using local update only:', serverError);
       
       // If server fails, make sure we switch to local cart mode
-      setUseLocalCart(true);
-      
-      // Local state was already updated, so no need to revert
+      if (isSignedIn) {
+        setUseLocalCart(true);
+      }
     }
   };
 
@@ -164,8 +166,8 @@ const CartPage = () => {
         color 
       }));
 
-      // Try server removal if available
-      if (!useLocalCart && !error) {
+      // Try server removal if available and user is signed in
+      if (isSignedIn && !useLocalCart && !error) {
         await removeFromCart({ 
           productId,
           size: size || undefined,
@@ -178,9 +180,9 @@ const CartPage = () => {
       console.warn('⚠️ Server removal failed, using local removal only:', serverError);
       
       // Switch to local cart mode if server fails
-      setUseLocalCart(true);
-      
-      // Local state was already updated
+      if (isSignedIn) {
+        setUseLocalCart(true);
+      }
     }
   };
 
@@ -190,19 +192,83 @@ const CartPage = () => {
       // Clear local cart first
       dispatch(clearCart());
 
-      // Try server clear if available
-      if (!useLocalCart && !error) {
+      // Try server clear if available and user is signed in
+      if (isSignedIn && !useLocalCart && !error) {
         await clearCartMutation().unwrap();
         console.log('✅ Server cart cleared');
       }
     } catch (serverError) {
       console.warn('⚠️ Server clear failed, local cart cleared:', serverError);
-      setUseLocalCart(true);
+      if (isSignedIn) {
+        setUseLocalCart(true);
+      }
     }
   };
 
+  // 🔧 NEW: Loading state for Clerk
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // 🔧 NEW: Unauthenticated user state
+  if (!isSignedIn) {
+    // Show local cart items if any exist for non-signed users
+    if (localCart.length > 0) {
+      // Show cart with local items but disable server operations
+      // This allows guests to manage local cart before signing in
+    } else {
+      // Show login prompt if no local cart items
+      return (
+        <div className="min-h-screen bg-gray-50">
+          <div className="max-w-6xl mx-auto px-4 py-8">
+            <div className="flex items-center space-x-2 text-sm text-gray-600 mb-8">
+              <Link to="/" className="hover:text-blue-600">Home</Link>
+              <span>/</span>
+              <span className="text-gray-900">Cart</span>
+            </div>
+
+            <div className="text-center py-16">
+              <div className="max-w-md mx-auto">
+                <div className="w-24 h-24 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <LogIn className="h-12 w-12 text-blue-600" />
+                </div>
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  Sign in to view your cart
+                </h2>
+                <p className="text-gray-600 mb-8">
+                  Create an account or sign in to save your cart and access it anywhere.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                  <Button asChild size="lg" className="px-8">
+                    <Link to="/sign-in">
+                      <LogIn className="h-5 w-5 mr-2" />
+                      Sign In
+                    </Link>
+                  </Button>
+                  <Button asChild variant="outline" size="lg" className="px-8">
+                    <Link to="/shop">
+                      <ShoppingBag className="h-5 w-5 mr-2" />
+                      Continue Shopping
+                    </Link>
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
+    }
+  }
+
   // Loading state - only show if we're actually waiting for server data
-  if (isLoading && !useLocalCart && localCart.length === 0) {
+  if (isLoading && isSignedIn && !useLocalCart && localCart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -273,7 +339,18 @@ const CartPage = () => {
             </h1>
             
             {/* Cart Status Indicator */}
-            {useLocalCart && (
+            {!isSignedIn && (
+              <div className="flex items-center space-x-2 mt-2">
+                <p className="text-sm text-amber-600">
+                  ⚠️ Guest cart (sign in to save permanently)
+                </p>
+                <Button asChild variant="outline" size="sm">
+                  <Link to="/sign-in">Sign In</Link>
+                </Button>
+              </div>
+            )}
+            
+            {useLocalCart && isSignedIn && (
               <div className="flex items-center space-x-2 mt-2">
                 <p className="text-sm text-amber-600">
                   ⚠️ Using local cart (server unavailable)
@@ -412,16 +489,35 @@ const CartPage = () => {
               </div>
 
               {/* Checkout Button */}
-              <Button 
-                asChild 
-                size="lg" 
-                className="w-full mt-6"
-                disabled={cart.length === 0}
-              >
-                <Link to="/checkout">
-                  Proceed to Checkout
-                </Link>
-              </Button>
+              {isSignedIn ? (
+                <Button 
+                  asChild 
+                  size="lg" 
+                  className="w-full mt-6"
+                  disabled={cart.length === 0}
+                >
+                  <Link to="/checkout">
+                    Proceed to Checkout
+                  </Link>
+                </Button>
+              ) : (
+                <div className="mt-6 space-y-3">
+                  <Button 
+                    asChild 
+                    size="lg" 
+                    className="w-full"
+                    disabled={cart.length === 0}
+                  >
+                    <Link to="/sign-in">
+                      <LogIn className="h-5 w-5 mr-2" />
+                      Sign In to Checkout
+                    </Link>
+                  </Button>
+                  <p className="text-xs text-center text-gray-500">
+                    Your cart will be saved after signing in
+                  </p>
+                </div>
+              )}
               
               <p className="text-xs text-gray-500 text-center mt-3">
                 All prices include any applicable taxes
