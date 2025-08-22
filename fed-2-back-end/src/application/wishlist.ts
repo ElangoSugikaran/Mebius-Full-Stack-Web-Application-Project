@@ -168,13 +168,17 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-// Get wishlist item count
+// 🔧 FIXED: Get wishlist item count - corrected version
 const getWishlistItemCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = getUserId(req);
+    console.log('📊 Getting wishlist item count...');
     
-    // Return 0 for non-authenticated users instead of throwing error
-    if (!userId) {
+    // Don't throw error for unauthenticated users, just return 0
+    let userId;
+    try {
+      userId = getUserId(req);
+    } catch (error) {
+      console.log('🔐 User not authenticated, returning count 0');
       return res.json({ 
         success: true,
         itemCount: 0 
@@ -182,7 +186,9 @@ const getWishlistItemCount = async (req: Request, res: Response, next: NextFunct
     }
 
     const wishlist = await Wishlist.findOne({ userId });
-    const itemCount = wishlist ? wishlist.totalItems : 0;
+    
+    // 🔧 FIX: Use items.length instead of totalItems property
+    const itemCount = wishlist ? wishlist.items.length : 0;
     
     console.log('📊 Wishlist item count:', itemCount);
     
@@ -196,11 +202,10 @@ const getWishlistItemCount = async (req: Request, res: Response, next: NextFunct
     res.json({ 
       success: false,
       itemCount: 0,
-      error: 'Failed to get cart count'
+      error: 'Failed to get wishlist count'
     });
   }
 };
-
 
 export {
   getWishlist,
