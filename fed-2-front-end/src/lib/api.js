@@ -180,9 +180,6 @@ export const Api = createApi({
       invalidatesTags: ['Order'],
     }),
 
-    
-    // 🔧 FIXED: Replace the updateOrderStatus mutation in your api.js file
-
     // Replace the existing updateOrderStatus mutation with this:
     updateOrderStatus: build.mutation({
       query: ({ orderId, status, orderStatus, id, isPaymentComplete = false, paymentStatus }) => {

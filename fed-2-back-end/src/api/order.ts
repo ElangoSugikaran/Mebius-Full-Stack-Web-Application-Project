@@ -53,5 +53,5 @@ orderRouter.route("/:id/cancel")
 // 🔧 IMPORTANT: This MUST be last because it catches any /:id
 orderRouter.route("/:id")
   .get(isAuthenticated, getOrder);          // GET /api/orders/:id - Get single order
-
+  
 export default orderRouter;
