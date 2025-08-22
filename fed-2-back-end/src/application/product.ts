@@ -30,7 +30,10 @@ const getAllProducts = async (req: Request, res: Response, next: NextFunction) =
 const getProductById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { id } = req.params;
-    const product = await Product.findById(id).populate('reviews');
+    const product = await Product.findById(id)
+      .populate('reviews')
+      .populate('categoryId', 'name'); // Add this line to populate category
+    
     if (!product) {
       throw new NotFoundError('Product not found');
     }
