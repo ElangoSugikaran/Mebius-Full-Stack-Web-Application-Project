@@ -184,35 +184,6 @@ const MyOrdersPage = () => {
     }
   };
 
-  // Order again functionality
-  const handleOrderAgain = async (order) => {
-    try {
-      if (!order?.items?.length) {
-        alert('No items found in this order');
-        return;
-      }
-
-      console.log('Order again clicked for order:', order._id);
-      
-      const cartItems = order.items
-        .filter(item => item.productId && item.quantity > 0)
-        .map(item => ({
-          productId: item.productId._id || item.productId,
-          quantity: item.quantity,
-          price: item.price
-        }));
-      
-      if (cartItems.length > 0) {
-        alert(`Would add ${cartItems.length} items to cart (implementation pending)`);
-      } else {
-        alert('No valid items found to add to cart');
-      }
-    } catch (error) {
-      console.error('Error processing order again:', error);
-      alert('Failed to add items to cart. Please try again.');
-    }
-  };
-
   // ENHANCED: Better empty state component for new customers
   const EmptyOrdersState = ({ selectedStatus }) => (
     <div className="min-h-[60vh] flex items-center justify-center">
@@ -568,17 +539,6 @@ const MyOrdersPage = () => {
                           View Details
                         </Button>
                       </Link>
-                      
-                      {order.orderStatus === 'FULFILLED' && (
-                        <Button 
-                          size="sm" 
-                          onClick={() => handleOrderAgain(order)}
-                          type="button"
-                          className="bg-green-600 hover:bg-green-700"
-                        >
-                          Order Again
-                        </Button>
-                      )}
                       
                       {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && 
                         order.orderStatus !== 'CANCELLED' && (

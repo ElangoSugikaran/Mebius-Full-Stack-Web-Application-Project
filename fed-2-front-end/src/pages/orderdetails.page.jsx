@@ -1,7 +1,7 @@
 // 🔍 Order Details Page - Detailed view of a specific order
 import React, { useEffect }  from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { useGetCustomerOrderByIdQuery, useCancelOrderMutation } from '@/lib/api'; // 🔧 FIXED: Use correct hook for single order
+import { useGetCustomerOrderByIdQuery, useCancelOrderMutation } from '@/lib/api'; 
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -28,7 +28,6 @@ const OrderDetailsPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // 🔄 Fetch SINGLE order using the correct hook
   const { 
     data, 
     isLoading, 
@@ -36,15 +35,12 @@ const OrderDetailsPage = () => {
     error,
     refetch,
     isFetching
-  } = useGetCustomerOrderByIdQuery(id); // 🔧 FIXED: Use correct hook
+  } = useGetCustomerOrderByIdQuery(id); 
 
-  // 🔧 ADD this inside your OrderDetailsPage component (after existing hooks)
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
 
-  // 🔧 FIXED: Extract order from response data
-  const order = data?.order || data; // Handle different response structures
+  const order = data?.order || data; 
 
-  // 🎨 Status styling helper (same as My Orders page)
   const getStatusConfig = (status) => {
     const configs = {
       'PENDING': { 
@@ -97,57 +93,8 @@ const OrderDetailsPage = () => {
     }
   };
 
-  // 🔄 Handle "Order Again" functionality
-  const handleOrderAgain = () => {
-    try {
-      // Clear existing cart (if you have a cart context/state)
-      // addToCart or replaceCart with all items from this order
-      
-      // Get all valid items from the order
-      const itemsToAdd = order.items?.filter(item => 
-        item.productId && (typeof item.productId === 'object' ? item.productId._id : item.productId)
-      ) || [];
-
-      if (itemsToAdd.length === 0) {
-        alert('No valid items found to re-order');
-        return;
-      }
-
-      // You can implement one of these approaches:
-      
-      // Option 1: Navigate to cart with items (if your app supports URL params for cart)
-      const cartParams = itemsToAdd.map(item => 
-        `${item.productId._id || item.productId}:${item.quantity}`
-      ).join(',');
-      navigate(`/cart?items=${cartParams}`);
-      
-      // Option 2: Navigate to shop and show success message
-      // navigate('/shop', { 
-      //   state: { 
-      //     message: `${itemsToAdd.length} items added to cart from previous order`,
-      //     orderItems: itemsToAdd 
-      //   }
-      // });
-
-      // Option 3: Add to cart context and navigate
-      // itemsToAdd.forEach(item => {
-      //   addToCart({
-      //     productId: item.productId._id || item.productId,
-      //     quantity: item.quantity,
-      //     price: item.price
-      //   });
-      // });
-      // navigate('/cart');
-
-    } catch (error) {
-      console.error('Error reordering items:', error);
-      alert('Unable to reorder items. Please try again.');
-    }
-  };
 
   // 🔧 ADD this function inside OrderDetailsPage component (after other handlers)
-  // This fixes the missing cancel order functionality
-
   const handleCancelOrder = async () => {
     // 🔧 Confirmation dialog
     const confirmCancel = window.confirm(
@@ -403,15 +350,9 @@ const OrderDetailsPage = () => {
                       <p>
                         {[
                           order.addressId.city,
-                          // order.addressId.state,
-                          // order.addressId.postalCode || order.addressId.zipCode
                         ].filter(Boolean).join(', ')}
                       </p>
                       
-                      {/* Country */}
-                      {/* {order.addressId.country && (
-                        <p className="font-medium">{order.addressId.country}</p>
-                      )} */}
                     </div>
                     
                     {/* Contact Information */}
@@ -528,23 +469,6 @@ const OrderDetailsPage = () => {
                       </>
                     )}
                   </Button>
-                )}
-
-                {/* Order Again Button - Enhanced with explanation */}
-                {order.orderStatus === 'FULFILLED' && (
-                  <div className="space-y-2">
-                    <Button 
-                      className="w-full" 
-                      onClick={handleOrderAgain}
-                      type="button"
-                    >
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Order Again
-                    </Button>
-                    <p className="text-xs text-gray-500 text-center">
-                      Add all items from this order to your cart
-                    </p>
-                  </div>
                 )}
                 
                 <Link to="/shop" className="block">
