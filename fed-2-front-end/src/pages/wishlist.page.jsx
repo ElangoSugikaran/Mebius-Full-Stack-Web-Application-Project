@@ -1,4 +1,6 @@
-import { useEffect, useState } from "react";
+// Fixed WishlistPage.jsx - Handle unauthenticated users properly
+import React, { useState } from 'react';
+import { Link } from 'react-router';
 import { useUser } from '@clerk/clerk-react';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
