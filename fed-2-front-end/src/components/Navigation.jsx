@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Menu, X, ShoppingBag, Search, User, Heart, Package } from "lucide-react";
-import { SignedIn, UserButton, SignedOut } from "@clerk/clerk-react";
+import { SignedIn, UserButton, SignedOut, useUser } from "@clerk/clerk-react";
 import ProductSearchForm from "./ProductSearchForm";
 import { useGetCartItemCountQuery, useGetWishlistItemCountQuery } from "@/lib/api";
 
@@ -87,45 +87,44 @@ export default function Navigation() {
               )}
             </Link>
 
-              
-            <UserButton 
-              afterSignOutUrl="/"
-              appearance={{
-                elements: {
-                  avatarBox: "w-8 h-8"
-                }
-              }}
-            >
-              {/* 🆕 ADD: Custom menu item for My Orders */}
-              <UserButton.MenuItems>
-                <UserButton.Link
-                  label="My Orders"
-                  labelIcon={<Package size={16} />}
-                  to="/orders"
-                />
-               
-              </UserButton.MenuItems>
-            </UserButton>
+            {/* User Authentication Section - Fixed */}
+            <SignedIn>
+              <UserButton 
+                afterSignOutUrl="/"
+                appearance={{
+                  elements: {
+                    avatarBox: "w-8 h-8"
+                  }
+                }}
+              >
+                {/* 🔧 FIX: Custom menu item for My Orders */}
+                <UserButton.MenuItems>
+                  <UserButton.Link
+                    label="My Orders"
+                    labelIcon={<Package size={16} />}
+                    to="/orders"
+                  />
+                </UserButton.MenuItems>
+              </UserButton>
+            </SignedIn>
             
             {/* Desktop Sign In/Up Links */}
-            <div className="hidden md:block">
-              <SignedOut>
-                <div className="flex items-center gap-4">
-                  <Link 
-                    to="/sign-in" 
-                    className="hover:text-gray-600 transition-colors duration-200"
-                  >
-                    Sign In
-                  </Link>
-                  <Link 
-                    to="/sign-up" 
-                    className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors duration-200"
-                  >
-                    Sign Up
-                  </Link>
-                </div>
-              </SignedOut>
-            </div>
+            <SignedOut>
+              <div className="hidden md:flex items-center gap-4">
+                <Link 
+                  to="/sign-in" 
+                  className="hover:text-gray-600 transition-colors duration-200"
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  to="/sign-up" 
+                  className="bg-black text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors duration-200"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            </SignedOut>
 
             {/* Mobile menu button */}
             <button
