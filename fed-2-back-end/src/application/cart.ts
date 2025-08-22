@@ -10,14 +10,6 @@ import { Request, Response, NextFunction } from "express";
 import { addToCartDTO, updateCartItemDTO } from '../domain/dto/cart';
 import { getAuth } from "@clerk/express";
 
-// Helper function to get authenticated user ID
-// const getUserId = (req: Request): string => {
-//   const { userId } = getAuth(req);
-//   if (!userId) {
-//     throw new UnauthorizedError('User not authenticated');
-//   }
-//   return userId;
-// };
 
 // 🔧 FIXED: Replace the existing getUserId function with this
 const getUserId = (req: Request): string => {
