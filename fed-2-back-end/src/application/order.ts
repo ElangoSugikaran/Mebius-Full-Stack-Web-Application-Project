@@ -143,6 +143,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 // ========== GET USER'S ORDERS ==========
+// 🔧 FIXED: Get User's Orders - Only return orders for authenticated user
 const getUserOrders = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const { userId } = getAuth(req);
@@ -150,20 +151,20 @@ const getUserOrders = async (req: Request, res: Response, next: NextFunction) =>
     if (!userId) {
       throw new UnauthorizedError("Authentication required");
     }
-  
-    const orders = await Order.find()
+
+    console.log(`🔍 Fetching orders for user: ${userId}`);
+
+    // 🔧 CRITICAL FIX: Filter orders by userId
+    const orders = await Order.find({ userId: userId })  // ✅ Only get THIS user's orders
       .populate({
         path: "items.productId",
         model: "Product", 
         select: "name price discount image description"
       })
       .populate("addressId")
-      .populate({
-        path: "customerId",
-        model: "Customer",
-        select: "firstName lastName email imageUrl isActive"
-      }) // 🔧 ADD: Populate customer info
       .sort({ createdAt: -1 });
+    
+    console.log(`📊 Found ${orders.length} orders for user ${userId}`);
     
     res.status(200).json({
       success: true,
