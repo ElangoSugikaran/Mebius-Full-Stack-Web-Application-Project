@@ -134,7 +134,7 @@ const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
   if (!isVisible) return null;
 
   return (
-  <div className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
+ <div className="fixed inset-0 bg-white/20 backdrop-blur-md flex items-center justify-center z-50 p-4">
     <Card className="w-full max-w-lg max-h-[90vh] overflow-y-auto shadow-2xl border-0">
       <CardHeader className="bg-white">
         <div className="flex items-center justify-between">

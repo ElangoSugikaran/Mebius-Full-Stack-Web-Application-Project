@@ -467,22 +467,6 @@ const ShopProductDetailPage = () => {
                 )}
               </Button>
             </div>
-
-            {/* Product Features */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-gray-200">
-              <div className="flex items-center gap-3">
-                <Truck className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">Free Shipping</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <RotateCcw className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">30-Day Returns</span>
-              </div>
-              <div className="flex items-center gap-3">
-                <Shield className="h-5 w-5 text-gray-600" />
-                <span className="text-sm text-gray-600">2-Year Warranty</span>
-              </div>
-            </div>
           </div>
         </div>
 
