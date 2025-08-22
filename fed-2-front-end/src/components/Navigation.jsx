@@ -102,7 +102,7 @@ export default function Navigation() {
                   <UserButton.Link
                     label="My Orders"
                     labelIcon={<Package size={16} />}
-                    to="/orders"
+                    href="/orders"
                   />
                 </UserButton.MenuItems>
               </UserButton>
