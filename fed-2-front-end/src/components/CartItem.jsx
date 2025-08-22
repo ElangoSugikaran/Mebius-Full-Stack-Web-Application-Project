@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Minus, Plus, Trash2, Heart } from "lucide-react";
 import { useState, useEffect } from "react";
-
+import { toast } from 'react-toastify';
+import { useAddToWishlistMutation } from "@/lib/api";
 
 // 🔧 FIXED: Better data extraction and error handling
 function CartItem({ 
@@ -17,6 +18,8 @@ function CartItem({
 }) {
   const [quantity, setQuantity] = useState(item?.quantity || 1);
   const [isLocalUpdating, setIsLocalUpdating] = useState(false);
+  
+  const [addToWishlist, { isLoading: isAddingToWishlist }] = useAddToWishlistMutation();
 
 // Sync quantity with prop changes
   useEffect(() => {
@@ -92,24 +95,55 @@ function CartItem({
   };
 
   // 🔧 CRITICAL FIX: Better removal with proper variant support
-  const handleRemove = async () => {
-    if (!productId) {
-      console.error('Cannot remove item: missing product ID');
-      return;
-    }
+const handleRemove = async () => {
+  if (!productId) {
+    console.error('Cannot remove item: missing product ID');
+    return;
+  }
 
-    try {
-      if (onRemoveItem) {
-        await onRemoveItem(
-          productId,
-          item?.size,
-          item?.color
-        );
-      }
-    } catch (error) {
-      console.error('Error removing item:', error);
+  try {
+    if (onRemoveItem) {
+      await onRemoveItem(
+        productId,
+        item?.size,
+        item?.color
+      );
+      
+      toast.success('Item removed from cart', {
+        position: "top-right",
+        autoClose: 2000,
+      });
     }
-  };
+  } catch (error) {
+    console.error('Error removing item:', error);
+    toast.error('Failed to remove item from cart', {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  }
+};
+
+// Add this new function for saving to wishlist
+const handleSaveToWishlist = async () => {
+  if (!productId) {
+    console.error('Cannot save to wishlist: missing product ID');
+    return;
+  }
+
+  try {
+    await addToWishlist(productId).unwrap();
+    toast.success('Item saved to wishlist', {
+      position: "top-right",
+      autoClose: 2000,
+    });
+  } catch (error) {
+    console.error('Error saving to wishlist:', error);
+    toast.error('Failed to save to wishlist', {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  }
+};
 
   // Handle image load errors
   const handleImageError = (e) => {
@@ -318,10 +352,11 @@ function CartItem({
                 variant="ghost"
                 size="sm"
                 className="text-gray-500 hover:text-pink-600 hover:bg-pink-50"
-                disabled={isOperationInProgress}
+                disabled={isOperationInProgress || isAddingToWishlist}
+                onClick={handleSaveToWishlist}
               >
                 <Heart className="h-4 w-4 mr-1" />
-                Save
+                {isAddingToWishlist ? "Saving..." : "Save"}
               </Button>
             </div>
           </div>
