@@ -1,5 +1,5 @@
 import React, { useMemo } from "react";
-import { useGetAllCustomersQuery } from "@/lib/api";
+// import { useGetAllCustomersQuery } from "@/lib/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -8,7 +8,7 @@ import { Users, UserCheck, UserX, Calendar, Mail } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 
 const CustomerManagementPage = () => {
-  const { data: customersData, isLoading, error } = useGetAllCustomersQuery();
+  // const { data: customersData, isLoading, error } = useGetAllCustomersQuery();
   
   // Memoized calculations for charts
   const chartData = useMemo(() => {
