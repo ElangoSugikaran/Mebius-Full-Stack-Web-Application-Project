@@ -1,42 +1,52 @@
 import mongoose from 'mongoose';
 
-// Simplified Settings schema - removed Stripe keys, simplified tax
 const settingsSchema = new mongoose.Schema({
-  // Store Settings
+  _id: {
+    type: String,
+    default: 'store_settings' // Singleton pattern
+  },
   store: {
     name: {
       type: String,
       required: true,
-      trim: true
+      trim: true,
+      default: 'Mebius'
     },
     description: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     email: {
       type: String,
       trim: true,
-      lowercase: true
+      lowercase: true,
+      default: ''
     },
     phone: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     address: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     city: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     state: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     zipCode: {
       type: String,
-      trim: true
+      trim: true,
+      default: ''
     },
     openTime: {
       type: String,
@@ -51,29 +61,23 @@ const settingsSchema = new mongoose.Schema({
       default: true
     },
     logo: {
-      type: String // URL to logo image
+      type: String,
+      default: ''
     }
   },
-
-  // Simplified Payment Settings
   payment: {
-    // Stripe Configuration - Just enable/disable
     stripe: {
       enabled: {
         type: Boolean,
         default: true
       }
     },
-
-    // Cash on Delivery Configuration
     cashOnDelivery: {
       enabled: {
         type: Boolean,
         default: true
       }
     },
-
-    // Currency Settings
     currency: {
       code: {
         type: String,
@@ -85,13 +89,11 @@ const settingsSchema = new mongoose.Schema({
         default: '$'
       }
     }
-
-    // Tax settings removed - keeping it simple for now
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  _id: false // Disable auto _id since we're setting it manually
 });
 
 const Settings = mongoose.model('Settings', settingsSchema);
-
 export default Settings;

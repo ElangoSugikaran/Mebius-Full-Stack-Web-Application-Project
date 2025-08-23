@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from 'react';
 import { Save, CreditCard, DollarSign, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { useGetSettingsQuery, useUpdatePaymentSettingsMutation } from '@/lib/api';
+import { useGetPaymentSettingsQuery, useUpdatePaymentSettingsMutation } from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -41,7 +41,7 @@ const paymentSettingsSchema = z.object({
 });
 
 const PaymentSettingsPage = () => {
-  const { data: settings, isLoading, error } = useGetSettingsQuery();
+  const { data: paymentSettings, isLoading, error } = useGetPaymentSettingsQuery();
   const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
 
   // FORM SETUP
@@ -61,11 +61,11 @@ const PaymentSettingsPage = () => {
     }
   });
 
-  useEffect(() => {
-    if (settings?.payment) {
-      form.reset(settings.payment);
-    }
-  }, [settings, form]);
+ useEffect(() => {
+  if (paymentSettings) {
+    form.reset(paymentSettings);
+  }
+}, [paymentSettings, form]);
 
   const onSubmit = async (values) => {
     try {

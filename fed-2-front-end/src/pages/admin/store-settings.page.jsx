@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from 'react';
 import { Save, Store, Phone, Mail, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
-import { useUpdateStoreSettingsMutation, useGetSettingsQuery } from '@/lib/api';
+import { useUpdateStoreSettingsMutation, useGetStoreSettingsQuery } from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -58,7 +58,7 @@ const storeSettingsSchema = z.object({
 });
 
 const StoreSettingsPage = () => {
-  const { data: settings, isLoading, error } = useGetSettingsQuery();
+  const { data: storeSettings, isLoading, error } = useGetStoreSettingsQuery();
   const [updateStoreSettings] = useUpdateStoreSettingsMutation();
 
   // FORM SETUP
@@ -79,24 +79,23 @@ const StoreSettingsPage = () => {
     }
   });
 
-  useEffect(() => {
-    if (settings?.store) {
-      // FIXED: Handle undefined values properly
-      form.reset({
-        name: settings.store.name || '',
-        description: settings.store.description || '',
-        email: settings.store.email || '',
-        phone: settings.store.phone || '',
-        address: settings.store.address || '',
-        city: settings.store.city || '',
-        state: settings.store.state || '',
-        zipCode: settings.store.zipCode || '',
-        openTime: settings.store.openTime || '09:00',
-        closeTime: settings.store.closeTime || '18:00',
-        isOpen: settings.store.isOpen !== undefined ? settings.store.isOpen : true
-      });
-    }
-  }, [settings, form]);
+ useEffect(() => {
+  if (storeSettings) {
+    form.reset({
+      name: storeSettings.name || '',
+      description: storeSettings.description || '',
+      email: storeSettings.email || '',
+      phone: storeSettings.phone || '', 
+      address: storeSettings.address || '',
+      city: storeSettings.city || '',
+      state: storeSettings.state || '',
+      zipCode: storeSettings.zipCode || '',
+      openTime: storeSettings.openTime || '09:00',
+      closeTime: storeSettings.closeTime || '18:00',
+      isOpen: storeSettings.isOpen !== undefined ? storeSettings.isOpen : true
+    });
+  }
+}, [storeSettings, form]);
 
   const onSubmit = async (values) => {
     try {

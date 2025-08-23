@@ -646,74 +646,43 @@ export const Api = createApi({
     }),
 
     // 🔧 SETTINGS ENDPOINTS
-   getSettings: build.query({
-    query: () => '/settings',
-    providesTags: ['Settings'],
-    transformResponse: (response) => {
-      console.log('Raw settings response:', response);
-      // Handle multiple response formats
-      if (response.data) {
-        return response.data; // Backend returns { data: settings }
-      }
-      return response; // Backend returns settings directly
-    },
-    transformErrorResponse: (response) => {
-      console.error('Settings fetch error:', response);
-      return {
-        status: response?.status || 500,
-        message: response?.data?.message || 'Failed to fetch settings'
-      };
-    },
-  }),
-
-    updateStoreSettings: build.mutation({
-      query: (storeData) => {
-        console.log('🔄 Updating store settings:', storeData);
-        return {
-          url: '/settings/store',
-          method: 'PUT',
-          body: { store: storeData },
-        };
-      },
-      invalidatesTags: ['Settings'],
+   // Keep only these settings endpoints:
+    getStoreSettings: build.query({
+      query: () => '/settings/store',
+      providesTags: ['Settings'],
       transformResponse: (response) => {
-        console.log('✅ Store settings updated:', response);
-        return response.data || response;
-      },
-      async onQueryStarted(storeData, { dispatch, queryFulfilled }) {
-        try {
-          await queryFulfilled;
-          console.log('✅ Store settings saved successfully');
-        } catch (error) {
-          console.error('❌ Failed to save store settings:', error);
-          throw error;
-        }
+        console.log('Store settings response:', response);
+        return response.data?.store || response.store || response;
       },
     }),
 
+    getPaymentSettings: build.query({
+      query: () => '/settings/payment', 
+      providesTags: ['Settings'],
+      transformResponse: (response) => {
+        console.log('Payment settings response:', response);
+        return response.data?.payment || response.payment || response;
+      },
+    }),
+
+    // Keep existing mutations
+    updateStoreSettings: build.mutation({
+      query: (storeData) => ({
+        url: '/settings/store',
+        method: 'PUT',
+        body: { store: storeData },
+      }),
+      invalidatesTags: ['Settings'],
+    }),
+
     updatePaymentSettings: build.mutation({
-    query: (paymentData) => {
-      console.log('🔄 Updating payment settings:', paymentData);
-      return {
-        url: '/settings/payment',
+      query: (paymentData) => ({
+        url: '/settings/payment', 
         method: 'PUT',
         body: { payment: paymentData },
-      };
-    },
-    invalidatesTags: ['Settings'],
-    transformResponse: (response) => {
-      console.log('✅ Payment settings updated:', response);
-      return response.data || response;
-    },
-    transformErrorResponse: (response) => {
-      console.error('❌ Payment settings update failed:', response);
-      return {
-        status: response?.status,
-        message: response?.data?.message || 'Failed to update payment settings'
-      };
-    },
-  }),
-
+      }),
+      invalidatesTags: ['Settings'],
+}),
   }),
 });
 
@@ -777,7 +746,8 @@ export const {
   useGetCustomerByIdQuery,
 
   // Settings hooks
-  useGetSettingsQuery,
+  useGetStoreSettingsQuery,
+  useGetPaymentSettingsQuery,  
   useUpdateStoreSettingsMutation,
   useUpdatePaymentSettingsMutation,
 
