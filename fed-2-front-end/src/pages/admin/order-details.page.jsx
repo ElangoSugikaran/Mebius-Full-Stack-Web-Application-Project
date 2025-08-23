@@ -380,7 +380,7 @@ const OrderDetailPage = () => {
             <p className="text-gray-600 mb-4">
               The order you're looking for doesn't exist or may have been deleted.
             </p>
-            <Link to="/admin/orders">
+            <Link to="/admin/admin-orders">
               <Button>Back to Orders</Button>
             </Link>
           </div>
@@ -415,7 +415,7 @@ const OrderDetailPage = () => {
             <p className="text-yellow-700 mb-4">
               This order doesn't contain any items.
             </p>
-            <Link to="/admin/orders">
+            <Link to="/admin/admin-orders">
               <Button>Back to Orders</Button>
             </Link>
           </div>
