@@ -44,7 +44,7 @@ const AdminDashboardLayout = () => {
     { name: 'Sales', href: '/admin/sales', icon: BarChart3 },
     { name: 'Categories', href: '/admin/categories', icon: FolderOpen },
     { name: 'Products', href: '/admin/products', icon: Package },
-    { name: 'Orders', href: '/admin/orders', icon: ShoppingCart },
+    { name: 'Orders', href: '/admin/admin-orders', icon: ShoppingCart },
     { name: 'Customers', href: '/admin/customers', icon: Users },
   ];
 
