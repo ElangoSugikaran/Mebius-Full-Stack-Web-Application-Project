@@ -198,56 +198,6 @@ const AdminDashboardLayout = () => {
                 </Link>
               );
             })}
-
-            {/* Settings with Submenu */}
-            <div className="mb-1">
-              <button
-                onClick={toggleSettingsDropdown}
-                className={`
-                  w-full flex items-center justify-between px-3 py-2 rounded-md text-sm font-medium transition-colors
-                  ${isSettingsRoute 
-                    ? 'bg-blue-100 text-blue-700' 
-                    : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
-                  }
-                `}
-              >
-                <div className="flex items-center">
-                  <Settings className="mr-3 h-5 w-5" />
-                  Settings
-                </div>
-                <ChevronDown 
-                  className={`h-4 w-4 transition-transform ${
-                    settingsDropdownOpen ? 'rotate-180' : ''
-                  }`} 
-                />
-              </button>
-
-              {settingsDropdownOpen && (
-                <div className="ml-6 mt-1 space-y-1">
-                  {settingsNavigation.map((item) => {
-                    const isActive = location.pathname === item.href;
-                    
-                    return (
-                      <Link
-                        key={item.name}
-                        to={item.href}
-                        onClick={toggleMobileMenu}
-                        className={`
-                          flex items-center px-3 py-2 rounded-md text-xs font-medium transition-colors
-                          ${isActive 
-                            ? 'bg-blue-50 text-blue-600 border-l-2 border-blue-600' 
-                            : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
-                          }
-                        `}
-                      >
-                        <item.icon className="mr-2 h-4 w-4" />
-                        {item.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
           </nav>
         </div>
       </div>
