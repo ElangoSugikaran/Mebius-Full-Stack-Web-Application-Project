@@ -67,8 +67,8 @@ const PaymentSettingsPage = () => {
         symbol: '$'
       },
       tax: {
-        enabled: true,
-        rate: 8.5,
+        enabled: false,
+        rate: 0,
         name: 'Sales Tax'
       }
     }
