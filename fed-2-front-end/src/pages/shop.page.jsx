@@ -45,16 +45,26 @@ const Shop = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(12);
+
   // CHANGED: Use filtered products query with dynamic parameters
   const { 
-    data: products = [], 
-    isLoading: productsLoading, 
-    error: productsError 
+  data: paginationData, 
+  isLoading: productsLoading, 
+  error: productsError 
   } = useGetFilteredProductsQuery({
     ...filters,
     sortBy,
-    sortOrder: getSortOrder(sortBy) // Helper function to determine sort order
+    sortOrder: getSortOrder(sortBy),
+    page: currentPage,
+    limit: itemsPerPage
   });
+
+  // Extract products and pagination info
+  const products = paginationData?.products || [];
+  const totalProducts = paginationData?.total || 0;
+  const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
   // Helper function to determine sort order
   function getSortOrder(sortType) {
@@ -97,20 +107,22 @@ const Shop = () => {
         categories: []
       }));
     }
+    // ADD THIS LINE:
+    setCurrentPage(1); // Reset to first page when category changes
   }, [currentCategory, category]);
 
   // REMOVED: Frontend filtering and sorting logic - now handled by backend
 
   // Handle filter changes from FilterSidebar
   const handleFiltersChange = (newFilters) => {
-    setFilters(newFilters);
-    // RTK Query will automatically refetch with new filters
+  setFilters(newFilters);
+  setCurrentPage(1); // ADD THIS LINE - Reset to first page
   };
 
   // CHANGED: Handle sort changes to trigger backend sorting  
   const handleSortChange = (newSortBy) => {
-    setSortBy(newSortBy);
-    // RTK Query will automatically refetch with new sort
+  setSortBy(newSortBy);
+  setCurrentPage(1); // ADD THIS LINE - Reset to first page
   };
 
   // Count active filters for display
@@ -258,7 +270,8 @@ const Shop = () => {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => setFilters({
+                          onClick={() => {
+                          setFilters({
                             categories: currentCategory ? [currentCategory._id] : [],
                             brands: [],
                             priceRange: [0, 1000],
@@ -267,7 +280,9 @@ const Shop = () => {
                             gender: [],
                             inStock: false,
                             onSale: false,
-                          })}
+                          });
+                          setCurrentPage(1); // ADD THIS LINE
+                        }}
                           className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 h-auto font-medium"
                         >
                           Clear other filters
@@ -336,8 +351,13 @@ const Shop = () => {
                     {products.length}
                   </span>
                   <span className="text-gray-600 ml-1">
-                    {products.length === 1 ? 'product' : 'products'}
+                    of {totalProducts} {totalProducts === 1 ? 'product' : 'products'}
                   </span>
+                  {totalPages > 1 && (
+                    <span className="text-gray-500 ml-2">
+                      (Page {currentPage} of {totalPages})
+                    </span>
+                  )}
                 </div>
 
                 {/* Active Filter Tags */}
@@ -393,7 +413,7 @@ const Shop = () => {
 
           {/* Products Grid */}
           <div className="p-4 lg:p-6">
-            {products.length === 0 ? ( // CHANGED: Use products directly
+            {products.length === 0 ? (
               <div className="text-center py-16">
                 <div className="max-w-md mx-auto">
                   <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -409,16 +429,19 @@ const Shop = () => {
                     {getActiveFiltersCount() > 0 && (
                       <Button 
                         variant="default"
-                        onClick={() => setFilters({
-                          categories: currentCategory ? [currentCategory._id] : [],
-                          brands: [],
-                          priceRange: [0, 1000],
-                          sizes: [],
-                          colors: [],
-                          gender: [],
-                          inStock: false,
-                          onSale: false,
-                        })}
+                        onClick={() => {
+                          setFilters({
+                            categories: currentCategory ? [currentCategory._id] : [],
+                            brands: [],
+                            priceRange: [0, 1000],
+                            sizes: [],
+                            colors: [],
+                            gender: [],
+                            inStock: false,
+                            onSale: false,
+                          });
+                          setCurrentPage(1); // ADD THIS LINE
+                        }}
                         className="mx-auto"
                       >
                         Clear Other Filters
@@ -428,20 +451,72 @@ const Shop = () => {
                 </div>
               </div>
             ) : (
-              <div className={`
-                ${viewMode === 'grid' 
-                  ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' 
-                  : 'space-y-4'
-                }
-              `}>
-                {products.map((product) => ( // CHANGED: Use products directly
-                  <ProductCard 
-                    key={product._id} 
-                    product={product} 
-                    viewMode={viewMode}
-                  />
-                ))}
-              </div>
+              <>
+                <div className={`
+                  ${viewMode === 'grid' 
+                    ? 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6' 
+                    : 'space-y-4'
+                  }
+                `}>
+                  {products.map((product) => (
+                    <ProductCard 
+                      key={product._id} 
+                      product={product} 
+                      viewMode={viewMode}
+                    />
+                  ))}
+                </div>
+
+                {/* PAGINATION CONTROLS */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center mt-8 space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    
+                    <div className="flex items-center space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setCurrentPage(pageNum)}
+                            className="w-8 h-8 p-0"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
