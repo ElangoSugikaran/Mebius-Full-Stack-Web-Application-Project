@@ -14,7 +14,7 @@ import {
   getProductsForSearchQuery,
   getFilterOptions,        // NEW
   getFilteredProducts,     // NEW
-  getFeaturedProducts,
+  getFeaturedProducts
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
 import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
@@ -30,16 +30,16 @@ productRouter
   .post( isAuthenticated, isAdmin, createProduct );
 
   // Search endpoint - MUST come before /:id route
-productRouter.get("/search", getProductsForSearchQuery);
+  productRouter.get("/search", getProductsForSearchQuery);
 
-// NEW: Get available filter options
-productRouter.get("/filter-options", getFilterOptions);
+  // NEW: Get available filter options
+  productRouter.get("/filter-options", getFilterOptions);
 
-// NEW: Get filtered products
-productRouter.get("/filtered", getFilteredProducts);
+  // NEW: Get filtered products
+  productRouter.get("/filtered", getFilteredProducts);
 
-// NEW: Get featured products
-productRouter.get("/featured", getFeaturedProducts);
+  // NEW: Get featured products - MUST come before /:id route
+  productRouter.get("/featured", getFeaturedProducts);
 
 productRouter
   // Define a route for individual product operations

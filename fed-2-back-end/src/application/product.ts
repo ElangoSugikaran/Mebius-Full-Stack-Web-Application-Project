@@ -589,7 +589,11 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
 
     console.log(`✅ Found ${transformedProducts.length} featured products`);
 
-   res.json(transformedProducts);
+   res.status(200).json({
+    success: true,
+    data: transformedProducts,
+    count: transformedProducts.length
+  });
 
   } catch (error) {
     console.error('❌ Error fetching featured products:', error);
