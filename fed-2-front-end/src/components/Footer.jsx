@@ -1,6 +1,4 @@
-// components/Footer.jsx - Modern footer with all essential links
-import { Link } from "react-router";
-import { Button } from "@/components/ui/button";
+import { Link } from "react-router-dom";
 import { 
   Facebook, 
   Instagram, 
@@ -20,7 +18,7 @@ function Footer() {
     <footer className="bg-gray-900 text-white">
       {/* 🎯 MAIN FOOTER CONTENT */}
       <div className="px-4 lg:px-16 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 lg:gap-12">
           
           {/* 🏢 COMPANY INFO SECTION */}
           <div className="space-y-6">
@@ -128,49 +126,6 @@ function Footer() {
             </nav>
           </div>
           
-          {/* ℹ️ CUSTOMER SERVICE SECTION */}
-          <div>
-            <h4 className="font-semibold mb-6 text-white">Customer Service</h4>
-            <nav className="space-y-3">
-              <Link 
-                to="/contact" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                Contact Us
-              </Link>
-              <Link 
-                to="/faq" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                FAQ
-              </Link>
-              <Link 
-                to="/shipping" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                Shipping Info
-              </Link>
-              <Link 
-                to="/returns" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                Returns & Exchanges
-              </Link>
-              <Link 
-                to="/size-guide" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                Size Guide
-              </Link>
-              <Link 
-                to="/track-order" 
-                className="block text-gray-300 hover:text-white hover:translate-x-1 transition-all duration-200"
-              >
-                Track Your Order
-              </Link>
-            </nav>
-          </div>
-          
           {/* 📞 CONTACT INFO SECTION */}
           <div>
             <h4 className="font-semibold mb-6 text-white">Get in Touch</h4>
@@ -215,24 +170,6 @@ function Footer() {
                     United States
                   </address>
                 </div>
-              </div>
-            </div>
-            
-            {/* 📰 Newsletter Signup */}
-            <div className="mt-8">
-              <h5 className="font-medium mb-3 text-white">Newsletter</h5>
-              <p className="text-gray-300 text-sm mb-4">
-                Get style tips and exclusive offers
-              </p>
-              <div className="flex gap-2">
-                <input 
-                  type="email" 
-                  placeholder="Your email"
-                  className="flex-1 px-3 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none text-sm"
-                />
-                <Button size="sm" className="px-4">
-                  Join
-                </Button>
               </div>
             </div>
           </div>
@@ -288,52 +225,19 @@ function Footer() {
               © {new Date().getFullYear()} Mebius. All rights reserved.
             </div>
             
-            {/* 🏛️ Legal Links */}
-            <div className="flex flex-wrap items-center gap-6 text-sm">
-              <Link 
-                to="/privacy" 
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Privacy Policy
-              </Link>
-              <Link 
-                to="/terms" 
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Terms of Service
-              </Link>
-              <Link 
-                to="/cookies" 
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Cookie Policy
-              </Link>
-              <Link 
-                to="/accessibility" 
-                className="text-gray-400 hover:text-white transition-colors"
-              >
-                Accessibility
-              </Link>
-            </div>
-            
             {/* 💳 Payment Methods */}
-            <div className="flex items-center gap-2">
-              <span className="text-gray-400 text-sm mr-2">We Accept:</span>
-              <div className="flex gap-1">
-                <div className="w-8 h-5 bg-gray-700 rounded flex items-center justify-center">
-                  <CreditCard className="w-3 h-3 text-gray-300" />
+            <div className="flex items-center gap-3">
+              <span className="text-gray-400 text-sm mr-2">Payment Options:</span>
+              <div className="flex gap-3">
+                {/* Stripe Online Payment */}
+                <div className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full">
+                  <CreditCard className="w-4 h-4 text-blue-400" />
+                  <span className="text-white text-sm font-medium">Stripe</span>
                 </div>
-                <div className="w-8 h-5 bg-blue-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">V</span>
-                </div>
-                <div className="w-8 h-5 bg-red-600 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">M</span>
-                </div>
-                <div className="w-8 h-5 bg-blue-800 rounded flex items-center justify-center">
-                  <span className="text-white text-xs font-bold">A</span>
-                </div>
-                <div className="w-8 h-5 bg-yellow-500 rounded flex items-center justify-center">
-                  <span className="text-black text-xs font-bold">P</span>
+                {/* Cash on Delivery */}
+                <div className="flex items-center gap-2 px-3 py-1 bg-gray-800 rounded-full">
+                  <span className="text-green-400 text-sm font-bold">₹</span>
+                  <span className="text-white text-sm font-medium">COD</span>
                 </div>
               </div>
             </div>
