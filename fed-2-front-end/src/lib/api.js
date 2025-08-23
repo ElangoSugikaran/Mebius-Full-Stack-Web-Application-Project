@@ -632,34 +632,6 @@ export const Api = createApi({
       },
     }),
 
-    // 🔧 CUSTOMER ENDPOINTS
-    syncCurrentUser: build.mutation({
-      query: () => ({
-        url: '/customers/sync',
-        method: 'POST',
-      }),
-    }),
-    getAllCustomers: build.query({
-      query: () => '/customers/admin/all',
-      providesTags: ['Customer'],
-    }),
-    getCustomerById: build.query({
-      query: (customerId) => `/customers/admin/${customerId}`,
-      providesTags: (result, error, customerId) => [{ type: 'Customer', id: customerId }],
-      transformResponse: (response) => {
-        console.log('✅ Customer fetched:', response);
-        return response.data || response;
-      },
-    }),
-    getCustomerByClerkId: build.query({
-      query: (clerkId) => `/customers/admin/clerk/${clerkId}`,
-      providesTags: (result, error, clerkId) => [{ type: 'Customer', id: clerkId }],
-      transformResponse: (response) => {
-        console.log('✅ Customer fetched by Clerk ID:', response);
-        return response.data || response.customer || response;
-      },
-    }),
-
     // 🔧 SETTINGS ENDPOINTS
 
   }),
@@ -719,11 +691,6 @@ export const {
   useClearWishlistMutation,
   useGetWishlistItemCountQuery,
 
-  // Customer hooks
-  useGetCustomerByClerkIdQuery,
-  useSyncCurrentUserMutation,
-  useGetAllCustomersQuery,
-  useGetCustomerByIdQuery,
 
   // Settings hooks
 
