@@ -2,7 +2,7 @@ import { useForm } from "react-hook-form";
 import z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from 'react';
-import { Save, CreditCard, DollarSign, Percent, Truck } from 'lucide-react';
+import { Save, CreditCard, DollarSign, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useGetSettingsQuery, useUpdatePaymentSettingsMutation } from '@/lib/api';
 import { Button } from "@/components/ui/button";
@@ -26,25 +26,18 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// VALIDATION SCHEMA
+// SIMPLIFIED VALIDATION SCHEMA - Removed tax settings
 const paymentSettingsSchema = z.object({
   stripe: z.object({
-    enabled: z.boolean().default(true),
-    publicKey: z.string().optional(),
-    secretKey: z.string().optional(),
+    enabled: z.boolean().default(true)
   }),
   cashOnDelivery: z.object({
-    enabled: z.boolean().default(true),
+    enabled: z.boolean().default(true)
   }),
   currency: z.object({
     code: z.string().min(3, "Currency code is required"),
-    symbol: z.string().min(1, "Currency symbol is required"),
-  }),
-  tax: z.object({
-    enabled: z.boolean().default(true),
-    rate: z.number().min(0, "Tax rate cannot be negative").max(50, "Tax rate cannot exceed 50%"),
-    name: z.string().min(1, "Tax name is required"),
-  }),
+    symbol: z.string().min(1, "Currency symbol is required")
+  })
 });
 
 const PaymentSettingsPage = () => {
@@ -56,9 +49,7 @@ const PaymentSettingsPage = () => {
     resolver: zodResolver(paymentSettingsSchema),
     defaultValues: {
       stripe: {
-        enabled: true,
-        publicKey: '',
-        secretKey: ''
+        enabled: true
       },
       cashOnDelivery: {
         enabled: true
@@ -66,11 +57,6 @@ const PaymentSettingsPage = () => {
       currency: {
         code: 'USD',
         symbol: '$'
-      },
-      tax: {
-        enabled: false,
-        rate: 0,
-        name: 'Sales Tax'
       }
     }
   });
@@ -84,10 +70,10 @@ const PaymentSettingsPage = () => {
   const onSubmit = async (values) => {
     try {
       await updatePaymentSettings(values).unwrap();
-      toast.success('✅ Payment Settings Saved Successfully!');
+      toast.success('Payment Settings Saved Successfully!');
     } catch (error) {
       console.error('Failed to save payment settings:', error);
-      toast.error('❌ Failed to Save Payment Settings\nPlease try again.');
+      toast.error('Failed to Save Payment Settings\nPlease try again.');
     }
   };
 
@@ -152,25 +138,25 @@ const PaymentSettingsPage = () => {
                   Payment Methods
                 </CardTitle>
                 <CardDescription>
-                  Configure how customers can pay for orders
+                  Choose how customers can pay for orders
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
                 
-                {/* Stripe Settings */}
+                {/* Stripe Settings - Simplified */}
                 <div className="border rounded-lg p-4">
                   <FormField
                     control={form.control}
                     name="stripe.enabled"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between mb-4">
+                      <FormItem className="flex flex-row items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-purple-100 rounded-lg flex items-center justify-center">
                             <CreditCard className="h-5 w-5 text-purple-600" />
                           </div>
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base font-medium">Stripe</FormLabel>
-                            <FormDescription>Accept credit/debit cards</FormDescription>
+                            <FormLabel className="text-base font-medium">Stripe Payment</FormLabel>
+                            <FormDescription>Accept credit/debit cards online</FormDescription>
                           </div>
                         </div>
                         <FormControl>
@@ -184,40 +170,11 @@ const PaymentSettingsPage = () => {
                   />
                   
                   {form.watch("stripe.enabled") && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="stripe.publicKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Stripe Public Key</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="pk_live_..." 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="stripe.secretKey"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Stripe Secret Key</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password"
-                                placeholder="sk_live_..." 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                    <div className="mt-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> Stripe is enabled for secure online payments. 
+                        Contact your developer to configure Stripe keys.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -228,7 +185,7 @@ const PaymentSettingsPage = () => {
                     control={form.control}
                     name="cashOnDelivery.enabled"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-center justify-between mb-4">
+                      <FormItem className="flex flex-row items-center justify-between">
                         <div className="flex items-center space-x-3">
                           <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
                             <Truck className="h-5 w-5 text-green-600" />
@@ -249,10 +206,10 @@ const PaymentSettingsPage = () => {
                   />
                   
                   {form.watch("cashOnDelivery.enabled") && (
-                    <div className="p-3 bg-green-50 rounded-lg border border-green-200">
+                    <div className="mt-4 p-3 bg-green-50 rounded-lg border border-green-200">
                       <p className="text-sm text-green-800">
                         <strong>Note:</strong> Cash on Delivery allows customers to pay when they receive their order. 
-                        Make sure your delivery team is equipped to handle cash transactions.
+                        Make sure your delivery team can handle cash transactions.
                       </p>
                     </div>
                   )}
@@ -325,88 +282,23 @@ const PaymentSettingsPage = () => {
               </CardContent>
             </Card>
 
-            {/* Tax Settings Card */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <Percent className="mr-2 h-5 w-5 text-orange-600" />
-                  Tax Settings
-                </CardTitle>
-                <CardDescription>
-                  Configure tax calculation for your store
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                
-                <FormField
-                  control={form.control}
-                  name="tax.enabled"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                      <div className="space-y-0.5">
-                        <FormLabel className="text-base">Enable Tax Calculation</FormLabel>
-                        <FormDescription>
-                          Automatically calculate tax on orders
-                        </FormDescription>
-                      </div>
-                      <FormControl>
-                        <Switch
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                    </FormItem>
-                  )}
-                />
-                
-                {form.watch("tax.enabled") && (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="tax.name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tax Name</FormLabel>
-                          <FormControl>
-                            <Input 
-                              placeholder="Sales Tax"
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Display name for tax on invoices
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={form.control}
-                      name="tax.rate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Tax Rate (%)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number"
-                              placeholder="8.5"
-                              step="0.1"
-                              min="0"
-                              max="50"
-                              {...field}
-                              onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                            />
-                          </FormControl>
-                          <FormDescription>
-                            Percentage rate to apply to orders
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+            {/* Info Card about Tax and Shipping */}
+            <Card className="bg-blue-50 border-blue-200">
+              <CardContent className="pt-6">
+                <div className="flex items-start space-x-3">
+                  <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <DollarSign className="h-4 w-4 text-blue-600" />
                   </div>
-                )}
+                  <div>
+                    <h3 className="font-medium text-blue-900 mb-2">Tax & Shipping</h3>
+                    <p className="text-sm text-blue-800 mb-2">
+                      Currently, tax and shipping calculations are disabled to keep things simple for you.
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Contact your developer when you're ready to add tax calculation and shipping costs.
+                    </p>
+                  </div>
+                </div>
               </CardContent>
             </Card>
 

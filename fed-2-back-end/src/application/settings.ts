@@ -16,23 +16,21 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
       settings = await Settings.create({
         _id: SETTINGS_ID,
         store: {
-          name: 'My Store',
-          description: '',
-          email: '',
-          phone: '',
-          address: '',
-          city: '',
-          state: '',
-          zipCode: '',
+          name: 'Mebius',
+          description: 'Your premier destination for fashion-forward clothing and accessories. Style that speaks your language, quality that lasts.',
+          email: 'support@mebius.com',
+          phone: '+1 (234) 567-8900',
+          address: '123 Fashion Street',
+          city: 'Style City',
+          state: 'SC',
+          zipCode: '12345',
           openTime: '09:00',
           closeTime: '18:00',
           isOpen: true
         },
         payment: {
           stripe: {
-            enabled: true,
-            publicKey: '',
-            secretKey: ''
+            enabled: true
           },
           cashOnDelivery: {
             enabled: true
@@ -40,16 +38,11 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
           currency: {
             code: 'USD',
             symbol: '$'
-          },
-          tax: {
-            enabled: false, // Changed from true to false to match frontend
-            rate: 0, // Changed from 8.5 to 0 to match frontend
-            name: 'Sales Tax'
           }
         }
       });
     }
-    
+
     res.json(settings);
   } catch (error) {
     next(error);
@@ -61,7 +54,7 @@ const updateStoreSettings = async (req: Request, res: Response, next: NextFuncti
   try {
     const result = updateStoreSettingsDTO.safeParse(req.body);
     if (!result.success) {
-      console.error('❌ Store settings validation failed:', result.error.issues);
+      console.error('Store settings validation failed:', result.error.issues);
       return res.status(400).json({
         error: 'Validation failed',
         details: result.error.issues
@@ -74,20 +67,20 @@ const updateStoreSettings = async (req: Request, res: Response, next: NextFuncti
       { new: true, upsert: true, runValidators: true }
     );
 
-    console.log('✅ Store settings updated successfully:', settings?.store);
+    console.log('Store settings updated successfully:', settings?.store);
     res.json(settings);
   } catch (error) {
-    console.error('❌ Error updating store settings:', error);
+    console.error('Error updating store settings:', error);
     next(error);
   }
 };
 
-// Update payment settings only
+// Update payment settings only - Simplified
 const updatePaymentSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const result = updatePaymentSettingsDTO.safeParse(req.body);
     if (!result.success) {
-      console.error('❌ Payment settings validation failed:', result.error.issues);
+      console.error('Payment settings validation failed:', result.error.issues);
       return res.status(400).json({
         error: 'Validation failed',
         details: result.error.issues
@@ -100,10 +93,10 @@ const updatePaymentSettings = async (req: Request, res: Response, next: NextFunc
       { new: true, upsert: true, runValidators: true }
     );
 
-    console.log('✅ Payment settings updated successfully:', settings?.payment);
+    console.log('Payment settings updated successfully');
     res.json(settings);
   } catch (error) {
-    console.error('❌ Error updating payment settings:', error);
+    console.error('Error updating payment settings:', error);
     next(error);
   }
 };

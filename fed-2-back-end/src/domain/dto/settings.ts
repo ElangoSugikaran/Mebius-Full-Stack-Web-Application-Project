@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-// Store Settings DTO
+// Store Settings DTO (unchanged)
 export const updateStoreSettingsDTO = z.object({
   store: z.object({
     name: z.string().min(1, 'Store name is required').trim(),
@@ -18,13 +18,11 @@ export const updateStoreSettingsDTO = z.object({
   })
 });
 
-// Payment Settings DTO
+// Simplified Payment Settings DTO - removed Stripe keys and tax
 export const updatePaymentSettingsDTO = z.object({
   payment: z.object({
     stripe: z.object({
-      enabled: z.boolean(),
-      publicKey: z.string().optional(),
-      secretKey: z.string().optional()
+      enabled: z.boolean()
     }),
     cashOnDelivery: z.object({
       enabled: z.boolean()
@@ -32,11 +30,6 @@ export const updatePaymentSettingsDTO = z.object({
     currency: z.object({
       code: z.string().length(3, 'Currency code must be 3 characters'),
       symbol: z.string().min(1, 'Currency symbol is required')
-    }),
-    tax: z.object({
-      enabled: z.boolean(),
-      rate: z.number().min(0).max(100),
-      name: z.string().min(1, 'Tax name is required')
     })
   })
 });

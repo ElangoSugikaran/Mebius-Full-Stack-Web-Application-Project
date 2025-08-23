@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
 
-// Combined Settings schema for both store and payment settings
+// Simplified Settings schema - removed Stripe keys, simplified tax
 const settingsSchema = new mongoose.Schema({
   // Store Settings
   store: {
@@ -55,21 +55,13 @@ const settingsSchema = new mongoose.Schema({
     }
   },
 
-  // Payment Settings
+  // Simplified Payment Settings
   payment: {
-    // Stripe Configuration
+    // Stripe Configuration - Just enable/disable
     stripe: {
       enabled: {
         type: Boolean,
         default: true
-      },
-      publicKey: {
-        type: String,
-        trim: true
-      },
-      secretKey: {
-        type: String,
-        trim: true
       }
     },
 
@@ -92,32 +84,13 @@ const settingsSchema = new mongoose.Schema({
         type: String,
         default: '$'
       }
-    },
-
-    // Tax Settings
-    tax: {
-      enabled: {
-        type: Boolean,
-        default: true
-      },
-      rate: {
-        type: Number,
-        default: 8.5,
-        min: 0,
-        max: 100
-      },
-      name: {
-        type: String,
-        default: 'Sales Tax',
-        trim: true
-      }
     }
+
+    // Tax settings removed - keeping it simple for now
   }
 }, {
   timestamps: true
 });
-
-// Note: We use a fixed _id in the application layer to ensure singleton pattern
 
 const Settings = mongoose.model('Settings', settingsSchema);
 
