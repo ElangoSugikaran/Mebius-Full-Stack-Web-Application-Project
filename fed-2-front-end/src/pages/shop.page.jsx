@@ -47,12 +47,12 @@ const Shop = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
-
-  // CHANGED: Use filtered products query with dynamic parameters
+  
+// CHANGED: Use filtered products query with dynamic parameters
   const { 
-  data: paginationData, 
-  isLoading: productsLoading, 
-  error: productsError 
+    data: paginationData, 
+    isLoading: productsLoading, 
+    error: productsError 
   } = useGetFilteredProductsQuery({
     ...filters,
     sortBy,
@@ -524,5 +524,9 @@ const Shop = () => {
     </div>
   );
 };
+
+// Add this temporarily to see what you're getting
+console.log('RTK Query Response:', paginationData);
+console.log('Products:', products);
 
 export default Shop;
