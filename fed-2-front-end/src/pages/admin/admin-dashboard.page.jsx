@@ -18,6 +18,13 @@ import {
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import { Badge } from "@/components/ui/badge";
+import { Line, LineChart, CartesianGrid, XAxis, YAxis } from "recharts";
 
 const AdminDashboardPage = () => {
   
@@ -184,7 +191,7 @@ const AdminDashboardPage = () => {
     </Card>
   );
 
-  // 📈 RECENT ACTIVITY with real data - FIXED VERSION
+  // 📈 ENHANCED RECENT ACTIVITY with charts and better visualization
   const RecentActivity = () => {
     // ✅ SAFE ARRAY EXTRACTION - Handle different API response formats
     const getOrdersArray = (ordersData) => {
@@ -196,63 +203,251 @@ const AdminDashboardPage = () => {
     };
 
     const ordersArray = getOrdersArray(orders);
-    const recentOrders = ordersArray.slice(0, 5);
+    const recentOrders = ordersArray.slice(0, 6); // Get 6 recent orders for better chart data
     
+    // 📊 PREPARE CHART DATA - Order trend over last 7 days
+    const last7Days = Array.from({ length: 7 }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (6 - i));
+      return {
+        date: date.toISOString().split('T')[0],
+        displayDate: date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+        orders: 0,
+        revenue: 0
+      };
+    });
+
+    // Count orders per day
+    ordersArray.forEach(order => {
+      const orderDate = new Date(order.createdAt || order.orderDate).toISOString().split('T')[0];
+      const dayData = last7Days.find(day => day.date === orderDate);
+      if (dayData) {
+        dayData.orders++;
+        dayData.revenue += (order.totalAmount || order.total || 0);
+      }
+    });
+
+    // 🎨 Chart configuration
+    const chartConfig = {
+      orders: { label: "Orders", color: "hsl(220, 70%, 50%)" },
+      revenue: { label: "Revenue", color: "hsl(160, 60%, 45%)" }
+    };
+
     return (
-      <Card>
+      <Card className="col-span-2">
         <CardHeader>
-          <CardTitle>Recent Orders</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span className="flex items-center">
+              <TrendingUp className="h-5 w-5 mr-2" />
+              Recent Order Activity
+            </span>
+            <Badge variant="outline" className="text-xs">
+              Last 7 days trend
+            </Badge>
+          </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-6">
+          
+          {/* 📊 ORDER TREND MINI CHART */}
+          <div className="bg-gradient-to-r from-blue-50 to-green-50 p-4 rounded-lg">
+            <h4 className="text-sm font-medium text-gray-700 mb-3 flex items-center">
+              <Clock className="h-4 w-4 mr-2" />
+              Weekly Order Trend
+            </h4>
+            <div className="h-32">
+              <ChartContainer config={chartConfig} className="h-full w-full">
+                <LineChart
+                  data={last7Days}
+                  margin={{ left: 10, right: 10, top: 10, bottom: 10 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis
+                    dataKey="displayDate"
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    fontSize={10}
+                    interval={0}
+                  />
+                  <YAxis
+                    tickLine={false}
+                    axisLine={false}
+                    tickMargin={8}
+                    fontSize={10}
+                  />
+                  <ChartTooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        return (
+                          <div className="bg-white border border-gray-200 rounded-lg p-3 shadow-lg">
+                            <p className="text-sm font-medium">{label}</p>
+                            <p className="text-sm text-blue-600">
+                              Orders: {payload[0]?.value || 0}
+                            </p>
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="orders"
+                    stroke="var(--color-orders)"
+                    strokeWidth={2}
+                    dot={{ fill: "var(--color-orders)", strokeWidth: 2, r: 4 }}
+                    activeDot={{ r: 6, stroke: "var(--color-orders)", strokeWidth: 2 }}
+                  />
+                </LineChart>
+              </ChartContainer>
+            </div>
+          </div>
+
           {ordersLoading ? (
             <div className="space-y-3">
-              {[1,2,3].map(i => (
+              {[1,2,3,4].map(i => (
                 <div key={i} className="animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
+                  <div className="h-16 bg-gray-200 rounded-lg"></div>
                 </div>
               ))}
             </div>
           ) : recentOrders.length > 0 ? (
-            <div className="space-y-4">
-              {recentOrders.map((order, index) => (
-                <div key={order._id || index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                  <div className="flex items-center space-x-3">
-                    <div className={`p-1 rounded-full ${
-                      order.orderStatus === 'completed' ? 'bg-green-100' :
-                      order.orderStatus === 'pending' ? 'bg-yellow-100' :
-                      'bg-blue-100'
-                    }`}>
-                      {order.orderStatus === 'completed' ? (
-                        <CheckCircle className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <Clock className="h-3 w-3 text-yellow-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Order #{order.orderId || order._id?.slice(-6)}</p>
-                      <p className="text-xs text-gray-500">
-                        {order.customerEmail || 'Customer'} • {new Date(order.createdAt).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium">${(order.totalAmount || order.total || 0).toLocaleString()}</p>
-                    <p className="text-xs text-gray-500 capitalize">{order.orderStatus || order.status}</p>
-                  </div>
+            <div className="space-y-3">
+              {/* 📋 RECENT ORDERS LIST with enhanced styling */}
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-medium text-gray-700 flex items-center">
+                  <ShoppingCart className="h-4 w-4 mr-2" />
+                  Latest Orders ({recentOrders.length})
+                </h4>
+                <div className="flex space-x-2">
+                  <Badge variant="secondary" className="text-xs">
+                    {stats.pendingOrders} Pending
+                  </Badge>
+                  <Badge variant="default" className="text-xs bg-green-100 text-green-800">
+                    {stats.completedOrders} Complete
+                  </Badge>
                 </div>
-              ))}
+              </div>
+
+              <div className="space-y-2">
+                {recentOrders.map((order, index) => {
+                  const orderValue = order.totalAmount || order.total || 0;
+                  const status = order.orderStatus || order.status || 'pending';
+                  
+                  return (
+                    <div key={order._id || index} className="group relative">
+                      <div className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-lg hover:border-blue-200 hover:shadow-md transition-all duration-200">
+                        
+                        {/* 👤 ORDER INFO */}
+                        <div className="flex items-center space-x-4 flex-1">
+                          <div className={`p-2 rounded-full ${
+                            status === 'completed' ? 'bg-green-100' :
+                            status === 'pending' ? 'bg-yellow-100' :
+                            status === 'processing' ? 'bg-blue-100' :
+                            'bg-gray-100'
+                          }`}>
+                            {status === 'completed' ? (
+                              <CheckCircle className="h-4 w-4 text-green-600" />
+                            ) : status === 'processing' ? (
+                              <Clock className="h-4 w-4 text-blue-600" />
+                            ) : (
+                              <AlertCircle className="h-4 w-4 text-yellow-600" />
+                            )}
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center space-x-2 mb-1">
+                              <p className="text-sm font-semibold text-gray-900">
+                                Order #{order.orderId || order._id?.slice(-6) || `ORD${index + 1}`}
+                              </p>
+                              <Badge 
+                                variant={status === 'completed' ? 'default' : 'secondary'}
+                                className="text-xs capitalize"
+                              >
+                                {status}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-gray-500 truncate">
+                              {order.customerEmail || order.customerName || 'Customer'} • {' '}
+                              {new Date(order.createdAt || order.orderDate).toLocaleDateString('en-US', {
+                                month: 'short',
+                                day: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit'
+                              })}
+                            </p>
+                          </div>
+                        </div>
+                        
+                        {/* 💰 ORDER VALUE & PROGRESS */}
+                        <div className="flex items-center space-x-4">
+                          <div className="text-right">
+                            <p className="text-lg font-bold text-gray-900">
+                              ${orderValue.toLocaleString()}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {order.products?.length || 1} item{(order.products?.length || 1) !== 1 ? 's' : ''}
+                            </p>
+                          </div>
+                          
+                          {/* 📊 MINI PROGRESS INDICATOR */}
+                          <div className="w-16">
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className={`h-2 rounded-full transition-all duration-300 ${
+                                  status === 'completed' ? 'bg-green-500 w-full' :
+                                  status === 'processing' ? 'bg-blue-500 w-2/3' :
+                                  status === 'pending' ? 'bg-yellow-500 w-1/3' :
+                                  'bg-gray-400 w-1/4'
+                                }`}
+                              />
+                            </div>
+                            <p className="text-xs text-center text-gray-500 mt-1 capitalize">
+                              {status}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* 🌈 SUBTLE GRADIENT BORDER based on order value */}
+                      <div className={`absolute inset-0 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200 ${
+                        orderValue > 1000 ? 'bg-gradient-to-r from-green-100 to-blue-100' :
+                        orderValue > 500 ? 'bg-gradient-to-r from-blue-100 to-purple-100' :
+                        'bg-gradient-to-r from-gray-100 to-slate-100'
+                      }`} style={{ zIndex: -1 }} />
+                    </div>
+                  );
+                })}
+              </div>
               
-              <Link to="/admin/orders">
-                <Button variant="outline" className="w-full mt-3">
-                  View All Orders
+              {/* 🔗 VIEW ALL BUTTON */}
+              <div className="pt-3 border-t border-gray-100">
+                <Link to="/admin/orders">
+                  <Button variant="outline" className="w-full group hover:bg-blue-50">
+                    <Eye className="h-4 w-4 mr-2" />
+                    View All Orders
+                    <span className="ml-2 text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full group-hover:bg-blue-200">
+                      {stats.totalOrders}
+                    </span>
+                  </Button>
+                </Link>
+              </div>
+              
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ShoppingCart className="h-8 w-8 text-gray-400" />
+              </div>
+              <p className="text-gray-500 text-center">
+                No orders yet. When customers place orders, they'll appear here.
+              </p>
+              <Link to="/admin/products" className="inline-block mt-3">
+                <Button size="sm" variant="outline">
+                  Add Products to Get Started
                 </Button>
               </Link>
             </div>
-          ) : (
-            <p className="text-gray-500 text-center py-8">
-              No orders yet. When customers place orders, they'll appear here.
-            </p>
           )}
         </CardContent>
       </Card>
