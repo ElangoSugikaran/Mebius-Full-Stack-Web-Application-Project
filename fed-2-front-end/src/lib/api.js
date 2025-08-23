@@ -41,6 +41,17 @@ export const Api = createApi({
       query: (id) => `/products/${id}`,
       providesTags: (result, error, id) => [{ type: 'Product', id }],
     }),
+     // 🔧 NEW: Get featured products only (isFeatured: true)
+    getFeaturedProducts: build.query({
+      query: () => `/products/featured`,
+      providesTags: ['Product'],
+      transformResponse: (response) => {
+        console.log('✅ Featured products fetched:', response);
+        return response.data || response;
+      },
+      // Keep cache for 10 minutes since featured products don't change frequently
+      keepUnusedDataFor: 600,
+    }),
     createProduct: build.mutation({
       query: (product) => ({
         url: "/products",
@@ -661,6 +672,7 @@ export const {
   useDeleteProductMutation,
   useGetFilterOptionsQuery,
   useGetFilteredProductsQuery,
+  useGetFeaturedProductsQuery,
   
   // Category hooks
   useGetAllCategoriesQuery,

@@ -1,14 +1,15 @@
 import { Link } from "react-router";
-import { useGetAllProductsQuery, useAddToCartMutation, useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from "../lib/api";
+import { useGetAllProductsQuery, useGetFeaturedProductsQuery, useAddToCartMutation, useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ShoppingBag, Heart, Star, TrendingUp } from "lucide-react";
 import { toast } from 'react-toastify';
 import { useState } from 'react';
 
-// 🔥 TRENDING SECTION COMPONENT
+// 🔥 TRENDING SECTION COMPONENT - Now shows only featured products
 function TrendingSection() {
-  const { data: products = [] } = useGetAllProductsQuery();
+  // 🔧 UPDATED: Use featured products query for trending section
+  const { data: featuredProducts = [], isLoading: isFeaturedLoading } = useGetFeaturedProductsQuery();
   const { data: wishlist, error: wishlistError, isLoading: isWishlistLoading } = useGetWishlistQuery();
   
   // 🛒 RTK Query Mutations
@@ -22,10 +23,15 @@ function TrendingSection() {
     wishlist: {}
   });
   
-  // 📊 Get trending products (you can modify this logic based on your needs)
-  const trendingProducts = products
-    .filter(product => product.averageRating >= 4 || product.discount > 0)
-    .slice(0, 8);
+  // 📊 Get trending products - Now limited to 8 featured products
+  const trendingProducts = featuredProducts.slice(0, 8);
+
+  // 🐛 Debug featured products data
+  console.log('🔍 Featured products debug:', {
+    featuredProducts,
+    count: featuredProducts.length,
+    isFeaturedLoading
+  });
 
   // 🐛 Debug wishlist data structure
   console.log('🔍 Wishlist debug:', {
@@ -136,19 +142,56 @@ function TrendingSection() {
     }
   };
 
+  // 📱 Loading state
+  if (isFeaturedLoading) {
+    return (
+      <section className="px-4 lg:px-16 py-16">
+        <div className="flex items-center justify-between mb-12">
+          <div>
+            <div className="flex items-center gap-2 mb-2">
+              <TrendingUp className="w-6 h-6 text-red-500" />
+              <span className="text-red-500 font-medium">Featured Products</span>
+            </div>
+            <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
+              Trending Now
+            </h2>
+          </div>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          {[...Array(8)].map((_, index) => (
+            <div key={index} className="bg-gray-200 rounded-2xl animate-pulse h-96"></div>
+          ))}
+        </div>
+      </section>
+    );
+  }
+
+  // 📭 Empty state
+  if (trendingProducts.length === 0) {
+    return (
+      <section className="px-4 lg:px-16 py-16">
+        <div className="text-center py-16">
+          <TrendingUp className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+          <h3 className="text-xl font-semibold text-gray-600 mb-2">No Featured Products Yet</h3>
+          <p className="text-gray-500">Check back soon for our trending items!</p>
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="px-4 lg:px-16 py-16">
       <div className="flex items-center justify-between mb-12">
         <div>
           <div className="flex items-center gap-2 mb-2">
             <TrendingUp className="w-6 h-6 text-red-500" />
-            <span className="text-red-500 font-medium">Trending Now</span>
+            <span className="text-red-500 font-medium">Featured Collection</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-bold text-gray-900">
-            Popular Products
+            Trending Now
           </h2>
           <p className="text-gray-600 mt-2">
-            Our most loved items by customers
+            Our hand-picked featured items just for you
           </p>
         </div>
         
@@ -168,7 +211,7 @@ function TrendingSection() {
           const isWishlistLoading = loadingStates.wishlist[productId];
           
           return (
-            <div key={productId} className="group bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300">
+            <div key={productId} className="group bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-300 border border-gray-100">
               {/* 🖼️ Product Image */}
               <div className="relative aspect-square overflow-hidden bg-gray-100">
                 <img
@@ -183,6 +226,11 @@ function TrendingSection() {
                     -{product.discount}%
                   </Badge>
                 )}
+
+                {/* ⭐ Featured Badge */}
+                <Badge className="absolute top-3 right-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-xs">
+                  Featured
+                </Badge>
                 
                 {/* 💝 Wishlist Button - Fixed */}
                 <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
@@ -257,7 +305,7 @@ function TrendingSection() {
                 {/* 🛒 Add to Cart Button - Fixed */}
                 <Button
                   onClick={() => handleAddToCart(product)}
-                  className="w-full"
+                  className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                   disabled={product.stock === 0 || isCartLoading || isAddingToCart}
                 >
                   <ShoppingBag className="mr-2 h-4 w-4" />
