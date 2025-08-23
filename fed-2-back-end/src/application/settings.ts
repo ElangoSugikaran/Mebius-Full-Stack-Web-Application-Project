@@ -13,7 +13,9 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
     
     // If no settings exist, create default ones
     if (!settings) {
-      settings = await Settings.create({
+      console.log('No settings found, creating default settings...');
+      
+      const defaultSettings = {
         _id: SETTINGS_ID,
         store: {
           name: 'Mebius',
@@ -40,11 +42,33 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
             symbol: '$'
           }
         }
-      });
+      };
+
+      try {
+        settings = await Settings.create(defaultSettings);
+        console.log('Default settings created successfully');
+      } catch (createError) {
+        console.error('Error creating default settings:', createError);
+        // If creation fails, try to find existing settings again
+        settings = await Settings.findOne();
+        if (!settings) {
+          // Return default settings without saving to DB
+          console.log('Returning default settings without saving to DB');
+          return res.json({
+            data: defaultSettings,
+            message: 'Using default settings'
+          });
+        }
+      }
     }
 
-    res.json(settings);
+    console.log('Settings fetched successfully:', settings?._id);
+    res.json({
+      data: settings,
+      success: true
+    });
   } catch (error) {
+    console.error('Error in getSettings:', error);
     next(error);
   }
 };
@@ -52,23 +76,43 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
 // Update store settings only
 const updateStoreSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('Updating store settings with data:', req.body);
+    
     const result = updateStoreSettingsDTO.safeParse(req.body);
     if (!result.success) {
       console.error('Store settings validation failed:', result.error.issues);
       return res.status(400).json({
         error: 'Validation failed',
-        details: result.error.issues
+        details: result.error.issues,
+        success: false
       });
     }
 
-    const settings = await Settings.findByIdAndUpdate(
-      SETTINGS_ID,
-      { $set: { store: result.data.store } },
-      { new: true, upsert: true, runValidators: true }
-    );
+    // Ensure settings document exists first
+    let settings = await Settings.findById(SETTINGS_ID);
+    if (!settings) {
+      console.log('Creating new settings document for store update');
+      settings = new Settings({
+        _id: SETTINGS_ID,
+        store: result.data.store,
+        payment: {
+          stripe: { enabled: true },
+          cashOnDelivery: { enabled: true },
+          currency: { code: 'USD', symbol: '$' }
+        }
+      });
+    } else {
+      // Update existing settings
+      settings.store = { ...settings.store, ...result.data.store };
+    }
 
-    console.log('Store settings updated successfully:', settings?.store);
-    res.json(settings);
+    await settings.save();
+
+    console.log('Store settings updated successfully:', settings.store);
+    res.json({
+      data: settings,
+      success: true
+    });
   } catch (error) {
     console.error('Error updating store settings:', error);
     next(error);
@@ -78,23 +122,44 @@ const updateStoreSettings = async (req: Request, res: Response, next: NextFuncti
 // Update payment settings only - Simplified
 const updatePaymentSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('Updating payment settings with data:', req.body);
+    
     const result = updatePaymentSettingsDTO.safeParse(req.body);
     if (!result.success) {
       console.error('Payment settings validation failed:', result.error.issues);
       return res.status(400).json({
         error: 'Validation failed',
-        details: result.error.issues
+        details: result.error.issues,
+        success: false
       });
     }
 
-    const settings = await Settings.findByIdAndUpdate(
-      SETTINGS_ID,
-      { $set: { payment: result.data.payment } },
-      { new: true, upsert: true, runValidators: true }
-    );
+    // Ensure settings document exists first
+    let settings = await Settings.findById(SETTINGS_ID);
+    if (!settings) {
+      console.log('Creating new settings document for payment update');
+      settings = new Settings({
+        _id: SETTINGS_ID,
+        store: {
+          name: 'Mebius',
+          openTime: '09:00',
+          closeTime: '18:00',
+          isOpen: true
+        },
+        payment: result.data.payment
+      });
+    } else {
+      // Update existing settings
+      settings.payment = { ...settings.payment, ...result.data.payment };
+    }
+
+    await settings.save();
 
     console.log('Payment settings updated successfully');
-    res.json(settings);
+    res.json({
+      data: settings,
+      success: true
+    });
   } catch (error) {
     console.error('Error updating payment settings:', error);
     next(error);
@@ -104,27 +169,55 @@ const updatePaymentSettings = async (req: Request, res: Response, next: NextFunc
 // Update all settings (partial update)
 const updateSettings = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    console.log('Updating all settings with data:', req.body);
+    
     const result = updateSettingsDTO.safeParse(req.body);
     if (!result.success) {
-      throw new ValidationError('Invalid settings data');
+      console.error('Settings validation failed:', result.error.issues);
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: result.error.issues,
+        success: false
+      });
     }
 
-    const updateData: any = {};
-    if (result.data.store) {
-      updateData.store = result.data.store;
-    }
-    if (result.data.payment) {
-      updateData.payment = result.data.payment;
+    // Ensure settings document exists first
+    let settings = await Settings.findById(SETTINGS_ID);
+    if (!settings) {
+      console.log('Creating new settings document for full update');
+      settings = new Settings({
+        _id: SETTINGS_ID,
+        store: result.data.store || {
+          name: 'Mebius',
+          openTime: '09:00',
+          closeTime: '18:00',
+          isOpen: true
+        },
+        payment: result.data.payment || {
+          stripe: { enabled: true },
+          cashOnDelivery: { enabled: true },
+          currency: { code: 'USD', symbol: '$' }
+        }
+      });
+    } else {
+      // Update existing settings
+      if (result.data.store) {
+        settings.store = { ...settings.store, ...result.data.store };
+      }
+      if (result.data.payment) {
+        settings.payment = { ...settings.payment, ...result.data.payment };
+      }
     }
 
-    const settings = await Settings.findByIdAndUpdate(
-      SETTINGS_ID,
-      { $set: updateData },
-      { new: true, upsert: true }
-    );
+    await settings.save();
 
-    res.json(settings);
+    console.log('All settings updated successfully');
+    res.json({
+      data: settings,
+      success: true
+    });
   } catch (error) {
+    console.error('Error updating settings:', error);
     next(error);
   }
 };
