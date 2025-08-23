@@ -46,9 +46,13 @@ export const Api = createApi({
       query: () => `/products/featured`,
       providesTags: ['Product'],
       transformResponse: (response) => {
-        console.log('✅ Featured products fetched:', response);
-        return response.data || response;
-      },
+      console.log('✅ Featured products fetched:', response);
+      // Handle both array and object responses
+      if (Array.isArray(response)) {
+        return response;
+      }
+      return response.data || response;
+    },
       // Keep cache for 10 minutes since featured products don't change frequently
       keepUnusedDataFor: 600,
     }),
