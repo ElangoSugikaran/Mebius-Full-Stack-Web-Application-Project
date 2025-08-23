@@ -1,8 +1,8 @@
 import { useForm } from "react-hook-form";
-import z from "zod";
+import { z } from "zod"; // FIXED: Added 'z' import
 import { zodResolver } from "@hookform/resolvers/zod";
-import {  useEffect } from 'react';
-import { Save, Store, Phone, Mail, MapPin, Clock } from 'lucide-react';
+import { useEffect } from 'react';
+import { Save, Store, Phone, Mail, MapPin } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUpdateStoreSettingsMutation, useGetSettingsQuery } from '@/lib/api';
 import { Button } from "@/components/ui/button";
@@ -26,32 +26,38 @@ const storeSettingsSchema = z.object({
     .max(100, "Store name cannot exceed 100 characters"),
   description: z.string()
     .max(500, "Description cannot exceed 500 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')), // FIXED: Handle empty strings properly
   email: z.string()
     .email("Please enter a valid email address")
-    .optional(),
+    .optional()
+    .or(z.literal('')), // FIXED: Handle empty strings properly
   phone: z.string()
     .min(10, "Phone number must be at least 10 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')), // FIXED: Handle empty strings properly
   address: z.string()
     .max(200, "Address cannot exceed 200 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   city: z.string()
     .max(50, "City name cannot exceed 50 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   state: z.string()
     .max(50, "State name cannot exceed 50 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   zipCode: z.string()
     .max(20, "ZIP code cannot exceed 20 characters")
-    .optional(),
+    .optional()
+    .or(z.literal('')),
   openTime: z.string(),
   closeTime: z.string(),
   isOpen: z.boolean().default(true),
 });
 
 const StoreSettingsPage = () => {
-
   const { data: settings, isLoading, error } = useGetSettingsQuery();
   const [updateStoreSettings] = useUpdateStoreSettingsMutation();
 
@@ -75,20 +81,32 @@ const StoreSettingsPage = () => {
 
   useEffect(() => {
     if (settings?.store) {
-      form.reset(settings.store);
+      // FIXED: Handle undefined values properly
+      form.reset({
+        name: settings.store.name || '',
+        description: settings.store.description || '',
+        email: settings.store.email || '',
+        phone: settings.store.phone || '',
+        address: settings.store.address || '',
+        city: settings.store.city || '',
+        state: settings.store.state || '',
+        zipCode: settings.store.zipCode || '',
+        openTime: settings.store.openTime || '09:00',
+        closeTime: settings.store.closeTime || '18:00',
+        isOpen: settings.store.isOpen !== undefined ? settings.store.isOpen : true
+      });
     }
   }, [settings, form]);
 
   const onSubmit = async (values) => {
     try {
       await updateStoreSettings(values).unwrap();
-      toast.success('✅ Store Settings Saved Successfully!');
+      toast.success('Store Settings Saved Successfully!');
     } catch (error) {
       console.error('Failed to save settings:', error);
-      toast.error('❌ Failed to Save Store Settings\nPlease try again.');
+      toast.error('Failed to Save Store Settings\nPlease try again.');
     }
   };
-
 
   if (isLoading) {
     return (
