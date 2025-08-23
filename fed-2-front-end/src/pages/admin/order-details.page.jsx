@@ -1,8 +1,8 @@
 // File: src/pages/admin/OrderDetailPage.jsx
-
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
-import { useGetOrderByIdQuery, useUpdateOrderStatusMutation, useGetCustomerByIdQuery } from "@/lib/api";
+import { useGetOrderByIdQuery, useUpdateOrderStatusMutation } from "@/lib/api";
+// Line 24 - Add AlertTriangle and Mail to the imports
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -19,7 +19,7 @@ import {
   Calendar,
   DollarSign,
   Phone,
-  Mail,
+  Mail,        // Add this
   Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,11 +60,6 @@ const OrderDetailPage = () => {
     isLoading,
     error
   });
-
-  const { data: customerData, isLoading: isLoadingCustomer } = useGetCustomerByIdQuery(
-    order?.userId, 
-    { skip: !order?.userId || typeof order.userId === 'object' }
-  );
 
  // 🔧 REPLACE the handlePaymentStatusUpdate function in OrderDetailPage.jsx
 
@@ -293,7 +288,7 @@ const OrderDetailPage = () => {
       <div className="px-8">
         <div className="mb-8">
           <div className="flex items-center space-x-4">
-            <Link to="/admin/orders" className="text-gray-600 hover:text-gray-900">
+            <Link to="/admin/admin-orders" className="text-gray-600 hover:text-gray-900">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
@@ -322,7 +317,7 @@ const OrderDetailPage = () => {
       <div className="px-8">
         <div className="mb-8">
           <div className="flex items-center space-x-4">
-            <Link to="/admin/orders" className="text-gray-600 hover:text-gray-900">
+            <Link to="/admin/admin-orders" className="text-gray-600 hover:text-gray-900">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
@@ -860,80 +855,125 @@ const OrderDetailPage = () => {
                   </div>
                 )}
 
-                {/* Customer Information */}
+               {/* Customer Information */}
+                {/* Enhanced Customer Information - Replace lines 623-654 */}
                 <div className="pt-4 space-y-3 border-t border-gray-200">
                   <h4 className="font-medium text-gray-900 flex items-center">
                     <User className="h-4 w-4 mr-2" />
                     Customer Information
                   </h4>
                   
-                  {isLoadingCustomer ? (
-                    <div className="text-center py-2">
-                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto mb-1"></div>
-                      <p className="text-sm text-gray-500">Loading customer...</p>
-                    </div>
-                  ) : customerData ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-700">
-                          {customerData.name || `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim() || 'Name not available'}
-                        </span>
-                      </div>
-                      
-                      {customerData.email && (
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {customerData.email}
-                          </span>
+                  <div className="space-y-3">
+                    {order.userInfo && !order.userInfo.isClerkError ? (
+                      <>
+                        {/* Customer Name & Avatar */}
+                        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                          {order.userInfo.imageUrl ? (
+                            <img 
+                              src={order.userInfo.imageUrl} 
+                              alt={order.userInfo.fullName}
+                              className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                              <User className="h-5 w-5 text-blue-600" />
+                            </div>
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-medium text-gray-900 truncate">
+                              {order.userInfo.fullName}
+                            </h5>
+                            {order.userInfo.email && order.userInfo.email !== 'No email available' && (
+                              <p className="text-sm text-gray-600 truncate flex items-center">
+                                <Mail className="h-3 w-3 mr-1" />
+                                {order.userInfo.email}
+                              </p>
+                            )}
+                          </div>
                         </div>
-                      )}
-                      
-                      {customerData.phone && (
-                        <div className="flex items-center">
-                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {customerData.phone}
-                          </span>
+
+                        {/* Additional User Details */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Customer ID:</span>
+                            <span className="font-mono text-gray-800 text-xs">
+                              {order.userId.slice(-12).toUpperCase()}
+                            </span>
+                          </div>
+                          
+                          {order.userInfo.createdAt && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Member since:</span>
+                              <span className="text-gray-800">
+                                {new Date(order.userInfo.createdAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
+
+                          {order.userInfo.lastSignInAt && (
+                            <div className="flex items-center justify-between text-sm">
+                              <span className="text-gray-600">Last active:</span>
+                              <span className="text-gray-800">
+                                {new Date(order.userInfo.lastSignInAt).toLocaleDateString()}
+                              </span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
-                  ) : order.userId && typeof order.userId === 'object' ? (
-                    // Keep existing populated object fallback
-                    <div className="space-y-2">
-                      <div className="flex items-center">
-                        <User className="h-4 w-4 text-gray-400 mr-2" />
-                        <span className="text-sm text-gray-700">
-                          {order.userId.name || 'Name not available'}
-                        </span>
-                      </div>
-                      
-                      {order.userId.email && (
-                        <div className="flex items-center">
-                          <Mail className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {order.userId.email}
-                          </span>
+
+                        {/* Full ID Expandable */}
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                            Show full customer ID
+                          </summary>
+                          <div className="mt-2 p-2 bg-gray-50 rounded font-mono text-gray-800 break-all border">
+                            {order.userId}
+                          </div>
+                        </details>
+                      </>
+                    ) : (
+                      <>
+                        {/* Fallback for missing user info */}
+                        <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
+                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
+                            <AlertTriangle className="h-5 w-5 text-orange-600" />
+                          </div>
+                          <div className="flex-1">
+                            <h5 className="font-medium text-orange-800">
+                              {order.userInfo?.isClerkError ? 'User Info Error' : 'Unknown Customer'}
+                            </h5>
+                            <p className="text-sm text-orange-600">
+                              {order.userInfo?.isClerkError 
+                                ? 'Unable to fetch customer details from Clerk'
+                                : 'Customer information not available'
+                              }
+                            </p>
+                          </div>
                         </div>
-                      )}
-                      
-                      {order.userId.phone && (
-                        <div className="flex items-center">
-                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700">
-                            {order.userId.phone}
-                          </span>
+
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-600">Customer ID:</span>
+                            <span className="font-mono text-gray-800 text-xs">
+                              {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
+                            </span>
+                          </div>
                         </div>
-                      )}
+
+                        <details className="text-xs">
+                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
+                            Show full customer ID
+                          </summary>
+                          <div className="mt-2 p-2 bg-gray-50 rounded font-mono text-gray-800 break-all border">
+                            {order.userId || 'Not available'}
+                          </div>
+                        </details>
+                      </>
+                    )}
+                    
+                    <div className="text-xs text-gray-500 italic border-t border-gray-200 pt-2">
+                      💡 Customer details are managed through Clerk authentication
                     </div>
-                  ) : (
-                    <div className="text-center py-2">
-                      <AlertTriangle className="h-6 w-6 text-yellow-500 mx-auto mb-1" />
-                      <p className="text-sm text-yellow-700">Customer information not available</p>
-                      <p className="text-xs text-gray-500 mt-1">Customer ID: {order.userId}</p>
-                    </div>
-                  )}
+                  </div>
                 </div>
 
                 {/* Order Actions */}

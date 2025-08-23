@@ -1,6 +1,5 @@
 // File: src/pages/admin/OrdersPage.jsx
-
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { 
@@ -15,7 +14,8 @@ import {
   Truck,
   CheckCircle,
   XCircle,
-  Clock
+  Clock,
+  User  // Add this
 } from 'lucide-react';
 import {
   Table,
@@ -43,7 +43,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useGetAllOrdersQuery, useUpdateOrderStatusMutation, useGetCustomerByIdQuery } from '@/lib/api';
+import { useGetAllOrdersQuery, useUpdateOrderStatusMutation } from '@/lib/api';
 
 const OrdersPage = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -54,54 +54,6 @@ const OrdersPage = () => {
   const { data: apiResponse, isLoading, error, refetch } = useGetAllOrdersQuery();
   const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
 
-  // Customer Info Component for Table Rows
-const CustomerInfo = ({ userId }) => {
-  const { data: customerData, isLoading } = useGetCustomerByIdQuery(
-    userId, 
-    { skip: !userId || typeof userId === 'object' }
-  );
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center space-x-2">
-        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-300"></div>
-        <span className="text-sm text-gray-500">Loading...</span>
-      </div>
-    );
-  }
-
-  if (customerData) {
-    return (
-      <div>
-        <p className="font-medium text-gray-900">
-          {customerData.name || `${customerData.firstName || ''} ${customerData.lastName || ''}`.trim() || 'N/A'}
-        </p>
-        {customerData.email && (
-          <p className="text-xs text-gray-500">{customerData.email}</p>
-        )}
-      </div>
-    );
-  }
-
-  if (typeof userId === 'object' && userId) {
-    return (
-      <div>
-        <p className="font-medium text-gray-900">
-          {userId.name || `${userId.firstName || ''} ${userId.lastName || ''}`.trim() || 'N/A'}
-        </p>
-        {userId.email && (
-          <p className="text-xs text-gray-500">{userId.email}</p>
-        )}
-      </div>
-    );
-  }
-
-  return (
-    <div>
-      <p className="text-sm text-gray-500">{userId || 'Unknown'}</p>
-    </div>
-  );
-};
 
   // 🔧 STEP 1: Use useMemo to safely extract orders and prevent unnecessary re-renders
   const orders = useMemo(() => {
@@ -540,7 +492,51 @@ const CustomerInfo = ({ userId }) => {
                   
                   {/* 👤 CUSTOMER */}
                   <TableCell>
-                    <CustomerInfo userId={order.userId} />
+                    <div className="space-y-1">
+                      {order.userInfo && !order.userInfo.isClerkError ? (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            {order.userInfo.imageUrl ? (
+                              <img 
+                                src={order.userInfo.imageUrl} 
+                                alt={order.userInfo.fullName}
+                                className="h-6 w-6 rounded-full object-cover"
+                              />
+                            ) : (
+                              <User className="h-4 w-4 text-gray-400" />
+                            )}
+                            <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+                              {order.userInfo.fullName}
+                            </span>
+                          </div>
+                          {order.userInfo.email && order.userInfo.email !== 'No email available' && (
+                            <p className="text-xs text-gray-500 truncate max-w-[150px]">
+                              {order.userInfo.email}
+                            </p>
+                          )}
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex items-center space-x-2">
+                            <User className="h-4 w-4 text-gray-400" />
+                            <span className="text-sm text-gray-600">
+                              {order.userInfo?.isClerkError ? (
+                                <span className="text-orange-600">
+                                  User Info Error
+                                </span>
+                              ) : (
+                                `ID: ${(order.userId || '').slice(-8)}`
+                              )}
+                            </span>
+                          </div>
+                          {order.userInfo?.isClerkError && (
+                            <p className="text-xs text-orange-500">
+                              Clerk API Error
+                            </p>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </TableCell>
                   
                   {/* 📦 ITEMS COUNT */}
