@@ -204,12 +204,12 @@ function PaymentCompletePage() {
                   {(data?.orderId || orderId || 'N/A').toString().substring(0, 8).toUpperCase()}
                 </span>
               </div>
-              <div className="flex justify-between">
+              {/* <div className="flex justify-between">
                 <span className="text-gray-600">Session ID:</span>
                 <span className="font-mono text-xs text-gray-700">
                   {sessionId?.substring(0, 20)}...
                 </span>
-              </div>
+              </div> */}
               <div className="flex justify-between">
                 <span className="text-gray-600">Order Status:</span>
                 <span className="font-medium text-green-600">
@@ -262,8 +262,8 @@ function PaymentCompletePage() {
 
             <p className="text-sm text-gray-500 mt-4">
               Questions? Contact us at{" "}
-              <a href="mailto:support@yourstore.com" className="text-blue-600 hover:underline">
-                support@yourstore.com
+              <a href="mailto:support@mebius.com" className="text-blue-600 hover:underline">
+                support@mebius.com
               </a>
             </p>
           </div>

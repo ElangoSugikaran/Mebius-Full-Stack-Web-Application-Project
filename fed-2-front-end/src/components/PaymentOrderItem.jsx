@@ -2,7 +2,7 @@ import React from 'react';
 import { Badge } from "@/components/ui/badge";
 
 function PaymentOrderItem({ item }) {
-  const { product, quantity } = item;
+  const { product, quantity, size, color } = item;
   const price = product.finalPrice || product.price;
   const itemTotal = price * quantity;
 
@@ -22,9 +22,23 @@ function PaymentOrderItem({ item }) {
         <h4 className="text-sm font-medium text-gray-900 truncate">
           {product.name || product.title}
         </h4>
+
+        {/* Show size and color if available */}
+        <div className="flex gap-2 mt-1">
+          {size && (
+            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700">
+              Size: {size}
+            </Badge>
+          )}
+          {color && (
+            <Badge variant="outline" className="text-xs bg-gray-50 text-gray-700">
+              Color: {color}
+            </Badge>
+          )}
+        </div>
         
-        {/* Product attributes (size, color, etc.) */}
-        {product.variant && (
+        {/* Legacy variant support */}
+        {product.variant && !size && !color && (
           <p className="text-xs text-gray-500 mt-1">
             {product.variant}
           </p>
