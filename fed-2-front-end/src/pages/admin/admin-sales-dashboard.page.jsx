@@ -104,7 +104,8 @@ const SalesDashboard = () => {
       const orderTotal = order.totalAmount || order.total || 0;
       
       // Only process completed orders for sales metrics
-      if (order.orderStatus === 'completed' || order.status === 'completed') {
+      if (order.orderStatus === 'FULFILLED' || order.status === 'FULFILLED' || 
+          order.orderStatus === 'CONFIRMED' || order.status === 'CONFIRMED') {
         totalRevenue += orderTotal;
         
         // Today's sales
@@ -130,7 +131,7 @@ const SalesDashboard = () => {
         // Product sales tracking
         if (order.products && Array.isArray(order.products)) {
           order.products.forEach(item => {
-            const productId = item.productId || item.product;
+            const productId = item.productId || item.product || item._id || item.id;
             const quantity = item.quantity || 1;
             
             if (productSales.has(productId)) {
@@ -148,14 +149,14 @@ const SalesDashboard = () => {
       .sort((a, b) => b[1] - a[1])
       .slice(0, 5)
       .map(([productId, quantity]) => {
-        const product = products?.find(p => p._id === productId);
-        return {
-          id: productId,
-          name: product?.name || 'Unknown Product',
-          quantity,
-          revenue: quantity * (product?.price || 0)
-        };
-      });
+      const product = products?.find(p => p._id === productId || p.id === productId);
+      return {
+        id: productId,
+        name: product?.name || product?.title || 'Unknown Product',
+        quantity,
+        revenue: quantity * (product?.price || product?.cost || 0)
+      };
+    });
     
     // 🔧 FIXED: Create a copy of the array before sorting
     const recentOrdersArray = [...ordersArray]
