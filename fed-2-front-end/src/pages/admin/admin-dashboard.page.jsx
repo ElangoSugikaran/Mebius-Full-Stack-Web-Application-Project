@@ -174,14 +174,7 @@ const AdminDashboardPage = () => {
             </Button>
           </Link>
           
-          <Link to="/admin/orders?status=pending">
-            <Button className="w-full justify-start" variant="outline">
-              <Clock className="h-4 w-4 mr-2" />
-              View Pending Orders ({stats.pendingOrders})
-            </Button>
-          </Link>
-          
-          <Link to="/admin/orders">
+          <Link to="/admin/admin-orders">
             <Button className="w-full justify-start" variant="outline">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Manage All Orders
@@ -342,14 +335,14 @@ const AdminDashboardPage = () => {
                         {/* 👤 ORDER INFO */}
                         <div className="flex items-center space-x-4 flex-1">
                           <div className={`p-2 rounded-full ${
-                            status === 'completed' ? 'bg-green-100' :
-                            status === 'pending' ? 'bg-yellow-100' :
-                            status === 'processing' ? 'bg-blue-100' :
+                            status === 'FULFILLED' ? 'bg-green-100' :
+                            status === 'PENDING' ? 'bg-yellow-100' :
+                            status === 'SHIPPED' ? 'bg-blue-100' :
                             'bg-gray-100'
                           }`}>
-                            {status === 'completed' ? (
+                            {status === 'FULFILLED' ? (
                               <CheckCircle className="h-4 w-4 text-green-600" />
-                            ) : status === 'processing' ? (
+                            ) : status === 'SHIPPED' ? (
                               <Clock className="h-4 w-4 text-blue-600" />
                             ) : (
                               <AlertCircle className="h-4 w-4 text-yellow-600" />
@@ -362,7 +355,7 @@ const AdminDashboardPage = () => {
                                 Order #{order.orderId || order._id?.slice(-6) || `ORD${index + 1}`}
                               </p>
                               <Badge 
-                                variant={status === 'completed' ? 'default' : 'secondary'}
+                                variant={status === 'FULFILLED' ? 'default' : 'secondary'}
                                 className="text-xs capitalize"
                               >
                                 {status}
@@ -396,9 +389,9 @@ const AdminDashboardPage = () => {
                             <div className="w-full bg-gray-200 rounded-full h-2">
                               <div 
                                 className={`h-2 rounded-full transition-all duration-300 ${
-                                  status === 'completed' ? 'bg-green-500 w-full' :
-                                  status === 'processing' ? 'bg-blue-500 w-2/3' :
-                                  status === 'pending' ? 'bg-yellow-500 w-1/3' :
+                                  status === 'FULFILLED' ? 'bg-green-500 w-full' :
+                                  status === 'SHIPPED' ? 'bg-blue-500 w-2/3' :
+                                  status === 'PENDING' ? 'bg-yellow-500 w-1/3' :
                                   'bg-gray-400 w-1/4'
                                 }`}
                               />
@@ -423,7 +416,7 @@ const AdminDashboardPage = () => {
               
               {/* 🔗 VIEW ALL BUTTON */}
               <div className="pt-3 border-t border-gray-100">
-                <Link to="/admin/orders">
+                <Link to="/admin/admin-orders">
                   <Button variant="outline" className="w-full group hover:bg-blue-50">
                     <Eye className="h-4 w-4 mr-2" />
                     View All Orders
