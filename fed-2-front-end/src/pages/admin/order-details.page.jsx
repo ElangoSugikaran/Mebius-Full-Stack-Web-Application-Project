@@ -396,7 +396,7 @@ const OrderDetailPage = () => {
       <div className="px-8">
         <div className="mb-8">
           <div className="flex items-center space-x-4">
-            <Link to="/admin/orders" className="text-gray-600 hover:text-gray-900">
+            <Link to="/admin/admin-orders" className="text-gray-600 hover:text-gray-900">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>
@@ -660,9 +660,8 @@ const OrderDetailPage = () => {
               </div>
             </CardContent>
           </Card>
-
-          {/* Shipping Address */}
-          {/* <Card>
+                
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <MapPin className="mr-2 h-5 w-5" />
@@ -671,28 +670,29 @@ const OrderDetailPage = () => {
             </CardHeader>
             <CardContent>
               {order.addressId ? (
-                <div className="space-y-2">
-                  <p className="font-medium text-gray-900">
-                    {order.addressId.firstName} {order.addressId.lastName}
-                  </p>
-                  <p className="text-gray-700">{order.addressId.line1}</p>
-                  {order.addressId.line2 && (
-                    <p className="text-gray-700">{order.addressId.line2}</p>
-                  )}
-                  <p className="text-gray-700">
-                    {order.addressId.city}
-                  </p>
-                  
-                  <div className="pt-4 border-t border-gray-200 mt-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {order.addressId.phone && (
-                        <div className="flex items-center">
-                          <Phone className="h-4 w-4 text-gray-400 mr-2" />
-                          <span className="text-sm text-gray-700">{order.addressId.phone}</span>
-                        </div>
-                      )}
-                    </div>
+                <div className="space-y-4">
+                  {/* Name with location icon */}
+                  <div className="flex items-center space-x-2">
+                    <MapPin className="h-5 w-5 text-gray-400" />
+                    <p className="font-medium text-gray-900">
+                      {order.addressId.firstName} {order.addressId.lastName}
+                    </p>
                   </div>
+
+                  {/* Address lines & city grouped */}
+                  <div className="space-y-1 text-gray-700">
+                    <p>{order.addressId.line1}</p>
+                    {order.addressId.line2 && <p>{order.addressId.line2}</p>}
+                    <p>{order.addressId.city}</p>
+                  </div>
+                  
+                  {/* Phone with icon aligned */}
+                  {order.addressId.phone && (
+                    <div className="flex items-center space-x-2 text-gray-700">
+                      <Phone className="h-4 w-4 text-gray-400" />
+                      <span className="text-sm">{order.addressId.phone}</span>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="text-center py-4">
@@ -701,50 +701,7 @@ const OrderDetailPage = () => {
                 </div>
               )}
             </CardContent>
-          </Card> */}
-          {/* Shipping Address */}
-<Card>
-  <CardHeader>
-    <CardTitle className="flex items-center">
-      <MapPin className="mr-2 h-5 w-5" />
-      Shipping Address
-    </CardTitle>
-  </CardHeader>
-  <CardContent>
-    {order.addressId ? (
-      <div className="space-y-4">
-        {/* Name with location icon */}
-        <div className="flex items-center space-x-2">
-          <MapPin className="h-5 w-5 text-gray-400" />
-          <p className="font-medium text-gray-900">
-            {order.addressId.firstName} {order.addressId.lastName}
-          </p>
-        </div>
-
-        {/* Address lines & city grouped */}
-        <div className="space-y-1 text-gray-700">
-          <p>{order.addressId.line1}</p>
-          {order.addressId.line2 && <p>{order.addressId.line2}</p>}
-          <p>{order.addressId.city}</p>
-        </div>
-        
-        {/* Phone with icon aligned */}
-        {order.addressId.phone && (
-          <div className="flex items-center space-x-2 text-gray-700">
-            <Phone className="h-4 w-4 text-gray-400" />
-            <span className="text-sm">{order.addressId.phone}</span>
-          </div>
-        )}
-      </div>
-    ) : (
-      <div className="text-center py-4">
-        <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-        <p className="text-yellow-700">Address information not available</p>
-      </div>
-    )}
-  </CardContent>
-</Card>
-
+          </Card>
         </div>
 
         {/* Order Summary Sidebar */}
