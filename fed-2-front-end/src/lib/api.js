@@ -646,14 +646,25 @@ export const Api = createApi({
     }),
 
     // 🔧 SETTINGS ENDPOINTS
-    getSettings: build.query({
-      query: () => '/settings',
-      providesTags: ['Settings'],
-      transformResponse: (response) => {
-        console.log('✅ Settings fetched:', response);
-        return response.data || response;
-      },
-    }),
+   getSettings: build.query({
+    query: () => '/settings',
+    providesTags: ['Settings'],
+    transformResponse: (response) => {
+      console.log('Raw settings response:', response);
+      // Handle multiple response formats
+      if (response.data) {
+        return response.data; // Backend returns { data: settings }
+      }
+      return response; // Backend returns settings directly
+    },
+    transformErrorResponse: (response) => {
+      console.error('Settings fetch error:', response);
+      return {
+        status: response?.status || 500,
+        message: response?.data?.message || 'Failed to fetch settings'
+      };
+    },
+  }),
 
     updateStoreSettings: build.mutation({
       query: (storeData) => {

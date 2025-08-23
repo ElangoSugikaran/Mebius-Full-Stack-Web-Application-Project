@@ -1,5 +1,5 @@
 import { useForm } from "react-hook-form";
-import z from "zod";
+import { z } from "zod"; // FIXED: Proper named import instead of default import
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from 'react';
 import { Save, CreditCard, DollarSign, Truck } from 'lucide-react';
