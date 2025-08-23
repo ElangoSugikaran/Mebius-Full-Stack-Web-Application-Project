@@ -261,7 +261,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
       Product.aggregate([
         { "$match": { isActive: true } },
         { "$group": { "_id": "$brand" } },
-        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$match": { "_id": { "$ne": null} } },
         { "$sort": { "_id": 1 } }
       ]),
 
@@ -270,7 +270,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
         { "$match": { isActive: true } },
         { "$unwind": "$colors" },
         { "$group": { "_id": "$colors" } },
-        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$match": { "_id": { "$ne": null} } },
         { "$sort": { "_id": 1 } }
       ]),
 
@@ -279,7 +279,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
         { "$match": { isActive: true } },
         { "$unwind": "$sizes" },
         { "$group": { "_id": "$sizes" } },
-        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$match": { "_id": { "$ne": null } } },
         // Custom sort for sizes to maintain logical order
         { "$addFields": { 
           sortOrder: {
@@ -305,7 +305,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
       Product.aggregate([
         { "$match": { isActive: true } },
         { "$group": { "_id": "$gender" } },
-        { "$match": { "_id": { "$ne": null, "$ne": "" } } },
+        { "$match": { "_id": { "$ne": null} } },
         // Ensure all enum values are included, especially 'kids'
         { "$addFields": {
           sortOrder: {
@@ -328,7 +328,7 @@ const getFilterOptions = async (req: Request, res: Response, next: NextFunction)
       Product.aggregate([
         { "$match": { isActive: true } },
         { "$group": { "_id": "$material" } },
-        { "$match": { "_id": { "$ne": null, "$ne": "", "$ne": "none" } } },
+        { "$match": { "_id": { "$ne": null } } },
         { "$sort": { "_id": 1 } }
       ]),
 
@@ -627,7 +627,7 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
     // Return array directly to match frontend transformResponse expectation
     res.status(200).json(transformedProducts);
 
-  } catch (error) {
+  } catch (error: any) {  // Add ': any' here
     console.error('❌ Error fetching featured products:', error);
     
     // Provide more detailed error information for debugging
@@ -639,9 +639,8 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
       });
     }
 
-    // Return empty array instead of error to prevent frontend crashes
-    console.log('🔄 Returning empty array due to error');
-    res.status(200).json([]);
+    // Don't just return empty array - pass error to middleware
+    next(error);
   }
 };
 

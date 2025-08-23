@@ -80,7 +80,7 @@ const productSchema = new mongoose.Schema({
   // NEW: Featured product flag for homepage/promotions
   isFeatured: {
     type: Boolean,
-    default: true,
+    default: false,
     index: true // Index for efficient featured product queries
   },
 
