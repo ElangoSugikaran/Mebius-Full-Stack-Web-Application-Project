@@ -5,8 +5,9 @@ import {
   updatePaymentSettings,
   updateSettings
 } from '../application/settings';
-import { isAuthenticated } from './middleware/authentication-middleware';
-import { isAdmin } from './middleware/authorization-middleware';
+// FIXED: Proper middleware imports (adjust paths as needed)
+import {isAuthenticated} from '../api/middleware/authentication-middleware'; // or { isAuthenticated }
+import {isAdmin} from '../api/middleware/authorization-middleware'; // or { isAdmin }
 
 const settingsRouter = express.Router();
 
