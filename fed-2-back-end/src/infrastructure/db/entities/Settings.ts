@@ -3,7 +3,7 @@ import mongoose from 'mongoose';
 const settingsSchema = new mongoose.Schema({
   _id: {
     type: String,
-    default: 'store_settings' // Singleton pattern
+    default: 'store_settings' // This ensures we only have one settings document
   },
   store: {
     name: {
@@ -15,38 +15,38 @@ const settingsSchema = new mongoose.Schema({
     description: {
       type: String,
       trim: true,
-      default: ''
+      default: 'Your premier destination for fashion-forward clothing and accessories.'
     },
     email: {
       type: String,
       trim: true,
       lowercase: true,
-      default: ''
+      default: 'support@mebius.com'
     },
     phone: {
       type: String,
       trim: true,
-      default: ''
+      default: '+1 (234) 567-8900'
     },
     address: {
       type: String,
       trim: true,
-      default: ''
+      default: '123 Fashion Street'
     },
     city: {
       type: String,
       trim: true,
-      default: ''
+      default: 'Style City'
     },
     state: {
       type: String,
       trim: true,
-      default: ''
+      default: 'SC'
     },
     zipCode: {
       type: String,
       trim: true,
-      default: ''
+      default: '12345'
     },
     openTime: {
       type: String,
@@ -92,7 +92,7 @@ const settingsSchema = new mongoose.Schema({
   }
 }, {
   timestamps: true,
-  _id: false // Disable auto _id since we're setting it manually
+  _id: false // Important: This prevents mongoose from creating auto _id
 });
 
 const Settings = mongoose.model('Settings', settingsSchema);
