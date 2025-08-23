@@ -1,6 +1,5 @@
 import Settings from '../infrastructure/db/entities/Settings';
 import ValidationError from "../domain/errors/validation-error";
-import NotFoundError from "../domain/errors/not-found-error";
 import { Request, Response, NextFunction } from "express";
 import { updateStoreSettingsDTO, updatePaymentSettingsDTO, updateSettingsDTO } from '../domain/dto/settings';
 
@@ -43,8 +42,8 @@ const getSettings = async (req: Request, res: Response, next: NextFunction) => {
             symbol: '$'
           },
           tax: {
-            enabled: true,
-            rate: 8.5,
+            enabled: false, // Changed from true to false to match frontend
+            rate: 0, // Changed from 8.5 to 0 to match frontend
             name: 'Sales Tax'
           }
         }
