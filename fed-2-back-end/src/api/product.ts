@@ -14,6 +14,7 @@ import {
   getProductsForSearchQuery,
   getFilterOptions,        // NEW
   getFilteredProducts,     // NEW
+  getFeaturedProducts,
 } from '../application/product';
 import { isAuthenticated } from './middleware/authentication-middleware';
 import { isAdmin } from './middleware/authorization-middleware'; // Import the admin authorization middleware
@@ -36,6 +37,9 @@ productRouter.get("/filter-options", getFilterOptions);
 
 // NEW: Get filtered products
 productRouter.get("/filtered", getFilteredProducts);
+
+// NEW: Get featured products
+productRouter.get("/featured", getFeaturedProducts);
 
 productRouter
   // Define a route for individual product operations

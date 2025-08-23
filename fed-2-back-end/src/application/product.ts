@@ -560,6 +560,46 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
   }
 };
 
+// NEW: Get featured products only
+const getFeaturedProducts = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    console.log('🔍 Fetching featured products...');
+    
+    const featuredProducts = await Product.find({ 
+      isActive: true,
+      isFeatured: true 
+    })
+    .populate({
+      path: 'categoryId',
+      select: 'name',
+      options: { lean: true }
+    })
+    .sort({ createdAt: -1 }) // Latest featured products first
+    .limit(20) // Limit for performance
+    .lean();
+
+    // Transform response to match frontend expectations
+    const transformedProducts = featuredProducts.map(product => {
+      const { categoryId, ...productData } = product;
+      return {
+        ...productData,
+        category: categoryId
+      };
+    });
+
+    console.log(`✅ Found ${transformedProducts.length} featured products`);
+
+    res.json({ 
+      data: transformedProducts,
+      count: transformedProducts.length 
+    });
+
+  } catch (error) {
+    console.error('❌ Error fetching featured products:', error);
+    next(error);
+  }
+};
+
 export {
   getAllProducts,
   getProductById,
@@ -571,6 +611,7 @@ export {
   getProductsForSearchQuery,
   getFilterOptions,
   getFilteredProducts,
+  getFeaturedProducts,
 };
 // products.js
 // This file contains the product-related logic for an Express application.
