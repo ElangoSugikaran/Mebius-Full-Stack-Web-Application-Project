@@ -45,10 +45,6 @@ import OrderDetailPage from './pages/admin/order-details.page.jsx';
 import CustomerManagementPage from './pages/admin/customer-management.page.jsx';
 import SalesDashboard from './pages/admin/admin-sales-dashboard.page.jsx';
 
-// admin side settings 
-import StoreSettingsPage from './pages/admin/store-settings.page.jsx';
-import PaymentSettingsPage from './pages/admin/payment-settings.page.jsx';
-
 
 // Import your Publishable Key
 const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -102,8 +98,6 @@ createRoot(document.getElementById('root')).render(
                     <Route path="admin-orders" element={<OrdersPage />} />
                     <Route path="admin-orders/:id" element={<OrderDetailPage />} />
                     <Route path="customers" element={<CustomerManagementPage />} />
-                    <Route path="settings/store" element={<StoreSettingsPage />} />
-                    <Route path="settings/payment" element={<PaymentSettingsPage />} />
                   </Route>
                 </Route>
               </Route>
