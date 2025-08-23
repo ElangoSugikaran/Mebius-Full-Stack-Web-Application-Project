@@ -42,7 +42,7 @@ import EditCategoryPage from './pages/admin/edit-category-page.jsx';
 import CategoryDetailPage from './pages/admin/category-details.page.jsx';
 import OrdersPage from './pages/admin/order-management.page.jsx';
 import OrderDetailPage from './pages/admin/order-details.page.jsx';
-import CustomerManagementPage from './pages/admin/customer-management.page.jsx';
+// import CustomerManagementPage from './pages/admin/customer-management.page.jsx';
 import SalesDashboard from './pages/admin/admin-sales-dashboard.page.jsx';
 
 
@@ -97,7 +97,7 @@ createRoot(document.getElementById('root')).render(
                     <Route path="categories/edit/:id" element={<EditCategoryPage />} />
                     <Route path="admin-orders" element={<OrdersPage />} />
                     <Route path="admin-orders/:id" element={<OrderDetailPage />} />
-                    <Route path="customers" element={<CustomerManagementPage />} />
+                    {/* <Route path="customers" element={<CustomerManagementPage />} /> */}
                   </Route>
                 </Route>
               </Route>
