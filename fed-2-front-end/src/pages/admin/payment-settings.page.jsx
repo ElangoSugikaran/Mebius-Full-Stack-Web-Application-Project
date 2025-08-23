@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useState, useEffect } from 'react';
 import { Save, CreditCard, DollarSign, Percent, Truck } from 'lucide-react';
 import { toast } from 'react-toastify';
-
+import { useGetSettingsQuery, useUpdatePaymentSettingsMutation } from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
@@ -48,7 +48,8 @@ const paymentSettingsSchema = z.object({
 });
 
 const PaymentSettingsPage = () => {
-  const [loading, setLoading] = useState(false);
+  const { data: settings, isLoading, error } = useGetSettingsQuery();
+  const [updatePaymentSettings] = useUpdatePaymentSettingsMutation();
 
   // FORM SETUP
   const form = useForm({
@@ -75,50 +76,20 @@ const PaymentSettingsPage = () => {
   });
 
   useEffect(() => {
-    loadPaymentSettings();
-  }, []);
-
-    const loadPaymentSettings = async () => {
-    setLoading(true);
-    try {
-        const response = await fetch(`${BASE_URL}/api/settings`, {
-        headers: {
-            'Authorization': `Bearer ${await window.Clerk?.session?.getToken()}`
-        }
-        });
-        const data = await response.json();
-        
-        if (data.payment) {
-        form.reset(data.payment);
-        }
-        setLoading(false);
-    } catch (error) {
-        console.error('Failed to load payment settings:', error);
-        setLoading(false);
+    if (settings?.payment) {
+      form.reset(settings.payment);
     }
-    };
+  }, [settings, form]);
 
-    const onSubmit = async (values) => {
+  const onSubmit = async (values) => {
     try {
-        const response = await fetch(`${BASE_URL}/api/settings/payment`, {
-        method: 'PUT',
-        headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${await window.Clerk?.session?.getToken()}`
-        },
-        body: JSON.stringify({ payment: values }) // Wrap in 'payment' object
-        });
-
-        if (response.ok) {
-        toast.success('✅ Payment Settings Saved Successfully!');
-        } else {
-        throw new Error('Failed to save settings');
-        }
+      await updatePaymentSettings(values).unwrap();
+      toast.success('✅ Payment Settings Saved Successfully!');
     } catch (error) {
-        console.error('Failed to save payment settings:', error);
-        toast.error('❌ Failed to Save Payment Settings\nPlease try again.');
+      console.error('Failed to save payment settings:', error);
+      toast.error('❌ Failed to Save Payment Settings\nPlease try again.');
     }
-    };
+  };
 
   const currencyOptions = [
     { code: 'USD', name: 'USD - US Dollar', symbol: '$' },
@@ -137,7 +108,7 @@ const PaymentSettingsPage = () => {
     }
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
         <div className="max-w-4xl mx-auto">

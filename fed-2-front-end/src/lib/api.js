@@ -681,29 +681,28 @@ export const Api = createApi({
     }),
 
     updatePaymentSettings: build.mutation({
-      query: (paymentData) => {
-        console.log('🔄 Updating payment settings:', paymentData);
-        return {
-          url: '/settings/payment',
-          method: 'PUT',
-          body: { payment: paymentData },
-        };
-      },
-      invalidatesTags: ['Settings'],
-      transformResponse: (response) => {
-        console.log('✅ Payment settings updated:', response);
-        return response.data || response;
-      },
-      async onQueryStarted(paymentData, { dispatch, queryFulfilled }) {
-        try {
-          await queryFulfilled;
-          console.log('✅ Payment settings saved successfully');
-        } catch (error) {
-          console.error('❌ Failed to save payment settings:', error);
-          throw error;
-        }
-      },
-    }),
+    query: (paymentData) => {
+      console.log('🔄 Updating payment settings:', paymentData);
+      return {
+        url: '/settings/payment',
+        method: 'PUT',
+        body: { payment: paymentData },
+      };
+    },
+    invalidatesTags: ['Settings'],
+    transformResponse: (response) => {
+      console.log('✅ Payment settings updated:', response);
+      return response.data || response;
+    },
+    transformErrorResponse: (response) => {
+      console.error('❌ Payment settings update failed:', response);
+      return {
+        status: response?.status,
+        message: response?.data?.message || 'Failed to update payment settings'
+      };
+    },
+  }),
+
   }),
 });
 
