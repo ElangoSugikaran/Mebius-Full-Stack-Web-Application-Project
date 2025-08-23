@@ -574,8 +574,8 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
       select: 'name',
       options: { lean: true }
     })
-    .sort({ createdAt: -1 }) // Latest featured products first
-    .limit(20) // Limit for performance
+    .sort({ createdAt: -1 })
+    .limit(20)
     .lean();
 
     // Transform response to match frontend expectations
@@ -589,11 +589,8 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
 
     console.log(`✅ Found ${transformedProducts.length} featured products`);
 
-   res.status(200).json({
-    success: true,
-    data: transformedProducts,
-    count: transformedProducts.length
-  });
+    // Return array directly to match frontend transformResponse expectation
+    res.status(200).json(transformedProducts);
 
   } catch (error) {
     console.error('❌ Error fetching featured products:', error);
