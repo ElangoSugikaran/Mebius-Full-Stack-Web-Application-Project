@@ -1,6 +1,3 @@
-// 🔧 FIXED: Order Controller - Proper payment flow logic
-// File: src/application/order.ts
-
 import { Request, Response, NextFunction } from "express";
 import Order from "../infrastructure/db/entities/Order"; 
 import Address from "../infrastructure/db/entities/Address";
@@ -8,9 +5,56 @@ import Product from "../infrastructure/db/entities/Product";
 import NotFoundError from "../domain/errors/not-found-error";
 import UnauthorizedError from "../domain/errors/unauthorized-error";
 import ValidationError from "../domain/errors/validation-error";
-import { getAuth } from "@clerk/express";
-import { syncClerkUserToDatabase } from "../infrastructure/clerk";
-import Customer from "../infrastructure/db/entities/Customer";
+import { getAuth, clerkClient } from "@clerk/express";
+
+// Replace lines 9-22 in your backend order.ts file
+const getUserFromClerk = async (userId: string) => {
+  try {
+    if (!userId || userId.trim() === '') {
+      console.warn("⚠️ Empty userId provided to getUserFromClerk");
+      return null;
+    }
+
+    console.log(`🔍 Fetching user info from Clerk for: ${userId}`);
+    
+    const user = await clerkClient.users.getUser(userId);
+    
+    if (!user) {
+      console.warn(`⚠️ No user found in Clerk for ID: ${userId}`);
+      return null;
+    }
+
+    const userInfo = {
+      id: user.id,
+      firstName: user.firstName || 'N/A',
+      lastName: user.lastName || 'N/A',
+      email: user.primaryEmailAddress?.emailAddress || 'No email',
+      imageUrl: user.imageUrl || null,
+      fullName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || 'Unknown User',
+      createdAt: user.createdAt,
+      lastSignInAt: user.lastSignInAt
+    };
+
+    console.log(`✅ User info retrieved: ${userInfo.fullName} (${userInfo.email})`);
+    return userInfo;
+    
+  } catch (error) {
+    console.error(`❌ Error fetching user from Clerk for ID ${userId}:`, error);
+    
+    // Return a fallback user object instead of null
+    return {
+      id: userId,
+      firstName: 'Unknown',
+      lastName: 'User',
+      email: 'No email available',
+      imageUrl: null,
+      fullName: 'Unknown User',
+      createdAt: null,
+      lastSignInAt: null,
+      isClerkError: true
+    };
+  }
+};
 
 // ========== CREATE ORDER ==========
 const createOrder = async (req: Request, res: Response, next: NextFunction) => {
@@ -22,16 +66,6 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     
     if (!userId) {
       throw new UnauthorizedError("Authentication required");
-    }
-
-    let customer = await Customer.findOne({ clerkId: userId });
-    if (!customer) {
-      console.log("🔄 Customer not found, syncing from Clerk...");
-      customer = await syncClerkUserToDatabase(userId);
-      
-      if (!customer) {
-        throw new ValidationError("Failed to sync customer data from Clerk");
-      }
     }
 
     // Validate required fields
@@ -218,25 +252,75 @@ const getOrder = async (req: Request, res: Response, next: NextFunction) => {
 };
 
 // ========== ADMIN: GET ALL ORDERS ==========
+// Replace the getAllOrders function (lines 173-193)
 const getAllOrders = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log("📋 Admin fetching all orders");
+    console.log("🔍 Admin fetching all orders with user info...");
     
     const orders = await Order.find()
-    .populate({
-      path: "items.productId",
-      model: "Product",
-      select: "name price discount image description"
-    })
-    .populate("addressId")
-    .sort({ createdAt: -1 });
+      .populate({
+        path: "items.productId",
+        model: "Product",
+        select: "name price discount image description"
+      })
+      .populate("addressId")
+      .sort({ createdAt: -1 });
     
-    console.log(`📊 Found ${orders.length} orders`);
+    console.log(`📊 Found ${orders.length} orders, enriching with user info...`);
+    
+    // 🔧 IMPROVED: Batch process user info with error handling
+    const ordersWithUserInfo = await Promise.allSettled(
+      orders.map(async (order) => {
+        try {
+          const userInfo = await getUserFromClerk(order.userId);
+          return {
+            ...order.toObject(),
+            userInfo // Add user info from Clerk
+          };
+        } catch (error) {
+          console.warn(`⚠️ Failed to get user info for order ${order._id}:`, error);
+          return {
+            ...order.toObject(),
+            userInfo: {
+              id: order.userId,
+              firstName: 'Unknown',
+              lastName: 'User',
+              email: 'Error fetching email',
+              fullName: 'Unknown User',
+              isClerkError: true
+            }
+          };
+        }
+      })
+    );
+    
+    // Extract successful results and handle rejections
+    const processedOrders = ordersWithUserInfo.map((result, index) => {
+      if (result.status === 'fulfilled') {
+        return result.value;
+      } else {
+        console.error(`❌ Failed to process order ${orders[index]._id}:`, result.reason);
+        return {
+          ...orders[index].toObject(),
+          userInfo: {
+            id: orders[index].userId,
+            firstName: 'Error',
+            lastName: 'Loading',
+            email: 'Failed to load',
+            fullName: 'Error Loading User',
+            isClerkError: true
+          }
+        };
+      }
+    });
+    
+    console.log(`✅ Successfully processed ${processedOrders.length} orders with user info`);
     
     res.status(200).json({
       success: true,
-      orders: orders,
-      count: orders.length
+      orders: processedOrders,
+      count: processedOrders.length,
+      message: "Orders retrieved successfully with user information"
     });
   } catch (error) {
     console.error("❌ Error getting all orders:", error);
@@ -245,6 +329,7 @@ const getAllOrders = async (req: Request, res: Response, next: NextFunction) => 
 };
 
 // ========== ADMIN: GET ORDER BY ID ==========
+// Replace the getOrderById function (lines 309-339)
 const getOrderById = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const orderId = req.params.id;
@@ -253,25 +338,33 @@ const getOrderById = async (req: Request, res: Response, next: NextFunction) => 
       throw new ValidationError("Valid order ID is required");
     }
     
-    console.log(`🔍 Admin fetching order: ${orderId}`);
+    console.log(`🔍 Admin fetching order with user info: ${orderId}`);
     
-   const order = await Order.findById(orderId)
-    .populate({
-      path: "items.productId",  
-      model: "Product",
-      select: "name price discount image description"
-    })
-    .populate("addressId");
+    const order = await Order.findById(orderId)
+      .populate({
+        path: "items.productId",  
+        model: "Product",
+        select: "name price discount image description"
+      })
+      .populate("addressId");
     
     if (!order) {
       throw new NotFoundError("Order not found");
     }
     
-    console.log(`✅ Admin successfully fetched order: ${orderId}`);
+    // 🔧 NEW: Enrich with user info from Clerk
+    const userInfo = await getUserFromClerk(order.userId);
+    
+    const enrichedOrder = {
+      ...order.toObject(),
+      userInfo // Add user info from Clerk
+    };
+    
+    console.log(`✅ Admin successfully fetched order with user info: ${orderId}`);
     
     res.status(200).json({
       success: true,
-      order: order
+      order: enrichedOrder
     });
   } catch (error) {
     console.error("❌ Error getting order by ID:", error);

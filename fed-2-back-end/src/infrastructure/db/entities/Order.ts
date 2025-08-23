@@ -16,19 +16,23 @@ const itemSchema = new mongoose.Schema({
         type: Number,
         required: true,
         min: 0
-    }
+    },
+    size: {
+        type: String,
+        required: false
+    },
+    color: {
+        type: String,
+        required: false
+    },
 });
 
 // Order schema
 const orderSchema = new mongoose.Schema({
     userId: {
         type: String,
-        required: true
-    },
-    customerId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "Customer",
-        required: false
+        required: true,
+        index: true
     },
     items: {
         type: [itemSchema],
