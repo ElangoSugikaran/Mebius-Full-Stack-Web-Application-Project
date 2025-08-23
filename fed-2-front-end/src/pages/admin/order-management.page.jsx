@@ -597,7 +597,7 @@ const CustomerInfo = ({ userId }) => {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
-                          <Link to={`/admin/orders/${order._id}`} className="flex items-center">
+                          <Link to={`/admin/admin-orders/${order._id}`} className="flex items-center">
                             <Eye className="mr-2 h-4 w-4" />
                             View Details
                           </Link>
