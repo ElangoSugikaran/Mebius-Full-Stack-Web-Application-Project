@@ -65,14 +65,6 @@ const AdminDashboardLayout = () => {
     setMobileMenuOpen(!mobileMenuOpen);
   };
 
-  // 🎛️ TOGGLE SETTINGS DROPDOWN
-  const toggleSettingsDropdown = () => {
-    setSettingsDropdownOpen(!settingsDropdownOpen);
-  };
-
-  // 🔍 CHECK IF CURRENT PATH IS A SETTINGS ROUTE
-  const isSettingsRoute = location.pathname.startsWith('/admin/settings');
-
   return (
     <div className="min-h-screen bg-gray-50">
       
