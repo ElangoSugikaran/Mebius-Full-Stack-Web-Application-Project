@@ -1,7 +1,7 @@
-// pages/Shop.jsx - FIXED: Correct data extraction from API response
+// pages/Shop.jsx - Updated to use useGetAllProductsQuery with client-side filtering
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useGetFilteredProductsQuery, useGetAllCategoriesQuery } from '../lib/api';
+import { useGetAllProductsQuery, useGetAllCategoriesQuery } from '../lib/api';
 import ProductCard from '@/components/ShopProductCard';
 import FilterSidebar from '@/components/FilterSidebar';
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,13 @@ import {
 const Shop = () => {
   const { category } = useParams();
 
+  // 📝 USING: useGetAllProductsQuery as requested
+  const { 
+    data: products = [], 
+    isLoading: productsLoading, 
+    error: productsError 
+  } = useGetAllProductsQuery();
+  
   const { 
     data: categories = [], 
     isLoading: categoriesLoading 
@@ -48,40 +55,7 @@ const Shop = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
 
-  // RTK Query with dynamic parameters
-  const { 
-    data: apiResponse, 
-    isLoading: productsLoading, 
-    error: productsError 
-  } = useGetFilteredProductsQuery({
-    ...filters,
-    sortBy,
-    sortOrder: getSortOrder(sortBy),
-    page: currentPage,
-    limit: itemsPerPage
-  });
-
-  // 🔧 FIXED: Extract data correctly from API response
-  const products = apiResponse?.data || [];
-  const totalProducts = apiResponse?.count || 0;
-  const totalPages = Math.ceil(totalProducts / itemsPerPage);
-
-  // Debug logs
-  console.log('🔍 API Response Structure:', apiResponse);
-  console.log('🔍 Extracted Products:', products);
-  console.log('🔍 Total Products:', totalProducts);
-
-  // Helper function to determine sort order
-  function getSortOrder(sortType) {
-    switch (sortType) {
-      case 'price-high': return 'desc';
-      case 'newest': return 'desc';
-      case 'rating': return 'desc';
-      default: return 'asc';
-    }
-  }
-
-  // Calculate availableBrands from filtered products
+  // Calculate availableBrands from products
   const availableBrands = useMemo(() => {
     if (!products.length) return [];
     const brands = [...new Set(products.map(product => product.brand).filter(Boolean))];
@@ -115,13 +89,125 @@ const Shop = () => {
     setCurrentPage(1); // Reset to first page when category changes
   }, [currentCategory, category]);
 
+  // CLIENT-SIDE FILTERING LOGIC
+  const filteredProducts = useMemo(() => {
+    if (!products.length) return [];
+
+    return products.filter(product => {
+      // Category filter
+      if (filters.categories.length > 0) {
+        const matchesCategory = filters.categories.some(catId => {
+          // Direct ID match
+          if (product.categoryId === catId) return true;
+          
+          // If product has category object instead of just ID
+          if (product.category && product.category._id === catId) return true;
+          
+          // If product.category is a string that matches category name
+          if (typeof product.category === 'string') {
+            const matchingCat = categories.find(cat => cat._id === catId);
+            return matchingCat && product.category.toLowerCase() === matchingCat.name.toLowerCase();
+          }
+          
+          return false;
+        });
+        
+        if (!matchesCategory) return false;
+      }
+
+      // Brand filter
+      if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) {
+        return false;
+      }
+
+      // Price filter - Use finalPrice if available, otherwise calculate
+      const productPrice = product.finalPrice || 
+        (product.discount > 0 
+          ? product.price * (1 - product.discount / 100)
+          : product.price);
+      
+      if (productPrice < filters.priceRange[0] || productPrice > filters.priceRange[1]) {
+        return false;
+      }
+
+      // Size filter
+      if (filters.sizes.length > 0) {
+        const hasMatchingSize = product.sizes?.some(size => 
+          filters.sizes.includes(size)
+        );
+        if (!hasMatchingSize) return false;
+      }
+
+      // Color filter
+      if (filters.colors.length > 0) {
+        const hasMatchingColor = product.colors?.some(color => 
+          filters.colors.includes(color)
+        );
+        if (!hasMatchingColor) return false;
+      }
+
+      // Gender filter
+      if (filters.gender.length > 0 && !filters.gender.includes(product.gender)) {
+        return false;
+      }
+
+      // Stock filter
+      if (filters.inStock && product.stock === 0) {
+        return false;
+      }
+
+      // Sale filter
+      if (filters.onSale && (!product.discount || product.discount === 0)) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [products, filters, categories]);
+
+  // CLIENT-SIDE SORTING
+  const sortedProducts = useMemo(() => {
+    const productsCopy = [...filteredProducts];
+
+    switch (sortBy) {
+      case 'price-low':
+        return productsCopy.sort((a, b) => {
+          const priceA = a.finalPrice || (a.discount > 0 ? a.price * (1 - a.discount / 100) : a.price);
+          const priceB = b.finalPrice || (b.discount > 0 ? b.price * (1 - b.discount / 100) : b.price);
+          return priceA - priceB;
+        });
+      case 'price-high':
+        return productsCopy.sort((a, b) => {
+          const priceA = a.finalPrice || (a.discount > 0 ? a.price * (1 - a.discount / 100) : a.price);
+          const priceB = b.finalPrice || (b.discount > 0 ? b.price * (1 - b.discount / 100) : b.price);
+          return priceB - priceA;
+        });
+      case 'newest':
+        return productsCopy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      case 'rating':
+        return productsCopy.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
+      case 'name':
+      default:
+        return productsCopy.sort((a, b) => a.name.localeCompare(b.name));
+    }
+  }, [filteredProducts, sortBy]);
+
+  // CLIENT-SIDE PAGINATION
+  const totalProducts = sortedProducts.length;
+  const totalPages = Math.ceil(totalProducts / itemsPerPage);
+  const paginatedProducts = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return sortedProducts.slice(startIndex, endIndex);
+  }, [sortedProducts, currentPage, itemsPerPage]);
+
   // Handle filter changes from FilterSidebar
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
     setCurrentPage(1); // Reset to first page
   };
 
-  // Handle sort changes to trigger backend sorting  
+  // Handle sort changes
   const handleSortChange = (newSortBy) => {
     setSortBy(newSortBy);
     setCurrentPage(1); // Reset to first page
@@ -350,7 +436,7 @@ const Shop = () => {
                 {/* Results Count */}
                 <div className="text-sm">
                   <span className="font-medium text-gray-900">
-                    {products.length}
+                    {paginatedProducts.length}
                   </span>
                   <span className="text-gray-600 ml-1">
                     of {totalProducts} {totalProducts === 1 ? 'product' : 'products'}
@@ -415,7 +501,7 @@ const Shop = () => {
 
           {/* Products Grid */}
           <div className="p-4 lg:p-6">
-            {products.length === 0 ? (
+            {paginatedProducts.length === 0 ? (
               <div className="text-center py-16">
                 <div className="max-w-md mx-auto">
                   <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -460,7 +546,7 @@ const Shop = () => {
                     : 'space-y-4'
                   }
                 `}>
-                  {products.map((product) => (
+                  {paginatedProducts.map((product) => (
                     <ProductCard 
                       key={product._id} 
                       product={product} 
