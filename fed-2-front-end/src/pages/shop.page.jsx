@@ -1,7 +1,7 @@
-// pages/Shop.jsx - Updated with RTK Query filtering and sorting
+// pages/Shop.jsx - FIXED: Correct data extraction from API response
 import { useState, useMemo, useEffect } from "react";
 import { useParams } from "react-router-dom";
-import { useGetFilteredProductsQuery, useGetAllCategoriesQuery } from '../lib/api'; // CHANGED: Use filtered query
+import { useGetFilteredProductsQuery, useGetAllCategoriesQuery } from '../lib/api';
 import ProductCard from '@/components/ShopProductCard';
 import FilterSidebar from '@/components/FilterSidebar';
 import { Button } from "@/components/ui/button";
@@ -48,9 +48,9 @@ const Shop = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
 
-  // CHANGED: Use filtered products query with dynamic parameters
+  // RTK Query with dynamic parameters
   const { 
-    data: paginationData, 
+    data: apiResponse, 
     isLoading: productsLoading, 
     error: productsError 
   } = useGetFilteredProductsQuery({
@@ -61,14 +61,15 @@ const Shop = () => {
     limit: itemsPerPage
   });
 
-  // Extract products and pagination info
-  const products = paginationData?.products || [];
-  const totalProducts = paginationData?.total || 0;
+  // 🔧 FIXED: Extract data correctly from API response
+  const products = apiResponse?.data || [];
+  const totalProducts = apiResponse?.count || 0;
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
 
-  // ADD DEBUG LOGS HERE:
-  console.log('RTK Query Response:', paginationData);
-  console.log('Products:', products);
+  // Debug logs
+  console.log('🔍 API Response Structure:', apiResponse);
+  console.log('🔍 Extracted Products:', products);
+  console.log('🔍 Total Products:', totalProducts);
 
   // Helper function to determine sort order
   function getSortOrder(sortType) {
@@ -111,22 +112,19 @@ const Shop = () => {
         categories: []
       }));
     }
-    // ADD THIS LINE:
     setCurrentPage(1); // Reset to first page when category changes
   }, [currentCategory, category]);
 
-  // REMOVED: Frontend filtering and sorting logic - now handled by backend
-
   // Handle filter changes from FilterSidebar
   const handleFiltersChange = (newFilters) => {
-  setFilters(newFilters);
-  setCurrentPage(1); // ADD THIS LINE - Reset to first page
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page
   };
 
-  // CHANGED: Handle sort changes to trigger backend sorting  
+  // Handle sort changes to trigger backend sorting  
   const handleSortChange = (newSortBy) => {
-  setSortBy(newSortBy);
-  setCurrentPage(1); // ADD THIS LINE - Reset to first page
+    setSortBy(newSortBy);
+    setCurrentPage(1); // Reset to first page
   };
 
   // Count active filters for display
@@ -275,18 +273,18 @@ const Shop = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => {
-                          setFilters({
-                            categories: currentCategory ? [currentCategory._id] : [],
-                            brands: [],
-                            priceRange: [0, 1000],
-                            sizes: [],
-                            colors: [],
-                            gender: [],
-                            inStock: false,
-                            onSale: false,
-                          });
-                          setCurrentPage(1); // ADD THIS LINE
-                        }}
+                            setFilters({
+                              categories: currentCategory ? [currentCategory._id] : [],
+                              brands: [],
+                              priceRange: [0, 1000],
+                              sizes: [],
+                              colors: [],
+                              gender: [],
+                              inStock: false,
+                              onSale: false,
+                            });
+                            setCurrentPage(1);
+                          }}
                           className="text-xs text-blue-600 hover:text-blue-700 px-2 py-1 h-auto font-medium"
                         >
                           Clear other filters
@@ -303,7 +301,7 @@ const Shop = () => {
                 {/* Right Section - Sort & View Controls */}
                 <div className="flex items-center gap-3">
                   
-                  {/* Sort Dropdown - CHANGED: Use handleSortChange */}
+                  {/* Sort Dropdown */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600 hidden sm:block">Sort by:</span>
                     <Select value={sortBy} onValueChange={handleSortChange}>
@@ -349,7 +347,7 @@ const Shop = () => {
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 
-                {/* Results Count - CHANGED: Use products directly */}
+                {/* Results Count */}
                 <div className="text-sm">
                   <span className="font-medium text-gray-900">
                     {products.length}
@@ -444,7 +442,7 @@ const Shop = () => {
                             inStock: false,
                             onSale: false,
                           });
-                          setCurrentPage(1); // ADD THIS LINE
+                          setCurrentPage(1);
                         }}
                         className="mx-auto"
                       >
