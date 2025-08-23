@@ -1,3 +1,4 @@
+// domain/dto/settings.js
 import { z } from 'zod';
 
 // Store Settings Validation Schema

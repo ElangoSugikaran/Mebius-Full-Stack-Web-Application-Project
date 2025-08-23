@@ -108,8 +108,28 @@ export const updateStoreSettings = async (req: Request, res: Response, next: Nex
     // Get or create settings document
     let settings = await ensureSettingsExist();
     
-    // Update store settings with validated data
-    Object.assign(settings.store, result.data.store);
+    // FIX: Properly handle optional fields with defaults
+    const storeData = {
+      name: result.data.store.name,
+      description: result.data.store.description || '',
+      email: result.data.store.email || '',
+      phone: result.data.store.phone || '',
+      address: result.data.store.address || '',
+      city: result.data.store.city || '',
+      state: result.data.store.state || '',
+      zipCode: result.data.store.zipCode || '',
+      openTime: result.data.store.openTime,
+      closeTime: result.data.store.closeTime,
+      isOpen: result.data.store.isOpen,
+      logo: result.data.store.logo || ''
+    };
+    
+    // Update store settings
+    if (settings.store) {
+      Object.assign(settings.store, storeData);
+    } else {
+      settings.store = storeData;
+    }
     
     // Save changes to database
     await settings.save();
@@ -152,7 +172,13 @@ export const updatePaymentSettings = async (req: Request, res: Response, next: N
     let settings = await ensureSettingsExist();
     
     // Update payment settings with validated data
-    Object.assign(settings.payment, result.data.payment);
+    const paymentData = result.data.payment;
+    
+    if (settings.payment) {
+      Object.assign(settings.payment, paymentData);
+    } else {
+      settings.payment = paymentData;
+    }
     
     // Save changes to database
     await settings.save();
