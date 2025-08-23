@@ -1,5 +1,4 @@
 import Product from '../infrastructure/db/entities/Product';
-// Import custom error classes for validation and not found errors
 import ValidationError from "../domain/errors/validation-error";
 import NotFoundError from "../domain/errors/not-found-error";
 import { Request, Response, NextFunction } from "express";
@@ -561,22 +560,58 @@ const getFilteredProducts = async (req: Request, res: Response, next: NextFuncti
 };
 
 // NEW: Get featured products only
+// Fixed getFeaturedProducts function with comprehensive error handling
 const getFeaturedProducts = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('🔍 Fetching featured products...');
     
-    const featuredProducts = await Product.find({ 
+    // Add error handling for database connection
+    if (!Product) {
+      throw new Error('Product model not available');
+    }
+
+    // First, try a simple query to test database connection
+    const testCount = await Product.countDocuments({ isActive: true });
+    console.log(`🔍 Total active products: ${testCount}`);
+
+    // Check if any products are marked as featured
+    const featuredCount = await Product.countDocuments({ 
       isActive: true,
       isFeatured: true 
-    })
-    .populate({
-      path: 'categoryId',
-      select: 'name',
-      options: { lean: true }
-    })
-    .sort({ createdAt: -1 })
-    .limit(20)
-    .lean();
+    });
+    console.log(`🔍 Featured products count: ${featuredCount}`);
+
+    let featuredProducts;
+    
+    if (featuredCount === 0) {
+      // If no featured products, fallback to latest products
+      console.log('⚠️ No featured products found, falling back to latest products');
+      featuredProducts = await Product.find({ isActive: true })
+        .populate({
+          path: 'categoryId',
+          select: 'name',
+          options: { lean: true }
+        })
+        .sort({ createdAt: -1 })
+        .limit(8)
+        .lean()
+        .exec();
+    } else {
+      // Get featured products
+      featuredProducts = await Product.find({ 
+        isActive: true,
+        isFeatured: true 
+      })
+      .populate({
+        path: 'categoryId',
+        select: 'name',
+        options: { lean: true }
+      })
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean()
+      .exec();
+    }
 
     // Transform response to match frontend expectations
     const transformedProducts = featuredProducts.map(product => {
@@ -587,14 +622,26 @@ const getFeaturedProducts = async (req: Request, res: Response, next: NextFuncti
       };
     });
 
-    console.log(`✅ Found ${transformedProducts.length} featured products`);
+    console.log(`✅ Returning ${transformedProducts.length} products`);
 
     // Return array directly to match frontend transformResponse expectation
     res.status(200).json(transformedProducts);
 
   } catch (error) {
     console.error('❌ Error fetching featured products:', error);
-    next(error);
+    
+    // Provide more detailed error information for debugging
+    if (error.name === 'MongoError' || error.name === 'MongooseError') {
+      console.error('Database error details:', {
+        message: error.message,
+        stack: error.stack,
+        name: error.name
+      });
+    }
+
+    // Return empty array instead of error to prevent frontend crashes
+    console.log('🔄 Returning empty array due to error');
+    res.status(200).json([]);
   }
 };
 

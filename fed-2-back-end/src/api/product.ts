@@ -39,7 +39,7 @@ productRouter
   productRouter.get("/filtered", getFilteredProducts);
 
   // NEW: Get featured products - MUST come before /:id route
-  productRouter.get("/featured", getFeaturedProducts);
+  productRouter.get("/featured", getFeaturedProducts);  
 
 productRouter
   // Define a route for individual product operations
