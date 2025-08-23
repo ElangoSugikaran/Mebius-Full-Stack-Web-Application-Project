@@ -10,7 +10,6 @@ import orderRouter from "./api/order"; // Import order routes
 import wishlistRouter from "./api/wishlist";
 import cartRouter from "./api/cart";
 import customerRouter from "./api/customer";
-import settingsRouter from "./api/settings";
 import connectDB from './infrastructure/db/index';// Import the database connection function
 import globalErrorHandlingMiddleware from "./api/middleware/global-error-handling-middleware";
 import { paymentsRouter } from "./api/payment";
@@ -52,8 +51,6 @@ app.use("/api/wishlist", wishlistRouter);
 app.use("/api/payments", paymentsRouter);
 
 app.use("/api/customers", customerRouter);
-
-app.use('/api/settings', settingsRouter); // Use the settings router for handling requests to the /api/settings endpoint
 
 app.use(globalErrorHandlingMiddleware); // Use global error handling middleware to catch and respond to errors
 
