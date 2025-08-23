@@ -47,8 +47,8 @@ const Shop = () => {
 
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(12);
-  
-// CHANGED: Use filtered products query with dynamic parameters
+
+  // CHANGED: Use filtered products query with dynamic parameters
   const { 
     data: paginationData, 
     isLoading: productsLoading, 
@@ -65,6 +65,10 @@ const Shop = () => {
   const products = paginationData?.products || [];
   const totalProducts = paginationData?.total || 0;
   const totalPages = Math.ceil(totalProducts / itemsPerPage);
+
+  // ADD DEBUG LOGS HERE:
+  console.log('RTK Query Response:', paginationData);
+  console.log('Products:', products);
 
   // Helper function to determine sort order
   function getSortOrder(sortType) {
@@ -524,9 +528,5 @@ const Shop = () => {
     </div>
   );
 };
-
-// Add this temporarily to see what you're getting
-console.log('RTK Query Response:', paginationData);
-console.log('Products:', products);
 
 export default Shop;
