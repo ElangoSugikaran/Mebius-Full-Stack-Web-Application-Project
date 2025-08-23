@@ -1,7 +1,7 @@
-// pages/Shop.jsx - Updated with category parameter handling
+// pages/Shop.jsx - Updated with RTK Query filtering and sorting
 import { useState, useMemo, useEffect } from "react";
-import { useParams } from "react-router"; // ✅ ADD THIS
-import { useGetAllProductsQuery, useGetAllCategoriesQuery } from '../lib/api';
+import { useParams } from "react-router-dom";
+import { useGetFilteredProductsQuery, useGetAllCategoriesQuery } from '../lib/api'; // CHANGED: Use filtered query
 import ProductCard from '@/components/ShopProductCard';
 import FilterSidebar from '@/components/FilterSidebar';
 import { Button } from "@/components/ui/button";
@@ -22,43 +22,14 @@ import {
 } from "lucide-react";
 
 const Shop = () => {
-  // ✅ GET CATEGORY FROM URL PARAMETER
   const { category } = useParams();
 
-  // 📝 LEARNING: Fetch data from your backend API
-  const { 
-    data: products = [], 
-    isLoading: productsLoading, 
-    error: productsError 
-  } = useGetAllProductsQuery();
-  
   const { 
     data: categories = [], 
     isLoading: categoriesLoading 
   } = useGetAllCategoriesQuery();
 
-  // ✅ FIXED: Calculate availableBrands from products
-  const availableBrands = useMemo(() => {
-    if (!products.length) return [];
-    
-    // Extract unique brands from products
-    const brands = [...new Set(products.map(product => product.brand).filter(Boolean))];
-    return brands.sort(); // Sort alphabetically
-  }, [products]);
-
-  // ✅ FIND CURRENT CATEGORY INFO
-  const currentCategory = useMemo(() => {
-    if (!category || !categories.length) return null;
-    
-    // Find category by matching the URL parameter with category name or slug
-    return categories.find(cat => 
-      cat.name.toLowerCase().replace(/[^a-z0-9]/g, '') === category.toLowerCase() ||
-      cat.slug === category ||
-      cat._id === category
-    );
-  }, [category, categories]);
-
-  // 📝 CLEANED STATE - Remove searchQuery, keep only filtering
+  // State for filters and sorting
   const [filters, setFilters] = useState({
     categories: [],
     brands: [],
@@ -74,15 +45,53 @@ const Shop = () => {
   const [viewMode, setViewMode] = useState('grid');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  // ✅ AUTO-SELECT CATEGORY WHEN URL CHANGES
+  // CHANGED: Use filtered products query with dynamic parameters
+  const { 
+    data: products = [], 
+    isLoading: productsLoading, 
+    error: productsError 
+  } = useGetFilteredProductsQuery({
+    ...filters,
+    sortBy,
+    sortOrder: getSortOrder(sortBy) // Helper function to determine sort order
+  });
+
+  // Helper function to determine sort order
+  function getSortOrder(sortType) {
+    switch (sortType) {
+      case 'price-high': return 'desc';
+      case 'newest': return 'desc';
+      case 'rating': return 'desc';
+      default: return 'asc';
+    }
+  }
+
+  // Calculate availableBrands from filtered products
+  const availableBrands = useMemo(() => {
+    if (!products.length) return [];
+    const brands = [...new Set(products.map(product => product.brand).filter(Boolean))];
+    return brands.sort();
+  }, [products]);
+
+  // Find current category info
+  const currentCategory = useMemo(() => {
+    if (!category || !categories.length) return null;
+    
+    return categories.find(cat => 
+      cat.name.toLowerCase().replace(/[^a-z0-9]/g, '') === category.toLowerCase() ||
+      cat.slug === category ||
+      cat._id === category
+    );
+  }, [category, categories]);
+
+  // Auto-select category when URL changes
   useEffect(() => {
     if (currentCategory) {
       setFilters(prev => ({
         ...prev,
-        categories: [currentCategory._id] // Automatically filter by current category
+        categories: [currentCategory._id]
       }));
     } else if (category === undefined) {
-      // Reset category filter when on main shop page
       setFilters(prev => ({
         ...prev,
         categories: []
@@ -90,115 +99,21 @@ const Shop = () => {
     }
   }, [currentCategory, category]);
 
-  // 📝 CLEANED FILTERING LOGIC - Only filters, no search
-  const filteredProducts = useMemo(() => {
-    if (!products.length) return [];
+  // REMOVED: Frontend filtering and sorting logic - now handled by backend
 
-    return products.filter(product => {
-      // ✅ CATEGORY FILTER - Enhanced for better matching
-      if (filters.categories.length > 0) {
-        const matchesCategory = filters.categories.some(catId => {
-          // Direct ID match
-          if (product.categoryId === catId) return true;
-          
-          // If product has category object instead of just ID
-          if (product.category && product.category._id === catId) return true;
-          
-          // If product.category is a string that matches category name
-          if (typeof product.category === 'string') {
-            const matchingCat = categories.find(cat => cat._id === catId);
-            return matchingCat && product.category.toLowerCase() === matchingCat.name.toLowerCase();
-          }
-          
-          return false;
-        });
-        
-        if (!matchesCategory) return false;
-      }
-
-      // Brand filter
-      if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) {
-        return false;
-      }
-
-      // Price filter - Use finalPrice if available, otherwise calculate
-      const productPrice = product.finalPrice || 
-        (product.discount > 0 
-          ? product.price * (1 - product.discount / 100)
-          : product.price);
-      
-      if (productPrice < filters.priceRange[0] || productPrice > filters.priceRange[1]) {
-        return false;
-      }
-
-      // Size filter
-      if (filters.sizes.length > 0) {
-        const hasMatchingSize = product.sizes?.some(size => 
-          filters.sizes.includes(size)
-        );
-        if (!hasMatchingSize) return false;
-      }
-
-      // Color filter
-      if (filters.colors.length > 0) {
-        const hasMatchingColor = product.colors?.some(color => 
-          filters.colors.includes(color)
-        );
-        if (!hasMatchingColor) return false;
-      }
-
-      // Gender filter
-      if (filters.gender.length > 0 && !filters.gender.includes(product.gender)) {
-        return false;
-      }
-
-      // Stock filter
-      if (filters.inStock && product.stock === 0) {
-        return false;
-      }
-
-      // Sale filter
-      if (filters.onSale && (!product.discount || product.discount === 0)) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [products, filters, categories]);
-
-  // 📝 LEARNING: Sort the filtered products
-  const sortedProducts = useMemo(() => {
-    const productsCopy = [...filteredProducts];
-
-    switch (sortBy) {
-      case 'price-low':
-        return productsCopy.sort((a, b) => {
-          const priceA = a.discount > 0 ? a.price * (1 - a.discount / 100) : a.price;
-          const priceB = b.discount > 0 ? b.price * (1 - b.discount / 100) : b.price;
-          return priceA - priceB;
-        });
-      case 'price-high':
-        return productsCopy.sort((a, b) => {
-          const priceA = a.discount > 0 ? a.price * (1 - a.discount / 100) : a.price;
-          const priceB = b.discount > 0 ? b.price * (1 - b.discount / 100) : b.price;
-          return priceB - priceA;
-        });
-      case 'newest':
-        return productsCopy.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-      case 'rating':
-        return productsCopy.sort((a, b) => (b.averageRating || 0) - (a.averageRating || 0));
-      case 'name':
-      default:
-        return productsCopy.sort((a, b) => a.name.localeCompare(b.name));
-    }
-  }, [filteredProducts, sortBy]);
-
-  // 📝 LEARNING: Handle filter changes from FilterSidebar component
+  // Handle filter changes from FilterSidebar
   const handleFiltersChange = (newFilters) => {
     setFilters(newFilters);
+    // RTK Query will automatically refetch with new filters
   };
 
-  // 📝 LEARNING: Count active filters for display
+  // CHANGED: Handle sort changes to trigger backend sorting  
+  const handleSortChange = (newSortBy) => {
+    setSortBy(newSortBy);
+    // RTK Query will automatically refetch with new sort
+  };
+
+  // Count active filters for display
   const getActiveFiltersCount = () => {
     let count = 0;
     count += filters.categories.length;
@@ -212,19 +127,18 @@ const Shop = () => {
     return count;
   };
 
-  // ✅ GET PAGE TITLE BASED ON CATEGORY
+  // Get page title based on category
   const getPageTitle = () => {
     if (currentCategory) {
       return currentCategory.name;
     }
     if (category && !currentCategory) {
-      // Capitalize and format URL parameter if category not found in database
       return category.charAt(0).toUpperCase() + category.slice(1).replace(/[-_]/g, ' ');
     }
     return 'All Products';
   };
 
-  // 📝 LEARNING: Show loading while data is being fetched
+  // Show loading while data is being fetched
   if (productsLoading || categoriesLoading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -238,7 +152,7 @@ const Shop = () => {
     );
   }
 
-  // 📝 LEARNING: Show error if API call fails
+  // Show error if API call fails
   if (productsError) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -262,7 +176,7 @@ const Shop = () => {
     <div className="min-h-screen bg-gray-50">
       <div className="flex">
         
-        {/* 🗂️ DESKTOP SIDEBAR - Only visible on large screens and above */}
+        {/* Desktop Sidebar */}
         <div className="hidden lg:block lg:w-80 flex-shrink-0">
           <FilterSidebar
             categories={categories}
@@ -270,11 +184,11 @@ const Shop = () => {
             onFiltersChange={handleFiltersChange}
             isOpen={true}
             onClose={() => {}}
-            currentFilters={filters} // ✅ Pass current filters to sidebar
+            currentFilters={filters}
           />
         </div>
 
-        {/* 📱 MOBILE SIDEBAR - Only rendered when isSidebarOpen is true */}
+        {/* Mobile Sidebar */}
         {isSidebarOpen && (
           <div className="lg:hidden">
             <FilterSidebar
@@ -283,15 +197,15 @@ const Shop = () => {
               onFiltersChange={handleFiltersChange}
               isOpen={isSidebarOpen}
               onClose={() => setIsSidebarOpen(false)}
-              currentFilters={filters} // ✅ Pass current filters to sidebar
+              currentFilters={filters}
             />
           </div>
         )}
 
-        {/* 📄 MAIN CONTENT */}
+        {/* Main Content */}
         <div className="flex-1">
           
-          {/* ✅ PAGE HEADER - Show current category */}
+          {/* Page Header */}
           <div className="bg-white border-b border-gray-200 px-4 py-6">
             <div className="max-w-7xl mx-auto">
               <h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -310,9 +224,8 @@ const Shop = () => {
             </div>
           </div>
           
-          {/* 🔍 FILTER & CONTROLS (No Search - handled in Navigation) */}
+          {/* Filter & Controls */}
           <div className="bg-white border-b border-gray-200 sticky top-0 z-30">
-            {/* Main Controls Row */}
             <div className="px-4 py-3">
               <div className="flex items-center justify-between">
                 
@@ -346,7 +259,7 @@ const Shop = () => {
                           variant="ghost"
                           size="sm"
                           onClick={() => setFilters({
-                            categories: currentCategory ? [currentCategory._id] : [], // ✅ Keep category filter if on category page
+                            categories: currentCategory ? [currentCategory._id] : [],
                             brands: [],
                             priceRange: [0, 1000],
                             sizes: [],
@@ -371,10 +284,10 @@ const Shop = () => {
                 {/* Right Section - Sort & View Controls */}
                 <div className="flex items-center gap-3">
                   
-                  {/* Sort Dropdown */}
+                  {/* Sort Dropdown - CHANGED: Use handleSortChange */}
                   <div className="flex items-center gap-2">
                     <span className="text-sm text-gray-600 hidden sm:block">Sort by:</span>
-                    <Select value={sortBy} onValueChange={setSortBy}>
+                    <Select value={sortBy} onValueChange={handleSortChange}>
                       <SelectTrigger className="w-40 sm:w-44">
                         <SelectValue placeholder="Sort by" />
                       </SelectTrigger>
@@ -388,7 +301,7 @@ const Shop = () => {
                     </Select>
                   </div>
 
-                  {/* View Mode Toggle - Desktop only */}
+                  {/* View Mode Toggle */}
                   <div className="hidden md:flex border border-gray-300 rounded-md overflow-hidden">
                     <Button
                       variant={viewMode === 'grid' ? 'default' : 'ghost'}
@@ -417,20 +330,17 @@ const Shop = () => {
             <div className="px-4 py-2 bg-gray-50 border-t border-gray-100">
               <div className="flex items-center justify-between">
                 
-                {/* Results Count */}
+                {/* Results Count - CHANGED: Use products directly */}
                 <div className="text-sm">
                   <span className="font-medium text-gray-900">
-                    {sortedProducts.length}
+                    {products.length}
                   </span>
                   <span className="text-gray-600 ml-1">
-                    {sortedProducts.length === 1 ? 'product' : 'products'}
-                    {sortedProducts.length !== products.length && (
-                      <span className="text-gray-500"> of {products.length} total</span>
-                    )}
+                    {products.length === 1 ? 'product' : 'products'}
                   </span>
                 </div>
 
-                {/* Active Filter Tags - Desktop Only */}
+                {/* Active Filter Tags */}
                 {getActiveFiltersCount() > 0 && (
                   <div className="hidden lg:flex items-center gap-2">
                     <div className="flex items-center gap-1 flex-wrap">
@@ -480,11 +390,10 @@ const Shop = () => {
               </div>
             </div>
           </div>
-          
 
-          {/* 🛍️ PRODUCTS GRID */}
+          {/* Products Grid */}
           <div className="p-4 lg:p-6">
-            {sortedProducts.length === 0 ? (
+            {products.length === 0 ? ( // CHANGED: Use products directly
               <div className="text-center py-16">
                 <div className="max-w-md mx-auto">
                   <div className="w-24 h-24 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -501,7 +410,7 @@ const Shop = () => {
                       <Button 
                         variant="default"
                         onClick={() => setFilters({
-                          categories: currentCategory ? [currentCategory._id] : [], // ✅ Keep category filter
+                          categories: currentCategory ? [currentCategory._id] : [],
                           brands: [],
                           priceRange: [0, 1000],
                           sizes: [],
@@ -515,9 +424,6 @@ const Shop = () => {
                         Clear Other Filters
                       </Button>
                     )}
-                    <div className="text-sm text-gray-500">
-                      Showing 0 of {products.length} products
-                    </div>
                   </div>
                 </div>
               </div>
@@ -528,7 +434,7 @@ const Shop = () => {
                   : 'space-y-4'
                 }
               `}>
-                {sortedProducts.map((product) => (
+                {products.map((product) => ( // CHANGED: Use products directly
                   <ProductCard 
                     key={product._id} 
                     product={product} 
