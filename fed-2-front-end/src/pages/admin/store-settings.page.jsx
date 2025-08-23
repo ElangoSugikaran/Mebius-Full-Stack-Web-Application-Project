@@ -1,14 +1,15 @@
 import { useForm } from "react-hook-form";
-import { z } from "zod"; // FIXED: Added 'z' import
+import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useEffect } from 'react';
-import { Save, Store, Phone, Mail, MapPin } from 'lucide-react';
+import { Save, Store, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import { toast } from 'react-toastify';
 import { useUpdateStoreSettingsMutation, useGetStoreSettingsQuery } from '@/lib/api';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import {
   Form,
   FormControl,
@@ -19,23 +20,23 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 
-// VALIDATION SCHEMA
+// VALIDATION SCHEMA - Updated to match backend expectations
 const storeSettingsSchema = z.object({
   name: z.string()
     .min(2, "Store name must be at least 2 characters")
-    .max(100, "Store name cannot exceed 100 characters"),
+    .max(100, "Store name cannot exceed 100 characters")
+    .trim(),
   description: z.string()
     .max(500, "Description cannot exceed 500 characters")
     .optional()
-    .or(z.literal('')), // FIXED: Handle empty strings properly
+    .or(z.literal('')),
   email: z.string()
     .email("Please enter a valid email address")
     .optional()
-    .or(z.literal('')), // FIXED: Handle empty strings properly
+    .or(z.literal('')),
   phone: z.string()
-    .min(10, "Phone number must be at least 10 characters")
     .optional()
-    .or(z.literal('')), // FIXED: Handle empty strings properly
+    .or(z.literal('')),
   address: z.string()
     .max(200, "Address cannot exceed 200 characters")
     .optional()
@@ -52,14 +53,29 @@ const storeSettingsSchema = z.object({
     .max(20, "ZIP code cannot exceed 20 characters")
     .optional()
     .or(z.literal('')),
-  openTime: z.string(),
-  closeTime: z.string(),
+  openTime: z.string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter time in HH:MM format"),
+  closeTime: z.string()
+    .regex(/^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$/, "Please enter time in HH:MM format"),
   isOpen: z.boolean().default(true),
+  logo: z.string().optional().or(z.literal('')),
 });
 
 const StoreSettingsPage = () => {
-  const { data: storeSettings, isLoading, error } = useGetStoreSettingsQuery();
-  const [updateStoreSettings] = useUpdateStoreSettingsMutation();
+  const { 
+    data: storeSettings, 
+    isLoading, 
+    error, 
+    refetch 
+  } = useGetStoreSettingsQuery();
+  
+  const [
+    updateStoreSettings, 
+    { 
+      isLoading: isUpdating, 
+      error: updateError 
+    }
+  ] = useUpdateStoreSettingsMutation();
 
   // FORM SETUP
   const form = useForm({
@@ -75,38 +91,68 @@ const StoreSettingsPage = () => {
       zipCode: '',
       openTime: '09:00',
       closeTime: '18:00',
-      isOpen: true
+      isOpen: true,
+      logo: ''
     }
   });
 
- useEffect(() => {
-  if (storeSettings) {
-    form.reset({
-      name: storeSettings.name || '',
-      description: storeSettings.description || '',
-      email: storeSettings.email || '',
-      phone: storeSettings.phone || '', 
-      address: storeSettings.address || '',
-      city: storeSettings.city || '',
-      state: storeSettings.state || '',
-      zipCode: storeSettings.zipCode || '',
-      openTime: storeSettings.openTime || '09:00',
-      closeTime: storeSettings.closeTime || '18:00',
-      isOpen: storeSettings.isOpen !== undefined ? storeSettings.isOpen : true
-    });
-  }
-}, [storeSettings, form]);
+  // Load settings data when available
+  useEffect(() => {
+    if (storeSettings) {
+      console.log('📥 Loading settings data:', storeSettings);
+      
+      form.reset({
+        name: storeSettings.name || '',
+        description: storeSettings.description || '',
+        email: storeSettings.email || '',
+        phone: storeSettings.phone || '',
+        address: storeSettings.address || '',
+        city: storeSettings.city || '',
+        state: storeSettings.state || '',
+        zipCode: storeSettings.zipCode || '',
+        openTime: storeSettings.openTime || '09:00',
+        closeTime: storeSettings.closeTime || '18:00',
+        isOpen: storeSettings.isOpen !== undefined ? storeSettings.isOpen : true,
+        logo: storeSettings.logo || ''
+      });
+    }
+  }, [storeSettings, form]);
 
   const onSubmit = async (values) => {
     try {
-      await updateStoreSettings(values).unwrap();
-      toast.success('Store Settings Saved Successfully!');
+      console.log('📤 Submitting store settings:', values);
+      
+      const result = await updateStoreSettings(values).unwrap();
+      
+      console.log('✅ Settings updated successfully:', result);
+      toast.success('Store Settings Saved Successfully!', {
+        position: "top-right",
+        autoClose: 3000
+      });
+      
+      // Optionally refetch to ensure UI is in sync
+      refetch();
+      
     } catch (error) {
-      console.error('Failed to save settings:', error);
-      toast.error('Failed to Save Store Settings\nPlease try again.');
+      console.error('❌ Failed to save settings:', error);
+      
+      // Extract error message
+      let errorMessage = 'Failed to Save Store Settings. Please try again.';
+      
+      if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage, {
+        position: "top-right",
+        autoClose: 5000
+      });
     }
   };
 
+  // Loading state
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gray-50 p-6">
@@ -114,9 +160,28 @@ const StoreSettingsPage = () => {
           <div className="flex items-center justify-center h-64">
             <div className="flex items-center space-x-3">
               <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-              <span className="text-lg text-gray-600">Loading settings...</span>
+              <span className="text-lg text-gray-600">Loading store settings...</span>
             </div>
           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50 p-6">
+        <div className="max-w-4xl mx-auto">
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Failed to load store settings: {error?.data?.message || error?.message || 'Unknown error'}
+            </AlertDescription>
+          </Alert>
+          <Button onClick={() => refetch()} variant="outline">
+            Try Again
+          </Button>
         </div>
       </div>
     );
@@ -139,6 +204,16 @@ const StoreSettingsPage = () => {
             </div>
           </div>
         </div>
+
+        {/* Show update error if any */}
+        {updateError && (
+          <Alert variant="destructive" className="mb-6">
+            <AlertCircle className="h-4 w-4" />
+            <AlertDescription>
+              Update failed: {updateError?.data?.message || updateError?.message || 'Unknown error'}
+            </AlertDescription>
+          </Alert>
+        )}
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -275,6 +350,9 @@ const StoreSettingsPage = () => {
                             {...field} 
                           />
                         </FormControl>
+                        <FormDescription>
+                          When your store opens (24-hour format)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -292,6 +370,9 @@ const StoreSettingsPage = () => {
                             {...field} 
                           />
                         </FormControl>
+                        <FormDescription>
+                          When your store closes (24-hour format)
+                        </FormDescription>
                         <FormMessage />
                       </FormItem>
                     )}
@@ -308,7 +389,7 @@ const StoreSettingsPage = () => {
                   Store Address
                 </CardTitle>
                 <CardDescription>
-                  Physical location details
+                  Physical location details (optional)
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -389,10 +470,10 @@ const StoreSettingsPage = () => {
             <div className="flex justify-end pt-6">
               <Button 
                 type="submit" 
-                disabled={form.formState.isSubmitting}
+                disabled={isUpdating || form.formState.isSubmitting}
                 className="px-8"
               >
-                {form.formState.isSubmitting ? (
+                {(isUpdating || form.formState.isSubmitting) ? (
                   <>
                     <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
                     Saving...

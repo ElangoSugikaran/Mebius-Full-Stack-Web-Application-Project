@@ -646,43 +646,133 @@ export const Api = createApi({
     }),
 
     // 🔧 SETTINGS ENDPOINTS
-   // Keep only these settings endpoints:
+   // 🔧 CORRECTED SETTINGS ENDPOINTS
     getStoreSettings: build.query({
       query: () => '/settings/store',
       providesTags: ['Settings'],
       transformResponse: (response) => {
-        console.log('Store settings response:', response);
-        return response.data?.store || response.store || response;
+        console.log('🏪 Store settings API response:', response);
+        
+        // Handle different response structures from backend
+        if (response.success && response.data) {
+          return response.data;
+        } else if (response.data?.store) {
+          return response.data.store;
+        } else if (response.store) {
+          return response.store;
+        } else {
+          return response;
+        }
       },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ Store settings fetch error:', {
+          status: response?.status,
+          data: response?.data,
+          url: meta?.request?.url
+        });
+        
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to fetch store settings'
+        };
+      }
     }),
 
     getPaymentSettings: build.query({
       query: () => '/settings/payment', 
       providesTags: ['Settings'],
       transformResponse: (response) => {
-        console.log('Payment settings response:', response);
-        return response.data?.payment || response.payment || response;
+        console.log('💳 Payment settings API response:', response);
+        
+        // Handle different response structures from backend
+        if (response.success && response.data) {
+          return response.data;
+        } else if (response.data?.payment) {
+          return response.data.payment;
+        } else if (response.payment) {
+          return response.payment;
+        } else {
+          return response;
+        }
       },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ Payment settings fetch error:', {
+          status: response?.status,
+          data: response?.data,
+          url: meta?.request?.url
+        });
+        
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to fetch payment settings'
+        };
+      }
     }),
 
-    // Keep existing mutations
     updateStoreSettings: build.mutation({
-      query: (storeData) => ({
-        url: '/settings/store',
-        method: 'PUT',
-        body: { store: storeData },
-      }),
+      query: (storeData) => {
+        console.log('🔄 Updating store settings with:', storeData);
+        
+        return {
+          url: '/settings/store',
+          method: 'PUT',
+          body: { store: storeData }, // Wrap in 'store' object as expected by backend
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+      },
       invalidatesTags: ['Settings'],
+      transformResponse: (response) => {
+        console.log('✅ Store settings update response:', response);
+        return response.data || response;
+      },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ Store settings update error:', {
+          status: response?.status,
+          data: response?.data,
+          requestBody: arg
+        });
+        
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to update store settings'
+        };
+      }
     }),
 
     updatePaymentSettings: build.mutation({
-      query: (paymentData) => ({
-        url: '/settings/payment', 
-        method: 'PUT',
-        body: { payment: paymentData },
-      }),
+      query: (paymentData) => {
+        console.log('🔄 Updating payment settings with:', paymentData);
+        
+        return {
+          url: '/settings/payment', 
+          method: 'PUT',
+          body: { payment: paymentData }, // Wrap in 'payment' object as expected by backend
+          headers: {
+            'Content-Type': 'application/json',
+          }
+        };
+      },
       invalidatesTags: ['Settings'],
-}),
+      transformResponse: (response) => {
+        console.log('✅ Payment settings update response:', response);
+        return response.data || response;
+      },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ Payment settings update error:', {
+          status: response?.status,
+          data: response?.data,
+          requestBody: arg
+        });
+        
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to update payment settings'
+        };
+      }
+    }),
+
   }),
 });
 
