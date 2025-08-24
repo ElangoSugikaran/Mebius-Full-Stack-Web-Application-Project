@@ -228,12 +228,6 @@ const CustomerManagementPage = () => {
             <p className="text-gray-600">Monitor customer activity and purchasing behavior</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-        </div>
       </div>
       
       {/* Stats Cards */}
@@ -428,7 +422,6 @@ const CustomerManagementPage = () => {
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Total Spent</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">Last Order</th>
                     <th className="text-left py-3 px-4 font-semibold text-gray-700">First Order</th>
-                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -491,12 +484,6 @@ const CustomerManagementPage = () => {
                             <span className="text-gray-400">Never</span>
                           )}
                         </div>
-                      </td>
-                      <td className="py-4 px-4">
-                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">
-                          <Eye className="h-4 w-4 mr-1" />
-                          View Details
-                        </Button>
                       </td>
                     </tr>
                   ))}
