@@ -71,20 +71,22 @@ const CheckoutPage = () => {
     try {
       console.log("🚀 Creating order with payment method:", paymentMethod);
 
-      const orderData = {
-        items: cart.map(item => ({
-          productId: item.product._id,
-          quantity: item.quantity,
-          price: item.product.discount > 0 
-            ? item.product.price * (1 - item.product.discount / 100)
-            : item.product.price
-        })),
-        shippingAddress,
-        paymentMethod,
-        totalAmount: total,
-        orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
-        paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
-      };
+     const orderData = {
+      items: cart.map(item => ({
+        productId: item.product._id,
+        quantity: item.quantity,
+        price: item.product.discount > 0 
+          ? item.product.price * (1 - item.product.discount / 100)
+          : item.product.price,
+        size: item.size || null,
+        color: item.color || null
+      })),
+      shippingAddress,
+      paymentMethod,
+      totalAmount: total,
+      orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
+      paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
+    };
 
       console.log("📦 Order data being sent:", orderData);
 
