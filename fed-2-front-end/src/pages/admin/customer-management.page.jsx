@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -36,13 +36,22 @@ import {
 import { useGetAllOrdersQuery } from "@/store/api/Api";
 
 const CustomerManagementPage = () => {
+  // Only fetch orders data - this is the correct API call
   const { data: ordersData, isLoading, error } = useGetAllOrdersQuery();
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
+  // Debug logging
+  useEffect(() => {
+    console.log('CustomerManagement - Orders data:', ordersData);
+    console.log('CustomerManagement - Loading:', isLoading);
+    console.log('CustomerManagement - Error:', error);
+  }, [ordersData, isLoading, error]);
+
   // Process orders to extract customer analytics
   const customerAnalytics = useMemo(() => {
     if (!ordersData?.orders) {
+      console.log('No orders data available for customer analytics');
       return {
         customers: [],
         stats: {
@@ -60,6 +69,7 @@ const CustomerManagementPage = () => {
     }
 
     const orders = ordersData.orders;
+    console.log(`Processing ${orders.length} orders for customer analytics`);
     
     // Group orders by customer (using Clerk user ID)
     const customerMap = new Map();
@@ -68,7 +78,10 @@ const CustomerManagementPage = () => {
       const customerId = order.userId;
       const userInfo = order.userInfo;
       
-      if (!customerId || !userInfo) return;
+      if (!customerId || !userInfo) {
+        console.log('Skipping order with missing user info:', order._id);
+        return;
+      }
       
       if (!customerMap.has(customerId)) {
         customerMap.set(customerId, {
@@ -105,6 +118,7 @@ const CustomerManagementPage = () => {
     });
     
     const customers = Array.from(customerMap.values());
+    console.log(`Generated analytics for ${customers.length} customers`);
     
     // Calculate stats
     const totalCustomers = customers.length;
@@ -185,6 +199,7 @@ const CustomerManagementPage = () => {
   }
   
   if (error) {
+    console.error('Customer management error:', error);
     return (
       <div className="flex items-center justify-center min-h-screen">
         <Card className="w-96">
@@ -192,7 +207,9 @@ const CustomerManagementPage = () => {
             <div className="text-center text-red-600">
               <UserX className="h-12 w-12 mx-auto mb-4" />
               <p>Failed to load customer data</p>
-              <p className="text-sm text-gray-500 mt-2">Please check your connection and try again</p>
+              <p className="text-sm text-gray-500 mt-2">
+                Error: {error?.data?.message || error?.message || 'Please check your connection and try again'}
+              </p>
             </div>
           </CardContent>
         </Card>
