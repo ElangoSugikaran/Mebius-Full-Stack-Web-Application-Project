@@ -1046,7 +1046,7 @@ const OrderDetailPage = () => {
             </CardContent>
           </Card>
 
-          {/* Shipping Address */}
+         {/* Shipping Address */}
           {order.addressId && (
             <Card>
               <CardHeader>
@@ -1057,39 +1057,19 @@ const OrderDetailPage = () => {
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {/* Recipient Name */}
-                  {(order.addressId.firstName || order.addressId.lastName) && (
-                    <div>
-                      <p className="font-semibold text-gray-900">
-                        {`${order.addressId.firstName || ''} ${order.addressId.lastName || ''}`.trim()}
-                      </p>
-                    </div>
-                  )}
-                  
                   {/* Address Lines */}
                   <div className="text-gray-700 space-y-1">
-                    {order.addressId.addressLine1 && (
-                      <p>{order.addressId.addressLine1}</p>
+                    {order.addressId.line1 && (
+                      <p>{order.addressId.line1}</p>
                     )}
-                    {order.addressId.addressLine2 && (
-                      <p>{order.addressId.addressLine2}</p>
+                    {order.addressId.line2 && (
+                      <p>{order.addressId.line2}</p>
                     )}
                     
-                    {/* City, State, Postal Code */}
-                    <div className="space-y-1">
-                      {order.addressId.city && (
-                        <p>{order.addressId.city}</p>
-                      )}
-                      {order.addressId.state && (
-                        <p>{order.addressId.state}</p>
-                      )}
-                      {order.addressId.postalCode && (
-                        <p>{order.addressId.postalCode}</p>
-                      )}
-                      {order.addressId.country && (
-                        <p className="font-medium">{order.addressId.country}</p>
-                      )}
-                    </div>
+                    {/* City */}
+                    {order.addressId.city && (
+                      <p className="font-medium">{order.addressId.city}</p>
+                    )}
                   </div>
                   
                   {/* Contact Info */}
