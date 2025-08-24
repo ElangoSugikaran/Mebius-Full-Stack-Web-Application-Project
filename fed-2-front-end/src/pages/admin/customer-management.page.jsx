@@ -33,7 +33,7 @@ import {
   BarChart,
   Bar
 } from "recharts";
-import { useGetAllOrdersQuery } from "@/store/api/Api";
+import { useGetAllOrdersQuery } from "@/lib/api";
 
 const CustomerManagementPage = () => {
   // Only fetch orders data - this is the correct API call
