@@ -1,4 +1,4 @@
-// File: src/pages/admin/OrdersPage.jsx
+// File: src/pages/admin/order-management.page.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -16,7 +16,7 @@ import {
   XCircle,
   Clock,
   User,
-  AlertTriangle,  // 🔧 Add this
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Table,
@@ -51,39 +51,34 @@ const OrdersPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
 
-  // 🔧 FIXED: Better API data handling with proper data extraction
+  // API hooks with proper error handling
   const { data: apiResponse, isLoading, error, refetch } = useGetAllOrdersQuery();
   const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
 
-
-  // 🔧 STEP 1: Use useMemo to safely extract orders and prevent unnecessary re-renders
+  // Extract orders safely from API response
   const orders = useMemo(() => {
     if (!apiResponse) {
-      console.log('📡 API Response is null/undefined');
       return [];
     }
 
     // Handle different API response formats
     if (Array.isArray(apiResponse)) {
-      console.log('📡 API returned array directly:', apiResponse.length, 'orders');
       return apiResponse;
     }
 
     if (apiResponse.orders && Array.isArray(apiResponse.orders)) {
-      console.log('📡 API returned object with orders array:', apiResponse.orders.length, 'orders');
       return apiResponse.orders;
     }
 
     if (apiResponse.data && Array.isArray(apiResponse.data)) {
-      console.log('📡 API returned object with data array:', apiResponse.data.length, 'orders');
       return apiResponse.data;
     }
 
-    console.warn('📡 Unexpected API response format:', apiResponse);
+    console.warn('Unexpected API response format:', apiResponse);
     return [];
   }, [apiResponse]);
 
-  // 🔧 STEP 2: Use useMemo for order statistics to prevent recalculation
+  // Calculate order statistics
   const orderStats = useMemo(() => {
     if (!Array.isArray(orders) || orders.length === 0) {
       return {
@@ -110,13 +105,11 @@ const OrdersPage = () => {
       .filter(order => order?.paymentStatus === 'PAID')
       .reduce((total, order) => {
         if (!order?.items || !Array.isArray(order.items)) {
-          console.warn('⚠️ Order missing items array:', order);
           return total;
         }
 
         const orderTotal = order.items.reduce((sum, item) => {
           if (!item?.productId || typeof item.productId !== 'object') {
-            // Use item price as fallback if productId is not populated
             return sum + ((item?.price || 0) * (item?.quantity || 0));
           }
           
@@ -131,7 +124,7 @@ const OrdersPage = () => {
     return stats;
   }, [orders]);
 
-  // 🔧 STEP 3: Use useMemo for filtered orders
+  // Filter orders based on search and filter criteria
   const filteredOrders = useMemo(() => {
     if (!Array.isArray(orders)) {
       return [];
@@ -142,7 +135,9 @@ const OrdersPage = () => {
 
       const matchesSearch = 
         (order._id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.userId || '').toLowerCase().includes(searchTerm.toLowerCase());
+        (order.userId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.userInfo?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (order.userInfo?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
       
       const matchesStatus = statusFilter === 'all' || order.orderStatus === statusFilter;
       const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
@@ -151,19 +146,10 @@ const OrdersPage = () => {
     });
   }, [orders, searchTerm, statusFilter, paymentFilter]);
 
-  // 🔧 STEP 4: Add debug logging with proper dependency
-  console.log('🛍️ Orders state:', {
-    isLoading,
-    error: error?.message,
-    apiResponse: !!apiResponse,
-    ordersLength: orders.length,
-    isArray: Array.isArray(orders),
-    filteredLength: filteredOrders.length
-  });
-
-    useEffect(() => {
-    if (orders.length > 0) {
-      console.log('🔍 Orders Debug:', {
+  // Debug logging for development
+  useEffect(() => {
+    if (orders.length > 0 && process.env.NODE_ENV === 'development') {
+      console.log('Orders Debug:', {
         totalOrders: orders.length,
         sampleOrder: orders[0],
         sampleUserInfo: orders[0]?.userInfo,
@@ -173,7 +159,7 @@ const OrdersPage = () => {
       
       // Log first few orders' user info
       orders.slice(0, 3).forEach((order, index) => {
-        console.log(`📋 Order ${index + 1} User Info:`, {
+        console.log(`Order ${index + 1} User Info:`, {
           orderId: order._id?.slice(-8),
           hasUserInfo: !!order.userInfo,
           userFullName: order.userInfo?.fullName,
@@ -185,11 +171,11 @@ const OrdersPage = () => {
     }
   }, [orders]);
 
-  // 🚀 Handle order status update - FIXED: Better parameter passing and error handling
+  // Handle order status update
   const handleStatusUpdate = async (orderId, newStatus, orderNumber) => {
-    // 🔧 Enhanced validation
+    // Validation
     if (!orderId || orderId === 'undefined' || orderId === 'null' || orderId === '') {
-      console.error('❌ Invalid orderId:', orderId);
+      console.error('Invalid orderId:', orderId);
       toast.error('Invalid order ID. Please refresh the page.', {
         position: "top-right",
         autoClose: 5000,
@@ -198,7 +184,7 @@ const OrdersPage = () => {
     }
 
     if (!newStatus) {
-      console.error('❌ Missing status:', newStatus);
+      console.error('Missing status:', newStatus);
       toast.error('Status is required.', {
         position: "top-right",
         autoClose: 5000,
@@ -206,7 +192,7 @@ const OrdersPage = () => {
       return;
     }
 
-    console.log('🔄 Admin updating order status:', { 
+    console.log('Admin updating order status:', { 
       orderId, 
       newStatus, 
       orderNumber,
@@ -214,31 +200,24 @@ const OrdersPage = () => {
     });
     
     try {
-      // 🔧 FIXED: Send parameters in the exact format the API expects
       const result = await updateOrderStatus({ 
-        orderId: orderId.toString(), // Ensure it's a string
+        orderId: orderId.toString(),
         status: newStatus,
-        orderStatus: newStatus // Include both for compatibility
+        orderStatus: newStatus
       }).unwrap();
       
-      console.log('✅ Status update successful:', result);
+      console.log('Status update successful:', result);
       
       toast.success(`Order #${orderNumber} status updated to ${newStatus}!`, {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
       
-      // 🔧 Refresh data after successful update
       refetch();
       
     } catch (error) {
-      console.error('❌ Failed to update order status:', error);
+      console.error('Failed to update order status:', error);
       
-      // 🔧 More detailed error messages
       let errorMessage = 'Failed to update order status. Please try again.';
       
       if (error.status === 404) {
@@ -252,15 +231,11 @@ const OrdersPage = () => {
       toast.error(errorMessage, {
         position: "top-right",
         autoClose: 5000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
     }
   };
 
-  // 🎨 Status badge styling
+  // Status badge styling
   const getOrderStatusBadge = (status) => {
     const variants = {
       PENDING: 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -289,7 +264,7 @@ const OrdersPage = () => {
     );
   };
 
-  // 🎨 Payment status badge styling
+  // Payment status badge styling
   const getPaymentStatusBadge = (status) => {
     const variants = {
       PENDING: 'bg-orange-100 text-orange-800 border-orange-200',
@@ -307,26 +282,21 @@ const OrdersPage = () => {
     );
   };
 
-  // 💰 Calculate order total with enhanced safety checks
+  // Calculate order total with enhanced safety checks
   const calculateOrderTotal = (items) => {
     if (!Array.isArray(items)) {
-      console.warn('⚠️ calculateOrderTotal received non-array:', items);
+      console.warn('calculateOrderTotal received non-array:', items);
       return 0;
     }
 
     return items.reduce((total, item) => {
       if (!item?.productId) {
-        console.warn('⚠️ Item missing productId:', item);
-        // Use the price from the item itself as fallback
         return total + ((item?.price || 0) * (item?.quantity || 0));
       }
 
-      // Handle both populated and non-populated productId
       const product = typeof item.productId === 'object' ? item.productId : null;
       
       if (!product) {
-        console.warn('⚠️ Product not populated for item:', item);
-        // Use the price from the item itself as fallback
         return total + ((item?.price || 0) * (item?.quantity || 0));
       }
       
@@ -337,7 +307,7 @@ const OrdersPage = () => {
     }, 0);
   };
 
-  // 🔧 STEP 5: Better loading state with early return
+  // Loading state
   if (isLoading) {
     return (
       <div className="container mx-auto px-6">
@@ -351,7 +321,7 @@ const OrdersPage = () => {
     );
   }
 
-  // 🔧 STEP 6: Better error handling
+  // Error state
   if (error) {
     return (
       <div className="container mx-auto px-6">
@@ -373,7 +343,7 @@ const OrdersPage = () => {
   return (
     <div className="container mx-auto px-6">
       
-      {/* 📋 HEADER SECTION */}
+      {/* HEADER SECTION */}
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div>
@@ -388,7 +358,7 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      {/* 📊 STATISTICS CARDS */}
+      {/* STATISTICS CARDS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -443,13 +413,13 @@ const OrdersPage = () => {
         </Card>
       </div>
 
-      {/* 🔍 SEARCH & FILTERS */}
+      {/* SEARCH & FILTERS */}
       <div className="mb-6 bg-white rounded-lg shadow-sm border p-4">
         <div className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by order ID or customer..."
+              placeholder="Search by order ID, customer name, or email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -484,7 +454,7 @@ const OrdersPage = () => {
         </div>
       </div>
 
-      {/* 📊 ORDERS TABLE */}
+      {/* ORDERS TABLE */}
       <div className="bg-white rounded-lg shadow-sm border">
         <Table>
           <TableHeader>
@@ -502,42 +472,43 @@ const OrdersPage = () => {
           </TableHeader>
           <TableBody>
             {filteredOrders.map((order) => {
-              // Safety check for each order
               if (!order) return null;
+
+              const orderNumber = (order._id || '').slice(-8).toUpperCase();
 
               return (
                 <TableRow key={order._id || Math.random()}>
                   
-                  {/* 🔗 ORDER ID */}
+                  {/* ORDER ID */}
                   <TableCell>
                     <div className="font-medium text-blue-600">
-                      #{(order._id || '').slice(-8).toUpperCase()}
+                      #{orderNumber}
                     </div>
                   </TableCell>
                   
-                  {/* 👤 CUSTOMER - Enhanced with better error handling */}
+                  {/* CUSTOMER */}
                   <TableCell>
                     <div className="space-y-1">
                       {order.userInfo && !order.userInfo.isClerkError ? (
                         <>
                           <div className="flex items-center space-x-2">
-                            {order.userInfo.imageUrl ? (
+                            {order.userInfo.imageUrl && (
                               <img 
                                 src={order.userInfo.imageUrl} 
                                 alt={order.userInfo.fullName || 'User'}
                                 className="h-6 w-6 rounded-full object-cover border border-gray-200"
                                 onError={(e) => {
                                   e.target.style.display = 'none';
-                                  e.target.nextElementSibling.style.display = 'flex';
                                 }}
                               />
-                            ) : null}
-                            <User 
-                              className="h-4 w-4 text-gray-400" 
-                              style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}} 
-                            />
+                            )}
+                            {!order.userInfo.imageUrl && (
+                              <User className="h-4 w-4 text-gray-400" />
+                            )}
                             <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
-                              {order.userInfo.fullName || `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 'Unknown User'}
+                              {order.userInfo.fullName || 
+                              `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
+                              'Unknown User'}
                             </span>
                           </div>
                           {order.userInfo.email && 
@@ -572,9 +543,8 @@ const OrdersPage = () => {
                       )}
                     </div>
                   </TableCell>
-
                   
-                  {/* 📦 ITEMS COUNT */}
+                  {/* ITEMS COUNT */}
                   <TableCell>
                     <div className="flex items-center">
                       <Package className="h-4 w-4 text-gray-400 mr-1" />
@@ -587,38 +557,38 @@ const OrdersPage = () => {
                     </div>
                   </TableCell>
                   
-                  {/* 💰 TOTAL */}
+                  {/* TOTAL */}
                   <TableCell>
                     <span className="font-bold text-gray-900">
                       ${calculateOrderTotal(order.items || []).toFixed(2)}
                     </span>
                   </TableCell>
                   
-                  {/* 💳 PAYMENT METHOD */}
+                  {/* PAYMENT METHOD */}
                   <TableCell>
                     <Badge variant="outline" className="font-medium">
                       {(order.paymentMethod || 'UNKNOWN') === 'COD' ? 'Cash on Delivery' : 'Credit Card'}
                     </Badge>
                   </TableCell>
                   
-                  {/* 💰 PAYMENT STATUS */}
+                  {/* PAYMENT STATUS */}
                   <TableCell>
                     {getPaymentStatusBadge(order.paymentStatus || 'PENDING')}
                   </TableCell>
                   
-                  {/* 📊 ORDER STATUS */}
+                  {/* ORDER STATUS */}
                   <TableCell>
                     {getOrderStatusBadge(order.orderStatus || 'PENDING')}
                   </TableCell>
                   
-                  {/* 📅 DATE */}
+                  {/* DATE */}
                   <TableCell>
                     <span className="text-sm text-gray-500">
                       {order.createdAt ? new Date(order.createdAt).toLocaleDateString() : 'N/A'}
                     </span>
                   </TableCell>
                   
-                  {/* ⚙️ ACTIONS */}
+                  {/* ACTIONS */}
                   <TableCell className="text-right">
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
@@ -636,86 +606,38 @@ const OrdersPage = () => {
                         
                         <DropdownMenuSeparator />
                         
-                       {/* // For "Mark as Shipped" */}
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          console.log('🔄 Marking as shipped:', { 
-                            orderId: order._id, 
-                            orderIdExists: !!order._id,
-                            orderIdType: typeof order._id 
-                          });
-                          handleStatusUpdate(
-                            order._id, 
-                            'SHIPPED', 
-                            (order._id || '').slice(-8).toUpperCase()
-                          );
-                        }}
-                        disabled={isUpdating}
-                      >
-                        <Truck className="mr-2 h-4 w-4" />
-                        Mark as Shipped
-                      </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusUpdate(order._id, 'SHIPPED', orderNumber)}
+                          disabled={isUpdating}
+                        >
+                          <Truck className="mr-2 h-4 w-4" />
+                          Mark as Shipped
+                        </DropdownMenuItem>
 
-                      {/* // For "Mark as Fulfilled"   */}
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          console.log('🔄 Marking as fulfilled:', {
-                            orderId: order._id,
-                            orderIdExists: !!order._id,
-                            orderIdType: typeof order._id
-                          });
-                          handleStatusUpdate(
-                            order._id, 
-                            'FULFILLED', 
-                            (order._id || '').slice(-8).toUpperCase()
-                          );
-                        }}
-                        disabled={isUpdating}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Mark as Fulfilled
-                      </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusUpdate(order._id, 'FULFILLED', orderNumber)}
+                          disabled={isUpdating}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Mark as Fulfilled
+                        </DropdownMenuItem>
 
-                      {/* // For "Confirm Order" */}
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          console.log('🔄 Confirming order:', {
-                            orderId: order._id,
-                            orderIdExists: !!order._id,
-                            orderIdType: typeof order._id
-                          });
-                          handleStatusUpdate(
-                            order._id, 
-                            'CONFIRMED', 
-                            (order._id || '').slice(-8).toUpperCase()
-                          );
-                        }}
-                        disabled={isUpdating}
-                      >
-                        <CheckCircle className="mr-2 h-4 w-4" />
-                        Confirm Order
-                      </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusUpdate(order._id, 'CONFIRMED', orderNumber)}
+                          disabled={isUpdating}
+                        >
+                          <CheckCircle className="mr-2 h-4 w-4" />
+                          Confirm Order
+                        </DropdownMenuItem>
 
-                      {/* // For "Cancel Order" */}
-                      <DropdownMenuItem 
-                        onClick={() => {
-                          console.log('🔄 Cancelling order:', {
-                            orderId: order._id,
-                            orderIdExists: !!order._id,
-                            orderIdType: typeof order._id
-                          });
-                          handleStatusUpdate(
-                            order._id, 
-                            'CANCELLED', 
-                            (order._id || '').slice(-8).toUpperCase()
-                          );
-                        }}
-                        disabled={isUpdating}
-                        className="text-red-600 focus:text-red-600"
-                      >
-                        <XCircle className="mr-2 h-4 w-4" />
-                        Cancel Order
-                      </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          onClick={() => handleStatusUpdate(order._id, 'CANCELLED', orderNumber)}
+                          disabled={isUpdating}
+                          className="text-red-600 focus:text-red-600"
+                        >
+                          <XCircle className="mr-2 h-4 w-4" />
+                          Cancel Order
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
@@ -725,7 +647,7 @@ const OrdersPage = () => {
           </TableBody>
         </Table>
 
-        {/* 📄 EMPTY STATE */}
+        {/* EMPTY STATE */}
         {filteredOrders.length === 0 && !isLoading && (
           <div className="text-center py-12">
             <ShoppingCart className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -740,7 +662,7 @@ const OrdersPage = () => {
         )}
       </div>
 
-      {/* 📊 PAGINATION INFO */}
+      {/* PAGINATION INFO */}
       {filteredOrders.length > 0 && (
         <div className="mt-6 flex items-center justify-between">
           <p className="text-sm text-gray-700">
