@@ -428,7 +428,7 @@ const OrderDetailPage = () => {
       <div className="mb-8">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-4">
-            <Link to="/admin/orders" className="text-gray-600 hover:text-gray-900">
+            <Link to="/admin/admin-orders" className="text-gray-600 hover:text-gray-900">
               <ArrowLeft className="h-5 w-5" />
             </Link>
             <div>

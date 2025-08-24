@@ -205,64 +205,148 @@ export const Api = createApi({
     }),
     
     // 🔧 CUSTOMER ORDER ENDPOINTS
-    getUserOrders: build.query({
-      query: () => '/orders',
-      providesTags: ['Order'],
-      transformResponse: (response) => {
-        console.log('Orders API response:', response);
-        
-        // Handle different response structures
-        let orders = [];
-        if (Array.isArray(response)) {
-          orders = response;
-        } else if (response.orders && Array.isArray(response.orders)) {
-          orders = response.orders;
-        } else if (response.data && Array.isArray(response.data)) {
-          orders = response.data;
-        } else if (response.success && response.orders) {
-          orders = response.orders;
-        }
-        
-        // Return consistent structure
-        return {
-          orders: orders,
-          count: orders.length,
-          success: true,
-          isEmpty: orders.length === 0
-        };
-      },
-      transformErrorResponse: (response, meta, arg) => {
-        console.error('Orders fetch error:', {
-          status: response?.status,
-          data: response?.data,
-          message: response?.data?.message || 'Failed to fetch orders'
-        });
-        
-        return {
-          ...response,
-          message: response?.data?.message || 'Failed to fetch your orders. Please try again.'
-        };
-      }
-    }),
+   getUserOrders: build.query({
+  query: () => '/orders',  // ✅ Correct: GET /api/orders
+  providesTags: ['Order'],
+  transformResponse: (response) => {
+    console.log('📦 getUserOrders API response:', response);
+    
+    // Handle different response structures
+    let orders = [];
+    if (Array.isArray(response)) {
+      orders = response;
+    } else if (response.orders && Array.isArray(response.orders)) {
+      orders = response.orders;
+    } else if (response.data && Array.isArray(response.data)) {
+      orders = response.data;
+    } else if (response.success && response.orders) {
+      orders = response.orders;
+    }
+    
+    console.log(`✅ Processed ${orders.length} user orders with user info`);
+    
+    // Return consistent structure
+    return {
+      orders: orders,
+      count: orders.length,
+      success: true,
+      isEmpty: orders.length === 0
+    };
+  },
+  transformErrorResponse: (response, meta, arg) => {
+    console.error('❌ getUserOrders fetch error:', {
+      status: response?.status,
+      data: response?.data,
+      message: response?.data?.message || 'Failed to fetch orders'
+    });
+    
+    return {
+      ...response,
+      message: response?.data?.message || 'Failed to fetch your orders. Please try again.'
+    };
+  }
+}),
 
-    // 🔧 Customer order by ID
-    getCustomerOrderById: build.query({
-      query: (id) => `/orders/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Order', id }],
-    }),
-    
-    // 🔧 ADMIN ORDER ENDPOINTS  
-    getAllOrders: build.query({
-      query: () => '/orders/admin/all',
-      providesTags: ['Order'],
-    }),
-    
-    // 🔧 Admin order by ID
-    getOrderById: build.query({
-      query: (id) => `/orders/admin/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Order', id }],
-    }),
-    
+  // 🔧 Customer order by ID - FIXED
+  getCustomerOrderById: build.query({
+    query: (id) => {
+      console.log('📦 Fetching customer order:', id);
+      return `/orders/${id}`;  // ✅ Correct: GET /api/orders/:id
+    },
+    providesTags: (result, error, id) => [{ type: 'Order', id }],
+    transformResponse: (response) => {
+      console.log('📦 getCustomerOrderById API response:', response);
+      
+      if (response.success && response.order) {
+        console.log('✅ Customer order fetched with user info:', {
+          orderId: response.order._id,
+          hasUserInfo: !!response.order.userInfo,
+          userFullName: response.order.userInfo?.fullName
+        });
+        return response.order; // Return the order with user info
+      }
+      
+      return response.data || response;
+    },
+    transformErrorResponse: (response, meta, arg) => {
+      console.error('❌ getCustomerOrderById error:', response);
+      return response;
+    }
+  }),
+
+  // 🔧 ADMIN ORDER ENDPOINTS - FIXED
+  getAllOrders: build.query({
+    query: () => {
+      console.log('🔍 Admin fetching all orders...');
+      return '/orders/admin/all';  // ✅ Correct: GET /api/orders/admin/all
+    },
+    providesTags: ['Order'],
+    transformResponse: (response) => {
+      console.log('📊 getAllOrders API response:', response);
+      
+      let orders = [];
+      if (Array.isArray(response)) {
+        orders = response;
+      } else if (response.orders && Array.isArray(response.orders)) {
+        orders = response.orders;
+      } else if (response.data && Array.isArray(response.data)) {
+        orders = response.data;
+      }
+      
+      console.log(`✅ Admin fetched ${orders.length} orders with user info`);
+      
+      // Validate user info in orders
+      const ordersWithUserInfo = orders.filter(order => !!order.userInfo).length;
+      const ordersWithoutUserInfo = orders.length - ordersWithUserInfo;
+      
+      console.log(`📊 User info stats: ${ordersWithUserInfo} with info, ${ordersWithoutUserInfo} without`);
+      
+      return {
+        orders: orders,
+        count: orders.length,
+        success: true,
+        meta: response.meta || {}
+      };
+    },
+    transformErrorResponse: (response, meta, arg) => {
+      console.error('❌ getAllOrders fetch error:', response);
+      return response;
+    }
+  }),
+
+  // 🔧 Admin order by ID - FIXED
+  getOrderById: build.query({
+    query: (id) => {
+      console.log('🔍 Admin fetching order details:', id);
+      return `/orders/admin/${id}`;  // ✅ Correct: GET /api/orders/admin/:id
+    },
+    providesTags: (result, error, id) => [{ type: 'Order', id }],
+    transformResponse: (response) => {
+      console.log('📦 getOrderById API response:', response);
+      
+      if (response.success && response.order) {
+        console.log('✅ Admin order fetched with user info:', {
+          orderId: response.order._id,
+          hasUserInfo: !!response.order.userInfo,
+          userFullName: response.order.userInfo?.fullName,
+          userEmail: response.order.userInfo?.email,
+          isClerkError: response.order.userInfo?.isClerkError
+        });
+        return response.order; // Return the order with user info
+      }
+      
+      return response.data || response;
+    },
+    transformErrorResponse: (response, meta, arg) => {
+      console.error('❌ getOrderById error:', {
+        status: response?.status,
+        data: response?.data,
+        orderId: arg
+      });
+      return response;
+    }
+  }),
+      
     // 🔧 CONSOLIDATED ORDER STATUS UPDATE - FIXED: Single definition
     updateOrderStatus: build.mutation({
       query: ({ orderId, status, orderStatus, id, isPaymentComplete = false, paymentStatus }) => {
@@ -690,9 +774,6 @@ export const {
   useRemoveFromWishlistMutation,
   useClearWishlistMutation,
   useGetWishlistItemCountQuery,
-
-
-  // Settings hooks
 
 
 } = Api;
