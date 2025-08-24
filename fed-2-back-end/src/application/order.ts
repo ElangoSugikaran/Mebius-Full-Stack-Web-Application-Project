@@ -180,6 +180,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     const { userId } = getAuth(req);
     
     console.log("📝 Creating order for user:", userId);
+    console.log("📦 Order data received:", data);
     
     if (!userId) {
       throw new UnauthorizedError("Authentication required");
@@ -199,7 +200,13 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       line1: data.shippingAddress.line1,
       line2: data.shippingAddress.line2 || "",
       city: data.shippingAddress.city,
-      phone: data.shippingAddress.phone
+      phone: data.shippingAddress.phone,
+      // Add additional address fields if needed
+      firstName: data.shippingAddress.firstName,
+      lastName: data.shippingAddress.lastName,
+      state: data.shippingAddress.state,
+      postalCode: data.shippingAddress.postalCode,
+      country: data.shippingAddress.country || "Sri Lanka"
     };
 
     const address = await Address.create(addressData);
@@ -218,9 +225,44 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         throw new NotFoundError(`Product with ID ${item.productId} not found`);
       }
 
-      // Always check stock availability
-      if (product.stock < item.quantity) {
-        throw new ValidationError(`Insufficient stock for "${product.name}". Available: ${product.stock}, Requested: ${item.quantity}`);
+      // 🔧 NEW: Validate size and color if product has variants
+      let selectedSize = item.size || null;
+      let selectedColor = item.color || null;
+
+      // Validate size if product has sizes
+      if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+        if (!selectedSize) {
+          throw new ValidationError(`Size is required for "${product.name}"`);
+        }
+        if (!product.sizes.includes(selectedSize)) {
+          throw new ValidationError(`Size "${selectedSize}" is not available for "${product.name}"`);
+        }
+      }
+
+      // Validate color if product has colors
+      if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+        if (!selectedColor) {
+          throw new ValidationError(`Color is required for "${product.name}"`);
+        }
+        if (!product.colors.includes(selectedColor)) {
+          throw new ValidationError(`Color "${selectedColor}" is not available for "${product.name}"`);
+        }
+      }
+
+      // Check stock availability (considering variants if applicable)
+      let availableStock = product.stock;
+      
+      // 🔧 ENHANCEMENT: If you have variant-specific stock tracking
+      // This would require a more complex Product schema with variant inventory
+      // For now, we'll use the general stock count
+      
+      if (availableStock < item.quantity) {
+        const variantText = selectedSize || selectedColor 
+          ? ` (${[selectedSize, selectedColor].filter(Boolean).join(', ')})` 
+          : '';
+        throw new ValidationError(
+          `Insufficient stock for "${product.name}"${variantText}. Available: ${availableStock}, Requested: ${item.quantity}`
+        );
       }
 
       // Calculate price with discount
@@ -232,10 +274,26 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       const itemTotal = itemPrice * item.quantity;
       totalAmount += itemTotal;
       
+      // 🔧 UPDATED: Include size and color in processed items
       processedItems.push({
         productId: item.productId,
         quantity: item.quantity,
-        price: itemPrice
+        price: itemPrice,
+        size: selectedSize,
+        color: selectedColor,
+        // Store original product details for reference
+        productName: product.name,
+        // 🔧 FIXED: Use 'image' instead of 'images'
+        productImage: product.image || null
+      });
+
+      console.log(`📦 Processed item:`, {
+        productName: product.name,
+        quantity: item.quantity,
+        price: itemPrice,
+        size: selectedSize,
+        color: selectedColor,
+        itemTotal
       });
     }
 
@@ -252,10 +310,13 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
          product.stock -= item.quantity;
          product.salesCount = (product.salesCount || 0) + item.quantity;
          await product.save();
-         console.log(`📦 Stock updated for ${product.name}: Remaining ${product.stock}`);
+         
+         const variantText = item.size || item.color 
+           ? ` (${[item.size, item.color].filter(Boolean).join(', ')})` 
+           : '';
+         console.log(`📦 Stock updated for ${product.name}${variantText}: Remaining ${product.stock}`);
        }
       }
-
     } else {
       console.log("💳 Online Payment Order - Stock will be deducted after payment confirmation");
     }
@@ -269,7 +330,13 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       paymentMethod: paymentMethod,
       // 🔧 FIXED: Proper initial status based on payment method
       paymentStatus: paymentMethod === "COD" ? "PENDING" : "PENDING", // COD payment pending until delivery
-      orderStatus: paymentMethod === "COD" ? "CONFIRMED" : "PENDING"  // COD order confirmed, online pending payment
+      orderStatus: paymentMethod === "COD" ? "CONFIRMED" : "PENDING",  // COD order confirmed, online pending payment
+      // 🔧 NEW: Add metadata for order tracking
+      orderMetadata: {
+        hasVariants: processedItems.some(item => item.size || item.color),
+        itemCount: processedItems.length,
+        totalItems: processedItems.reduce((sum, item) => sum + item.quantity, 0)
+      }
     };
 
     const order = await Order.create(orderData);
@@ -277,6 +344,12 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     const populatedOrder = await Order.findById(order._id)
       .populate("addressId")
       .populate("items.productId");
+    
+    console.log("✅ Order created successfully:", {
+      orderId: order._id,
+      itemsWithVariants: processedItems.filter(item => item.size || item.color).length,
+      totalAmount: order.totalAmount
+    });
     
     res.status(201).json({ 
       success: true,
