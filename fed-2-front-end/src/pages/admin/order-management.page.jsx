@@ -15,7 +15,8 @@ import {
   CheckCircle,
   XCircle,
   Clock,
-  User  // Add this
+  User,
+  AlertTriangle,  // 🔧 Add this
 } from 'lucide-react';
 import {
   Table,
@@ -159,6 +160,30 @@ const OrdersPage = () => {
     isArray: Array.isArray(orders),
     filteredLength: filteredOrders.length
   });
+
+    useEffect(() => {
+    if (orders.length > 0) {
+      console.log('🔍 Orders Debug:', {
+        totalOrders: orders.length,
+        sampleOrder: orders[0],
+        sampleUserInfo: orders[0]?.userInfo,
+        allOrdersHaveUserInfo: orders.every(order => !!order.userInfo),
+        ordersWithErrors: orders.filter(order => order.userInfo?.isClerkError).length
+      });
+      
+      // Log first few orders' user info
+      orders.slice(0, 3).forEach((order, index) => {
+        console.log(`📋 Order ${index + 1} User Info:`, {
+          orderId: order._id?.slice(-8),
+          hasUserInfo: !!order.userInfo,
+          userFullName: order.userInfo?.fullName,
+          userEmail: order.userInfo?.email,
+          isError: order.userInfo?.isClerkError,
+          errorReason: order.userInfo?.errorReason
+        });
+      });
+    }
+  }, [orders]);
 
   // 🚀 Handle order status update - FIXED: Better parameter passing and error handling
   const handleStatusUpdate = async (orderId, newStatus, orderNumber) => {
@@ -490,7 +515,7 @@ const OrdersPage = () => {
                     </div>
                   </TableCell>
                   
-                  {/* 👤 CUSTOMER */}
+                  {/* 👤 CUSTOMER - Enhanced with better error handling */}
                   <TableCell>
                     <div className="space-y-1">
                       {order.userInfo && !order.userInfo.isClerkError ? (
@@ -499,17 +524,25 @@ const OrdersPage = () => {
                             {order.userInfo.imageUrl ? (
                               <img 
                                 src={order.userInfo.imageUrl} 
-                                alt={order.userInfo.fullName}
-                                className="h-6 w-6 rounded-full object-cover"
+                                alt={order.userInfo.fullName || 'User'}
+                                className="h-6 w-6 rounded-full object-cover border border-gray-200"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                  e.target.nextElementSibling.style.display = 'flex';
+                                }}
                               />
-                            ) : (
-                              <User className="h-4 w-4 text-gray-400" />
-                            )}
+                            ) : null}
+                            <User 
+                              className="h-4 w-4 text-gray-400" 
+                              style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}} 
+                            />
                             <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
-                              {order.userInfo.fullName}
+                              {order.userInfo.fullName || `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 'Unknown User'}
                             </span>
                           </div>
-                          {order.userInfo.email && order.userInfo.email !== 'No email available' && (
+                          {order.userInfo.email && 
+                          order.userInfo.email !== 'No email available' && 
+                          order.userInfo.email !== 'Error fetching email' && (
                             <p className="text-xs text-gray-500 truncate max-w-[150px]">
                               {order.userInfo.email}
                             </p>
@@ -521,7 +554,8 @@ const OrdersPage = () => {
                             <User className="h-4 w-4 text-gray-400" />
                             <span className="text-sm text-gray-600">
                               {order.userInfo?.isClerkError ? (
-                                <span className="text-orange-600">
+                                <span className="text-orange-600 flex items-center">
+                                  <AlertTriangle className="h-3 w-3 mr-1" />
                                   User Info Error
                                 </span>
                               ) : (
@@ -531,13 +565,14 @@ const OrdersPage = () => {
                           </div>
                           {order.userInfo?.isClerkError && (
                             <p className="text-xs text-orange-500">
-                              Clerk API Error
+                              {order.userInfo.errorReason || 'Clerk API Error'}
                             </p>
                           )}
                         </>
                       )}
                     </div>
                   </TableCell>
+
                   
                   {/* 📦 ITEMS COUNT */}
                   <TableCell>

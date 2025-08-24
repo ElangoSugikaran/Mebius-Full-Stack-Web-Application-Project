@@ -293,14 +293,18 @@ export const Api = createApi({
         orders = response.data;
       }
       
-      console.log(`✅ Admin fetched ${orders.length} orders with user info`);
+      console.log(`✅ Processed ${orders.length} orders with user info`);
+    
+      // Debug user info
+      const ordersWithUserInfo = orders.filter(order => order.userInfo && !order.userInfo.isClerkError).length;
+      const ordersWithErrors = orders.filter(order => order.userInfo?.isClerkError).length;
       
-      // Validate user info in orders
-      const ordersWithUserInfo = orders.filter(order => !!order.userInfo).length;
-      const ordersWithoutUserInfo = orders.length - ordersWithUserInfo;
-      
-      console.log(`📊 User info stats: ${ordersWithUserInfo} with info, ${ordersWithoutUserInfo} without`);
-      
+      console.log('📈 User info stats:', {
+        total: orders.length,
+        withUserInfo: ordersWithUserInfo,
+        withErrors: ordersWithErrors,
+        withoutUserInfo: orders.length - ordersWithUserInfo - ordersWithErrors
+    });
       return {
         orders: orders,
         count: orders.length,

@@ -856,7 +856,7 @@ const OrderDetailPage = () => {
                 )}
 
                {/* Customer Information */}
-                {/* Enhanced Customer Information - Replace lines 623-654 */}
+                {/* Enhanced Customer Information - Replace existing section */}
                 <div className="pt-4 space-y-3 border-t border-gray-200">
                   <h4 className="font-medium text-gray-900 flex items-center">
                     <User className="h-4 w-4 mr-2" />
@@ -871,19 +871,30 @@ const OrderDetailPage = () => {
                           {order.userInfo.imageUrl ? (
                             <img 
                               src={order.userInfo.imageUrl} 
-                              alt={order.userInfo.fullName}
+                              alt={order.userInfo.fullName || 'User'}
                               className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
                             />
-                          ) : (
-                            <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                              <User className="h-5 w-5 text-blue-600" />
-                            </div>
-                          )}
+                          ) : null}
+                          <div 
+                            className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center"
+                            style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}}
+                          >
+                            <User className="h-5 w-5 text-blue-600" />
+                          </div>
+                          
                           <div className="flex-1 min-w-0">
                             <h5 className="font-medium text-gray-900 truncate">
-                              {order.userInfo.fullName}
+                              {order.userInfo.fullName || 
+                              `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
+                              'Unknown User'}
                             </h5>
-                            {order.userInfo.email && order.userInfo.email !== 'No email available' && (
+                            {order.userInfo.email && 
+                            order.userInfo.email !== 'No email available' && 
+                            order.userInfo.email !== 'Error fetching email' && (
                               <p className="text-sm text-gray-600 truncate flex items-center">
                                 <Mail className="h-3 w-3 mr-1" />
                                 {order.userInfo.email}
@@ -897,7 +908,7 @@ const OrderDetailPage = () => {
                           <div className="flex items-center justify-between text-sm">
                             <span className="text-gray-600">Customer ID:</span>
                             <span className="font-mono text-gray-800 text-xs">
-                              {order.userId.slice(-12).toUpperCase()}
+                              {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
                             </span>
                           </div>
                           
@@ -919,31 +930,21 @@ const OrderDetailPage = () => {
                             </div>
                           )}
                         </div>
-
-                        {/* Full ID Expandable */}
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                            Show full customer ID
-                          </summary>
-                          <div className="mt-2 p-2 bg-gray-50 rounded font-mono text-gray-800 break-all border">
-                            {order.userId}
-                          </div>
-                        </details>
                       </>
                     ) : (
                       <>
-                        {/* Fallback for missing user info */}
+                        {/* Enhanced fallback for missing user info */}
                         <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
                           <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
                             <AlertTriangle className="h-5 w-5 text-orange-600" />
                           </div>
                           <div className="flex-1">
                             <h5 className="font-medium text-orange-800">
-                              {order.userInfo?.isClerkError ? 'User Info Error' : 'Unknown Customer'}
+                              {order.userInfo?.isClerkError ? 'Clerk API Error' : 'Unknown Customer'}
                             </h5>
                             <p className="text-sm text-orange-600">
                               {order.userInfo?.isClerkError 
-                                ? 'Unable to fetch customer details from Clerk'
+                                ? order.userInfo.errorReason || 'Unable to fetch customer details from Clerk'
                                 : 'Customer information not available'
                               }
                             </p>
@@ -958,21 +959,26 @@ const OrderDetailPage = () => {
                             </span>
                           </div>
                         </div>
-
-                        <details className="text-xs">
-                          <summary className="cursor-pointer text-gray-500 hover:text-gray-700">
-                            Show full customer ID
-                          </summary>
-                          <div className="mt-2 p-2 bg-gray-50 rounded font-mono text-gray-800 break-all border">
-                            {order.userId || 'Not available'}
-                          </div>
-                        </details>
                       </>
                     )}
                     
-                    <div className="text-xs text-gray-500 italic border-t border-gray-200 pt-2">
-                      💡 Customer details are managed through Clerk authentication
-                    </div>
+                    {/* Debug Info - Remove in production */}
+                    {process.env.NODE_ENV === 'development' && order.userInfo && (
+                      <details className="text-xs bg-gray-100 p-2 rounded">
+                        <summary className="cursor-pointer text-gray-600">Debug: User Info</summary>
+                        <pre className="mt-2 text-xs overflow-auto">
+                          {JSON.stringify({
+                            hasUserInfo: !!order.userInfo,
+                            isClerkError: order.userInfo.isClerkError,
+                            firstName: order.userInfo.firstName,
+                            lastName: order.userInfo.lastName,
+                            email: order.userInfo.email,
+                            fullName: order.userInfo.fullName,
+                            errorReason: order.userInfo.errorReason
+                          }, null, 2)}
+                        </pre>
+                      </details>
+                    )}
                   </div>
                 </div>
 
