@@ -471,14 +471,84 @@ export const Api = createApi({
     }),
     
     // 🔧 CREATE ORDER
-    createOrder: build.mutation({
-      query: (orderData) => ({
+   createOrder: build.mutation({
+    query: (orderData) => {
+      console.log('📦 Creating order with data:', orderData);
+      
+      // 🔧 VALIDATION: Ensure size/color data is properly formatted
+      const processedOrderData = {
+        ...orderData,
+        items: orderData.items.map(item => {
+          const processedItem = {
+            productId: item.productId || item._id,
+            quantity: item.quantity || 1,
+            price: item.price || 0,
+          };
+          
+          // 🔧 NEW: Include size and color if provided
+          if (item.size && item.size.trim() !== '') {
+            processedItem.size = item.size.trim();
+          }
+          if (item.color && item.color.trim() !== '') {
+            processedItem.color = item.color.trim();
+          }
+          
+          // 🔧 ENHANCEMENT: Include product snapshot for historical accuracy
+          if (item.name || (item.productId && item.productId.name)) {
+            processedItem.productName = item.name || item.productId.name;
+          }
+          if (item.image || (item.productId && item.productId.image)) {
+            processedItem.productImage = item.image || item.productId.image || item.productId.images?.[0];
+          }
+          if (item.originalPrice || (item.productId && item.productId.originalPrice)) {
+            processedItem.originalPrice = item.originalPrice || item.productId.originalPrice;
+          }
+          
+          console.log('📝 Processed order item:', processedItem);
+          return processedItem;
+        })
+      };
+      
+      console.log('✅ Final processed order data:', processedOrderData);
+      
+      return {
         url: '/orders',
         method: 'POST',
-        body: orderData,
-      }),
-      invalidatesTags: ['Order'],
-    }),
+        body: processedOrderData,
+      };
+    },
+    invalidatesTags: ['Order', 'Cart'], // Also invalidate cart since order creation typically clears cart
+    transformResponse: (response) => {
+      console.log('✅ Order created successfully:', response);
+      return response.data || response;
+    },
+    transformErrorResponse: (response, meta, arg) => {
+      console.error('❌ Order creation failed:', {
+        status: response?.status,
+        data: response?.data,
+        message: response?.data?.message || 'Failed to create order',
+        originalOrderData: arg
+      });
+      
+      return {
+        ...response,
+        message: response?.data?.message || 'Failed to create order. Please try again.'
+      };
+    },
+    async onQueryStarted(orderData, { dispatch, queryFulfilled }) {
+      try {
+        const result = await queryFulfilled;
+        console.log('🎉 Order creation completed:', {
+          orderId: result.data._id || result.data.id,
+          status: result.data.orderStatus || result.data.status,
+          itemCount: result.data.items?.length
+        });
+      } catch (error) {
+        console.error('💥 Order creation error in onQueryStarted:', error);
+        throw error;
+      }
+    },
+  }),
 
     // 🔧 CART ENDPOINTS
     getCart: build.query({

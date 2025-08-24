@@ -765,27 +765,32 @@ const OrderDetailPage = () => {
             <CardContent>
               <div className="space-y-4">
                 {order.items.map((item, index) => {
-                  // 🔧 Enhanced item data extraction with better safety checks
+                  // 🔧 Enhanced item data extraction with size/color support
                   const product = item.productId && typeof item.productId === 'object' ? item.productId : null;
-                  const productName = product?.name || item.name || `Product ${index + 1}`;
-                  const productImage = product?.images?.[0] || product?.image || item.image || null;
+                  const productName = product?.name || item.productName || item.name || `Product ${index + 1}`;
+                  const productImage = product?.images?.[0] || product?.image || item.productImage || item.image || null;
                   const originalPrice = product?.price || item.originalPrice || item.price || 0;
                   const discount = product?.discount || item.discount || 0;
                   const finalPrice = discount > 0 
                     ? originalPrice * (1 - discount / 100) 
-                    : originalPrice;
+                    : item.price || originalPrice;
                   const quantity = item.quantity || 0;
                   const subtotal = finalPrice * quantity;
                   const savings = discount > 0 ? (originalPrice - finalPrice) * quantity : 0;
 
-                  console.log('🛍️ Rendering item:', {
+                  // 🔧 NEW: Extract size and color information
+                  const selectedSize = item.size || null;
+                  const selectedColor = item.color || null;
+                  const hasVariants = selectedSize || selectedColor;
+
+                  console.log('🛍️ Rendering item with variants:', {
                     index,
-                    item,
-                    product,
                     productName,
+                    size: selectedSize,
+                    color: selectedColor,
+                    hasVariants,
                     originalPrice,
                     finalPrice,
-                    discount,
                     quantity,
                     subtotal
                   });
@@ -822,6 +827,28 @@ const OrderDetailPage = () => {
                                 {productName}
                               </h3>
                               
+                              {/* 🔧 NEW: Display Size and Color Variants */}
+                              {hasVariants && (
+                                <div className="flex flex-wrap items-center gap-2 mt-2">
+                                  {selectedSize && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="bg-blue-50 text-blue-700 border-blue-200 text-sm"
+                                    >
+                                      Size: {selectedSize}
+                                    </Badge>
+                                  )}
+                                  {selectedColor && (
+                                    <Badge 
+                                      variant="outline" 
+                                      className="bg-purple-50 text-purple-700 border-purple-200 text-sm"
+                                    >
+                                      Color: {selectedColor}
+                                    </Badge>
+                                  )}
+                                </div>
+                              )}
+                              
                               {/* Product ID for debugging */}
                               {(product?._id || item.productId) && (
                                 <p className="text-xs text-gray-500 font-mono mt-1">
@@ -835,21 +862,31 @@ const OrderDetailPage = () => {
                                   Category: {product.category}
                                 </p>
                               )}
+
+                              {/* 🔧 NEW: Display additional product info if available */}
+                              {product?.description && (
+                                <p className="text-sm text-gray-600 mt-1 line-clamp-2">
+                                  {product.description}
+                                </p>
+                              )}
                             </div>
 
                             {/* Price and Quantity */}
                             <div className="text-right flex-shrink-0 ml-4">
                               <div className="space-y-1">
-                                {/* Quantity */}
-                                <p className="text-sm text-gray-600">
-                                  Qty: <span className="font-semibold">{quantity}</span>
-                                </p>
+                                {/* Quantity with enhanced styling */}
+                                <div className="flex items-center justify-end space-x-2">
+                                  <span className="text-sm text-gray-600">Qty:</span>
+                                  <Badge variant="outline" className="font-semibold text-blue-600">
+                                    {quantity}
+                                  </Badge>
+                                </div>
                                 
                                 {/* Price Display */}
                                 <div className="space-y-1">
                                   {discount > 0 ? (
                                     <>
-                                      <div className="flex items-center space-x-2">
+                                      <div className="flex items-center justify-end space-x-2">
                                         <span className="text-sm text-gray-500 line-through">
                                           Rs. {originalPrice.toLocaleString()}
                                         </span>
@@ -857,12 +894,12 @@ const OrderDetailPage = () => {
                                           -{discount}%
                                         </Badge>
                                       </div>
-                                      <p className="font-semibold text-green-700">
+                                      <p className="font-semibold text-green-700 text-right">
                                         Rs. {finalPrice.toLocaleString()}
                                       </p>
                                     </>
                                   ) : (
-                                    <p className="font-semibold text-gray-900">
+                                    <p className="font-semibold text-gray-900 text-right">
                                       Rs. {finalPrice.toLocaleString()}
                                     </p>
                                   )}
@@ -870,11 +907,11 @@ const OrderDetailPage = () => {
                                 
                                 {/* Item Subtotal */}
                                 <div className="pt-2 border-t border-gray-200">
-                                  <p className="font-bold text-blue-600">
+                                  <p className="font-bold text-blue-600 text-right">
                                     Rs. {subtotal.toLocaleString()}
                                   </p>
                                   {savings > 0 && (
-                                    <p className="text-xs text-green-600">
+                                    <p className="text-xs text-green-600 text-right">
                                       Saved Rs. {savings.toLocaleString()}
                                     </p>
                                   )}
@@ -882,12 +919,70 @@ const OrderDetailPage = () => {
                               </div>
                             </div>
                           </div>
+
+                          {/* 🔧 NEW: Additional item details row */}
+                          {(hasVariants || product?.brand || product?.sku) && (
+                            <div className="mt-3 pt-3 border-t border-gray-100">
+                              <div className="flex flex-wrap gap-3 text-xs text-gray-500">
+                                {product?.brand && (
+                                  <div className="flex items-center">
+                                    <span className="font-medium">Brand:</span>
+                                    <span className="ml-1">{product.brand}</span>
+                                  </div>
+                                )}
+                                {product?.sku && (
+                                  <div className="flex items-center">
+                                    <span className="font-medium">SKU:</span>
+                                    <span className="ml-1 font-mono">{product.sku}</span>
+                                  </div>
+                                )}
+                                {hasVariants && (
+                                  <div className="flex items-center">
+                                    <span className="font-medium">Variant:</span>
+                                    <span className="ml-1">
+                                      {[selectedSize, selectedColor].filter(Boolean).join(' • ')}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* 🔧 NEW: Order Items Summary */}
+              {order.items && order.items.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    <div className="text-center">
+                      <p className="text-gray-500">Total Items</p>
+                      <p className="font-semibold text-lg">
+                        {order.items.reduce((sum, item) => sum + (item.quantity || 0), 0)}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500">Unique Products</p>
+                      <p className="font-semibold text-lg">{order.items.length}</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500">With Variants</p>
+                      <p className="font-semibold text-lg">
+                        {order.items.filter(item => item.size || item.color).length}
+                      </p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-gray-500">Average Value</p>
+                      <p className="font-semibold text-lg">
+                        Rs. {Math.round(orderTotals.total / order.items.length).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
