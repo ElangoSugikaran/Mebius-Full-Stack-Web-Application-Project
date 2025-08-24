@@ -1,38 +1,131 @@
-import React, { useMemo } from "react";
-// import { useGetAllCustomersQuery } from "@/lib/api";
+import React, { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Users, UserCheck, UserX, Calendar, Mail } from "lucide-react";
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { 
+  Users, 
+  UserCheck, 
+  UserX, 
+  Calendar, 
+  Mail, 
+  Search,
+  Filter,
+  Download,
+  Eye,
+  ShoppingBag,
+  DollarSign,
+  TrendingUp,
+  Activity
+} from "lucide-react";
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  PieChart, 
+  Pie, 
+  Cell,
+  BarChart,
+  Bar
+} from "recharts";
+import { useGetAllOrdersQuery } from "@/store/api/Api";
 
 const CustomerManagementPage = () => {
-  // const { data: customersData, isLoading, error } = useGetAllCustomersQuery();
-  
-  // Memoized calculations for charts
-  const chartData = useMemo(() => {
-    if (!customersData?.customers) return { registrations: [], activityData: [], stats: {} };
+  const { data: ordersData, isLoading, error } = useGetAllOrdersQuery();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  // Process orders to extract customer analytics
+  const customerAnalytics = useMemo(() => {
+    if (!ordersData?.orders) {
+      return {
+        customers: [],
+        stats: {
+          totalCustomers: 0,
+          activeCustomers: 0,
+          inactiveCustomers: 0,
+          totalRevenue: 0
+        },
+        chartData: {
+          registrations: [],
+          activityData: [],
+          revenueByMonth: []
+        }
+      };
+    }
+
+    const orders = ordersData.orders;
     
-    const customers = customersData.customers;
+    // Group orders by customer (using Clerk user ID)
+    const customerMap = new Map();
     
-    // Calculate basic stats
+    orders.forEach(order => {
+      const customerId = order.userId;
+      const userInfo = order.userInfo;
+      
+      if (!customerId || !userInfo) return;
+      
+      if (!customerMap.has(customerId)) {
+        customerMap.set(customerId, {
+          id: customerId,
+          fullName: userInfo.fullName || 'Unknown User',
+          email: userInfo.email || 'No email',
+          firstName: userInfo.firstName || userInfo.fullName?.split(' ')[0] || 'Unknown',
+          lastName: userInfo.lastName || userInfo.fullName?.split(' ').slice(1).join(' ') || '',
+          orders: [],
+          totalSpent: 0,
+          lastOrderDate: null,
+          firstOrderDate: null,
+          orderCount: 0,
+          isActive: false
+        });
+      }
+      
+      const customer = customerMap.get(customerId);
+      customer.orders.push(order);
+      customer.totalSpent += order.totalAmount || 0;
+      customer.orderCount += 1;
+      
+      const orderDate = new Date(order.createdAt);
+      if (!customer.firstOrderDate || orderDate < customer.firstOrderDate) {
+        customer.firstOrderDate = orderDate;
+      }
+      if (!customer.lastOrderDate || orderDate > customer.lastOrderDate) {
+        customer.lastOrderDate = orderDate;
+      }
+      
+      // Consider active if ordered in last 90 days
+      const daysSinceLastOrder = (new Date() - customer.lastOrderDate) / (1000 * 60 * 60 * 24);
+      customer.isActive = daysSinceLastOrder <= 90;
+    });
+    
+    const customers = Array.from(customerMap.values());
+    
+    // Calculate stats
     const totalCustomers = customers.length;
     const activeCustomers = customers.filter(c => c.isActive).length;
     const inactiveCustomers = totalCustomers - activeCustomers;
+    const totalRevenue = customers.reduce((sum, c) => sum + c.totalSpent, 0);
     
-    // Group registrations by month
+    // Registration trend (based on first order date)
     const registrationsByMonth = customers.reduce((acc, customer) => {
-      const date = new Date(customer.createdAt);
+      if (!customer.firstOrderDate) return acc;
+      
+      const date = customer.firstOrderDate;
       const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
       acc[monthYear] = (acc[monthYear] || 0) + 1;
       return acc;
     }, {});
     
     const registrations = Object.entries(registrationsByMonth)
-      .map(([month, count]) => ({ month, registrations: count }))
+      .map(([month, count]) => ({ month, customers: count }))
       .sort((a, b) => new Date(a.month + " 1") - new Date(b.month + " 1"))
-      .slice(-6); // Last 6 months
+      .slice(-6);
     
     // Activity data for pie chart
     const activityData = [
@@ -40,19 +133,52 @@ const CustomerManagementPage = () => {
       { name: 'Inactive', value: inactiveCustomers, color: '#ef4444' }
     ];
     
+    // Revenue by month
+    const revenueByMonth = orders.reduce((acc, order) => {
+      const date = new Date(order.createdAt);
+      const monthYear = `${date.toLocaleString('default', { month: 'short' })} ${date.getFullYear()}`;
+      acc[monthYear] = (acc[monthYear] || 0) + (order.totalAmount || 0);
+      return acc;
+    }, {});
+    
+    const revenueData = Object.entries(revenueByMonth)
+      .map(([month, revenue]) => ({ month, revenue }))
+      .sort((a, b) => new Date(a.month + " 1") - new Date(b.month + " 1"))
+      .slice(-6);
+    
     return {
-      registrations,
-      activityData,
-      stats: { totalCustomers, activeCustomers, inactiveCustomers }
+      customers: customers.sort((a, b) => (b.lastOrderDate || 0) - (a.lastOrderDate || 0)),
+      stats: { totalCustomers, activeCustomers, inactiveCustomers, totalRevenue },
+      chartData: { registrations, activityData, revenueByMonth: revenueData }
     };
-  }, [customersData]);
-  
+  }, [ordersData]);
+
+  // Filter customers based on search and status
+  const filteredCustomers = useMemo(() => {
+    let filtered = customerAnalytics.customers;
+    
+    if (searchTerm) {
+      filtered = filtered.filter(customer => 
+        customer.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+    
+    if (statusFilter !== "all") {
+      filtered = filtered.filter(customer => 
+        statusFilter === "active" ? customer.isActive : !customer.isActive
+      );
+    }
+    
+    return filtered;
+  }, [customerAnalytics.customers, searchTerm, statusFilter]);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Loading customers...</p>
+          <p className="text-gray-600">Loading customer analytics...</p>
         </div>
       </div>
     );
@@ -65,131 +191,99 @@ const CustomerManagementPage = () => {
           <CardContent className="pt-6">
             <div className="text-center text-red-600">
               <UserX className="h-12 w-12 mx-auto mb-4" />
-              <p>Failed to load customers</p>
+              <p>Failed to load customer data</p>
+              <p className="text-sm text-gray-500 mt-2">Please check your connection and try again</p>
             </div>
           </CardContent>
         </Card>
       </div>
     );
   }
-  
-  const customers = customersData?.customers || [];
-  
+
   return (
-    <div className="space-y-8 p-6">
+    <div className="space-y-6 p-6">
       {/* Header */}
-      <div className="flex items-center gap-4">
-        <div className="flex items-center gap-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Users className="h-8 w-8 text-blue-600" />
           <div>
-            <h1 className="text-3xl font-bold">Customer Management</h1>
-            <p className="text-gray-600">View customer insights and registrations</p>
+            <h1 className="text-3xl font-bold text-gray-900">Customer Management</h1>
+            <p className="text-gray-600">Monitor customer activity and purchasing behavior</p>
           </div>
+        </div>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm">
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
         </div>
       </div>
       
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Customers</CardTitle>
-            <Users className="h-4 w-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-gray-600">Total Customers</CardTitle>
+            <Users className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{chartData.stats.totalCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Registered users
-            </p>
+            <div className="text-2xl font-bold">{customerAnalytics.stats.totalCustomers}</div>
+            <p className="text-xs text-gray-500">Unique purchasers</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Customers</CardTitle>
-            <UserCheck className="h-4 w-4 text-green-600" />
+            <CardTitle className="text-sm font-medium text-gray-600">Active Customers</CardTitle>
+            <UserCheck className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{chartData.stats.activeCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Currently active
-            </p>
+            <div className="text-2xl font-bold text-green-600">{customerAnalytics.stats.activeCustomers}</div>
+            <p className="text-xs text-gray-500">Purchased in last 90 days</p>
           </CardContent>
         </Card>
         
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Inactive Customers</CardTitle>
-            <UserX className="h-4 w-4 text-red-600" />
+            <CardTitle className="text-sm font-medium text-gray-600">Inactive Customers</CardTitle>
+            <Activity className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{chartData.stats.inactiveCustomers}</div>
-            <p className="text-xs text-muted-foreground">
-              Not currently active
-            </p>
+            <div className="text-2xl font-bold text-orange-600">{customerAnalytics.stats.inactiveCustomers}</div>
+            <p className="text-xs text-gray-500">No recent purchases</p>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium text-gray-600">Total Revenue</CardTitle>
+            <DollarSign className="h-4 w-4 text-purple-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">
+              ${customerAnalytics.stats.totalRevenue.toLocaleString()}
+            </div>
+            <p className="text-xs text-gray-500">From all customers</p>
           </CardContent>
         </Card>
       </div>
       
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Registration Trend Chart */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Customer Activity Status */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Calendar className="h-5 w-5" />
-              Registration Trend
+              <TrendingUp className="h-5 w-5 text-blue-500" />
+              Customer Status
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={chartData.registrations}>
-                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
-                  <XAxis 
-                    dataKey="month" 
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }}
-                    axisLine={false}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px',
-                      boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
-                    }}
-                  />
-                  <Line 
-                    type="monotone" 
-                    dataKey="registrations" 
-                    stroke="#3b82f6" 
-                    strokeWidth={3}
-                    dot={{ fill: '#3b82f6', strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6, stroke: '#3b82f6', strokeWidth: 2 }}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-        
-        {/* Customer Activity Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <UserCheck className="h-5 w-5" />
-              Customer Activity Status
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-80">
+            <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
-                    data={chartData.activityData}
+                    data={customerAnalytics.chartData.activityData}
                     cx="50%"
                     cy="50%"
                     innerRadius={60}
@@ -197,106 +291,200 @@ const CustomerManagementPage = () => {
                     paddingAngle={5}
                     dataKey="value"
                   >
-                    {chartData.activityData.map((entry, index) => (
+                    {customerAnalytics.chartData.activityData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'white', 
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '8px'
-                    }}
-                  />
+                  <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
-              <div className="flex justify-center gap-4 mt-4">
-                {chartData.activityData.map((item) => (
+              <div className="flex justify-center gap-4 mt-2">
+                {customerAnalytics.chartData.activityData.map((item) => (
                   <div key={item.name} className="flex items-center gap-2">
-                    <div 
-                      className="w-3 h-3 rounded-full" 
-                      style={{ backgroundColor: item.color }}
-                    ></div>
-                    <span className="text-sm text-gray-600">
-                      {item.name}: {item.value}
-                    </span>
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                    <span className="text-sm text-gray-600">{item.name}: {item.value}</span>
                   </div>
                 ))}
               </div>
             </div>
           </CardContent>
         </Card>
+        
+        {/* New Customers Trend */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-green-500" />
+              New Customers
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={customerAnalytics.chartData.registrations}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip />
+                  <Line 
+                    type="monotone" 
+                    dataKey="customers" 
+                    stroke="#10b981" 
+                    strokeWidth={2}
+                    dot={{ fill: '#10b981', r: 4 }}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+        
+        {/* Revenue Trend */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-purple-500" />
+              Monthly Revenue
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-64">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={customerAnalytics.chartData.revenueByMonth}>
+                  <CartesianGrid strokeDasharray="3 3" className="opacity-30" />
+                  <XAxis dataKey="month" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <Tooltip formatter={(value) => [`$${value.toLocaleString()}`, 'Revenue']} />
+                  <Bar dataKey="revenue" fill="#8b5cf6" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
       </div>
       
-      {/* Customer List */}
+      {/* Filters and Search */}
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            Customer Directory
-          </CardTitle>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <CardTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5" />
+              Customer Directory ({filteredCustomers.length})
+            </CardTitle>
+            <div className="flex flex-col sm:flex-row gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Input
+                  placeholder="Search customers..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-10 w-64"
+                />
+              </div>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Status</option>
+                <option value="active">Active Only</option>
+                <option value="inactive">Inactive Only</option>
+              </select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {customers.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+          <div className="overflow-x-auto">
+            {filteredCustomers.length === 0 ? (
+              <div className="text-center py-12 text-gray-500">
                 <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>No customers found</p>
+                <p className="text-sm">Try adjusting your search or filters</p>
               </div>
             ) : (
-              customers.map((customer, index) => (
-                <div key={customer._id}>
-                  <div className="flex items-center justify-between p-4 hover:bg-gray-50 rounded-lg transition-colors">
-                    <div className="flex items-center gap-4">
-                      <Avatar className="h-12 w-12">
-                        <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
-                          {customer.firstName?.[0]}{customer.lastName?.[0]}
-                        </AvatarFallback>
-                      </Avatar>
-                      
-                      <div className="space-y-1">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-200">
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Customer</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Status</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Orders</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Total Spent</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Last Order</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">First Order</th>
+                    <th className="text-left py-3 px-4 font-semibold text-gray-700">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((customer) => (
+                    <tr key={customer.id} className="border-b border-gray-100 hover:bg-gray-50">
+                      <td className="py-4 px-4">
                         <div className="flex items-center gap-3">
-                          <h3 className="font-semibold text-lg">
-                            {customer.firstName} {customer.lastName}
-                          </h3>
-                          <Badge 
-                            variant={customer.isActive ? "default" : "secondary"}
-                            className={customer.isActive ? "bg-green-100 text-green-800" : ""}
-                          >
-                            {customer.isActive ? "Active" : "Inactive"}
-                          </Badge>
-                        </div>
-                        
-                        <div className="flex items-center gap-4 text-sm text-gray-600">
-                          <div className="flex items-center gap-1">
-                            <Mail className="h-4 w-4" />
-                            {customer.email}
-                          </div>
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-4 w-4" />
-                            Joined {new Date(customer.createdAt).toLocaleDateString()}
+                          <Avatar className="h-10 w-10">
+                            <AvatarFallback className="bg-blue-100 text-blue-600 font-semibold">
+                              {customer.firstName?.[0]}{customer.lastName?.[0]}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div>
+                            <div className="font-medium text-gray-900">{customer.fullName}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1">
+                              <Mail className="h-3 w-3" />
+                              {customer.email}
+                            </div>
                           </div>
                         </div>
-                        
-                        {customer.lastLoginAt && (
-                          <p className="text-xs text-gray-500">
-                            Last login: {new Date(customer.lastLoginAt).toLocaleDateString()}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                    
-                    <div className="text-right">
-                      <p className="text-sm text-gray-500">Customer ID</p>
-                      <p className="text-xs font-mono text-gray-400">
-                        {customer._id}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {index < customers.length - 1 && <Separator />}
-                </div>
-              ))
+                      </td>
+                      <td className="py-4 px-4">
+                        <Badge 
+                          variant={customer.isActive ? "default" : "secondary"}
+                          className={customer.isActive ? "bg-green-100 text-green-800 hover:bg-green-200" : "bg-gray-100 text-gray-800"}
+                        >
+                          {customer.isActive ? "Active" : "Inactive"}
+                        </Badge>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="flex items-center gap-1">
+                          <ShoppingBag className="h-4 w-4 text-gray-400" />
+                          <span className="font-medium">{customer.orderCount}</span>
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <span className="font-semibold text-green-600">
+                          ${customer.totalSpent.toLocaleString()}
+                        </span>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-sm">
+                          {customer.lastOrderDate ? (
+                            <>
+                              <div>{customer.lastOrderDate.toLocaleDateString()}</div>
+                              <div className="text-gray-500">
+                                {Math.floor((new Date() - customer.lastOrderDate) / (1000 * 60 * 60 * 24))} days ago
+                              </div>
+                            </>
+                          ) : (
+                            <span className="text-gray-400">Never</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <div className="text-sm">
+                          {customer.firstOrderDate ? (
+                            customer.firstOrderDate.toLocaleDateString()
+                          ) : (
+                            <span className="text-gray-400">Never</span>
+                          )}
+                        </div>
+                      </td>
+                      <td className="py-4 px-4">
+                        <Button variant="ghost" size="sm" className="text-blue-600 hover:text-blue-800">
+                          <Eye className="h-4 w-4 mr-1" />
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             )}
           </div>
         </CardContent>
