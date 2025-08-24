@@ -2,7 +2,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { toast } from 'react-toastify';
 import { useGetOrderByIdQuery, useUpdateOrderStatusMutation } from "@/lib/api";
-// Line 24 - Add AlertTriangle and Mail to the imports
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -19,7 +18,7 @@ import {
   Calendar,
   DollarSign,
   Phone,
-  Mail,        // Add this
+  Mail,
   Banknote
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -51,18 +50,197 @@ const OrderDetailPage = () => {
   const { data: apiResponse, isLoading, error, refetch } = useGetOrderByIdQuery(id);
   const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
 
-  const order = apiResponse?.order || null;
+  const order = apiResponse?.order || apiResponse?.data || apiResponse || null;
 
   console.log('🔍 Admin Order Detail Debug:', {
     id,
     apiResponse,
     order,
+    orderUserInfo: order?.userInfo,
     isLoading,
     error
   });
 
- // 🔧 REPLACE the handlePaymentStatusUpdate function in OrderDetailPage.jsx
+  // 🔧 Enhanced customer info display function
+  const renderCustomerInfo = (order) => {
+    console.log('🎨 Rendering customer info:', {
+      hasOrder: !!order,
+      hasUserInfo: !!order?.userInfo,
+      userInfo: order?.userInfo,
+      isClerkError: order?.userInfo?.isClerkError
+    });
 
+    // If we have proper user info from Clerk
+    if (order?.userInfo && !order.userInfo.isClerkError) {
+      console.log('✅ Rendering with Clerk user info');
+      return (
+        <div className="space-y-4">
+          {/* Customer Header with Avatar */}
+          <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+            {/* User Avatar */}
+            {order.userInfo.imageUrl ? (
+              <img 
+                src={order.userInfo.imageUrl} 
+                alt={order.userInfo.fullName || 'User'}
+                className="h-12 w-12 rounded-full object-cover border-2 border-white shadow-sm flex-shrink-0"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className="h-12 w-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0"
+              style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}}
+            >
+              <User className="h-6 w-6 text-blue-600" />
+            </div>
+            
+            {/* User Name and Basic Info */}
+            <div className="flex-1 min-w-0">
+              <h3 className="text-lg font-semibold text-gray-900 truncate">
+                {order.userInfo.fullName || 
+                 `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
+                 'Unknown User'}
+              </h3>
+              
+              {order.userInfo.email && 
+               order.userInfo.email !== 'No email available' && 
+               order.userInfo.email !== 'Error fetching email' && (
+                <div className="flex items-center text-gray-600 mt-1">
+                  <Mail className="h-4 w-4 mr-2" />
+                  <span className="text-sm truncate">{order.userInfo.email}</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Detailed Customer Information */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-500">Customer ID</label>
+              <p className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded mt-1">
+                {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
+              </p>
+            </div>
+            
+            {order.userInfo.createdAt && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Member Since</label>
+                <p className="text-sm text-gray-800 mt-1">
+                  {new Date(order.userInfo.createdAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
+            
+            {order.userInfo.lastSignInAt && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Last Active</label>
+                <p className="text-sm text-gray-800 mt-1">
+                  {new Date(order.userInfo.lastSignInAt).toLocaleDateString('en-US', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric'
+                  })}
+                </p>
+              </div>
+            )}
+            
+            {order.userInfo.username && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Username</label>
+                <p className="text-sm text-gray-800 mt-1">@{order.userInfo.username}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+    
+    // If we have Clerk error
+    if (order?.userInfo?.isClerkError) {
+      console.log('⚠️ Rendering with Clerk error');
+      return (
+        <div className="space-y-4">
+          <div className="flex items-center space-x-4 p-4 bg-orange-50 rounded-lg border border-orange-200">
+            <div className="h-12 w-12 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-6 w-6 text-orange-600" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-semibold text-orange-800">
+                Clerk API Error
+              </h3>
+              <p className="text-sm text-orange-600 mt-1">
+                {order.userInfo.errorReason || 'Unable to fetch customer details from Clerk'}
+              </p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-500">Customer ID</label>
+            <p className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded mt-1">
+              {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
+            </p>
+          </div>
+        </div>
+      );
+    }
+    
+    // Fallback: No user info or fallback to address
+    console.log('🔄 Rendering fallback customer info');
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center space-x-4 p-4 bg-gray-50 rounded-lg">
+          <div className="h-12 w-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <User className="h-6 w-6 text-gray-400" />
+          </div>
+          
+          <div className="flex-1">
+            {/* Try to get name from shipping address if available */}
+            {order?.addressId?.firstName && order?.addressId?.lastName ? (
+              <h3 className="text-lg font-semibold text-gray-700">
+                {order.addressId.firstName} {order.addressId.lastName}
+              </h3>
+            ) : (
+              <h3 className="text-lg font-semibold text-gray-600">
+                Unknown Customer
+              </h3>
+            )}
+            
+            <p className="text-sm text-gray-500 mt-1">
+              Customer information not available
+            </p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="text-sm font-medium text-gray-500">Customer ID</label>
+            <p className="text-sm font-mono text-gray-800 bg-gray-100 px-2 py-1 rounded mt-1">
+              {(order?.userId || '').slice(-12).toUpperCase() || 'Unknown'}
+            </p>
+          </div>
+          
+          {/* Phone from address if available */}
+          {order?.addressId?.phone && (
+            <div>
+              <label className="text-sm font-medium text-gray-500">Phone</label>
+              <div className="flex items-center mt-1">
+                <Phone className="h-4 w-4 text-gray-400 mr-2" />
+                <span className="text-sm text-gray-800">{order.addressId.phone}</span>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  // 🔧 Payment status update handler
   const handlePaymentStatusUpdate = async (newPaymentStatus) => {
     if (!id || id === 'undefined' || id === 'null' || id === '') {
       console.error('❌ Invalid order ID:', id);
@@ -89,10 +267,9 @@ const OrderDetailPage = () => {
         currentOrder: order
       });
       
-      // 🔧 FIXED: Use paymentStatus parameter specifically
       const result = await updateOrderStatus({ 
         orderId: id.toString(),
-        paymentStatus: newPaymentStatus  // 🔧 This triggers payment endpoint
+        paymentStatus: newPaymentStatus
       }).unwrap();
       
       console.log('✅ Payment status update successful:', result);
@@ -100,10 +277,6 @@ const OrderDetailPage = () => {
       toast.success(`Payment status updated to ${newPaymentStatus}!`, {
         position: "top-right",
         autoClose: 3000,
-        hideProgressBar: false,
-        closeOnClick: true,
-        pauseOnHover: true,
-        draggable: true,
       });
       
       refetch();
@@ -158,7 +331,6 @@ const OrderDetailPage = () => {
         orderExists: !!order
       });
       
-      // 🔧 FIXED: Send parameters in the exact format expected by API
       const result = await updateOrderStatus({ 
         orderId: id.toString(),
         orderStatus: newStatus,
@@ -340,7 +512,7 @@ const OrderDetailPage = () => {
               <Button onClick={() => refetch()} variant="outline">
                 Try Again
               </Button>
-              <Link to="/admin/orders">
+              <Link to="/admin/admin-orders">
                 <Button>Back to Orders</Button>
               </Link>
             </div>
@@ -471,7 +643,7 @@ const OrderDetailPage = () => {
               </Select>
             </div>
 
-            {/* 🔧 NEW: Payment Status Selector */}
+            {/* Payment Status Selector */}
             <div className="flex flex-col space-y-1">
               <label className="text-xs text-gray-500 font-medium">Payment Status</label>
               <Select
@@ -498,6 +670,41 @@ const OrderDetailPage = () => {
         {/* Order Information */}
         <div className="lg:col-span-2 space-y-6">
           
+          {/* 🔧 FIXED: Customer Information Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <User className="mr-2 h-5 w-5" />
+                Customer Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {renderCustomerInfo(order)}
+              
+              {/* Debug Info - Remove in production */}
+              {process.env.NODE_ENV === 'development' && (
+                <details className="mt-4 text-xs bg-gray-100 p-3 rounded">
+                  <summary className="cursor-pointer text-gray-600 font-medium">
+                    🐛 Debug: User Info Data
+                  </summary>
+                  <pre className="mt-2 text-xs overflow-auto whitespace-pre-wrap">
+                    {JSON.stringify({
+                      orderId: order._id,
+                      userId: order.userId,
+                      hasUserInfo: !!order.userInfo,
+                      userInfo: order.userInfo,
+                      addressInfo: order.addressId ? {
+                        firstName: order.addressId.firstName,
+                        lastName: order.addressId.lastName,
+                        phone: order.addressId.phone
+                      } : null
+                    }, null, 2)}
+                  </pre>
+                </details>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Order Status & Payment */}
           <Card>
             <CardHeader>
@@ -537,7 +744,6 @@ const OrderDetailPage = () => {
                   <div className="mt-2">
                     {getPaymentStatusBadge(order.paymentStatus)}
                   </div>
-                  {/* 🔧 NEW: Special indicator for COD */}
                   {order.paymentMethod === 'COD' && order.paymentStatus === 'PENDING' && (
                     <p className="text-xs text-amber-600 mt-1">
                       💡 Mark as PAID when payment is received on delivery
@@ -552,102 +758,131 @@ const OrderDetailPage = () => {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
-                <Package className="mr-2 h-5 w-5" />
-                Order Items ({order.items.reduce((total, item) => total + (item.quantity || 0), 0)} items)
+                <ShoppingCart className="mr-2 h-5 w-5" />
+                Order Items ({order.items?.length || 0})
               </CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 {order.items.map((item, index) => {
-                  const hasProductData = item.productId && typeof item.productId === 'object';
-                  
-                  if (!hasProductData && !item.price) {
-                    return (
-                      <div key={index} className="flex items-center space-x-4 p-4 border rounded-lg bg-red-50 border-red-200">
-                        <div className="h-16 w-16 rounded-md bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <AlertTriangle className="h-8 w-8 text-red-500" />
-                        </div>
-                        <div className="flex-1">
-                          <h4 className="font-medium text-red-800">
-                            Product Data Missing
-                          </h4>
-                          <p className="text-sm text-red-600">
-                            Product information is not available. Quantity: {item.quantity || 0}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-red-800">
-                            Data Unavailable
-                          </p>
-                        </div>
-                      </div>
-                    );
-                  }
+                  // 🔧 Enhanced item data extraction with better safety checks
+                  const product = item.productId && typeof item.productId === 'object' ? item.productId : null;
+                  const productName = product?.name || item.name || `Product ${index + 1}`;
+                  const productImage = product?.images?.[0] || product?.image || item.image || null;
+                  const originalPrice = product?.price || item.originalPrice || item.price || 0;
+                  const discount = product?.discount || item.discount || 0;
+                  const finalPrice = discount > 0 
+                    ? originalPrice * (1 - discount / 100) 
+                    : originalPrice;
+                  const quantity = item.quantity || 0;
+                  const subtotal = finalPrice * quantity;
+                  const savings = discount > 0 ? (originalPrice - finalPrice) * quantity : 0;
 
-                  let price = 0;
-                  let originalPrice = 0;
-                  let discount = 0;
-                  let productName = 'Unknown Product';
-                  let productImage = null;
+                  console.log('🛍️ Rendering item:', {
+                    index,
+                    item,
+                    product,
+                    productName,
+                    originalPrice,
+                    finalPrice,
+                    discount,
+                    quantity,
+                    subtotal
+                  });
 
-                  if (hasProductData) {
-                    originalPrice = item.productId.price || 0;
-                    discount = item.productId.discount || 0;
-                    price = discount > 0 ? originalPrice * (1 - discount / 100) : originalPrice;
-                    productName = item.productId.name || 'Unknown Product';
-                    productImage = item.productId.image;
-                  } else {
-                    price = item.price || 0;
-                    originalPrice = item.price || 0;
-                  }
-                  
                   return (
-                    <div key={index} className="flex items-center space-x-4 p-4 border rounded-lg">
-                      <div className="h-16 w-16 rounded-md bg-gray-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                        {productImage ? (
-                          <img 
-                            src={productImage} 
-                            alt={productName}
-                            className="h-full w-full object-cover"
-                            onError={(e) => {
-                              e.target.style.display = 'none';
-                              e.target.nextSibling.style.display = 'flex';
-                            }}
-                          />
-                        ) : null}
-                        <Package className="h-8 w-8 text-gray-400" style={{display: productImage ? 'none' : 'flex'}} />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <h4 className="font-medium text-gray-900 truncate">
-                          {productName}
-                        </h4>
-                        <div className="flex items-center space-x-4 mt-1">
-                          <span className="text-sm text-gray-500">
-                            Qty: {item.quantity || 0}
-                          </span>
-                          {discount > 0 && (
-                            <Badge variant="secondary" className="text-xs">
-                              {discount}% OFF
-                            </Badge>
-                          )}
-                          {!hasProductData && (
-                            <Badge variant="outline" className="text-xs text-yellow-600">
-                              Price from Order
-                            </Badge>
-                          )}
+                    <div key={item._id || index} className="border rounded-lg p-4 bg-gray-50">
+                      <div className="flex items-start space-x-4">
+                        {/* Product Image */}
+                        <div className="flex-shrink-0">
+                          {productImage ? (
+                            <img 
+                              src={productImage} 
+                              alt={productName}
+                              className="w-20 h-20 object-cover rounded-lg border-2 border-white shadow-sm"
+                              onError={(e) => {
+                                e.target.style.display = 'none';
+                                e.target.nextElementSibling.style.display = 'flex';
+                              }}
+                            />
+                          ) : null}
+                          <div 
+                            className="w-20 h-20 bg-gray-200 rounded-lg flex items-center justify-center"
+                            style={{display: productImage ? 'none' : 'flex'}}
+                          >
+                            <Package className="w-8 h-8 text-gray-400" />
+                          </div>
                         </div>
-                      </div>
-                      
-                      <div className="text-right">
-                        {discount > 0 && (
-                          <p className="text-sm text-gray-500 line-through">
-                            ${(originalPrice * (item.quantity || 0)).toFixed(2)}
-                          </p>
-                        )}
-                        <p className="font-semibold text-gray-900">
-                          ${(price * (item.quantity || 0)).toFixed(2)}
-                        </p>
+
+                        {/* Product Details */}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 text-lg truncate">
+                                {productName}
+                              </h3>
+                              
+                              {/* Product ID for debugging */}
+                              {(product?._id || item.productId) && (
+                                <p className="text-xs text-gray-500 font-mono mt-1">
+                                  ID: {(product?._id || item.productId || '').toString().slice(-12)}
+                                </p>
+                              )}
+                              
+                              {/* Category or Description if available */}
+                              {product?.category && (
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Category: {product.category}
+                                </p>
+                              )}
+                            </div>
+
+                            {/* Price and Quantity */}
+                            <div className="text-right flex-shrink-0 ml-4">
+                              <div className="space-y-1">
+                                {/* Quantity */}
+                                <p className="text-sm text-gray-600">
+                                  Qty: <span className="font-semibold">{quantity}</span>
+                                </p>
+                                
+                                {/* Price Display */}
+                                <div className="space-y-1">
+                                  {discount > 0 ? (
+                                    <>
+                                      <div className="flex items-center space-x-2">
+                                        <span className="text-sm text-gray-500 line-through">
+                                          Rs. {originalPrice.toLocaleString()}
+                                        </span>
+                                        <Badge variant="outline" className="bg-red-50 text-red-700 text-xs">
+                                          -{discount}%
+                                        </Badge>
+                                      </div>
+                                      <p className="font-semibold text-green-700">
+                                        Rs. {finalPrice.toLocaleString()}
+                                      </p>
+                                    </>
+                                  ) : (
+                                    <p className="font-semibold text-gray-900">
+                                      Rs. {finalPrice.toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                                
+                                {/* Item Subtotal */}
+                                <div className="pt-2 border-t border-gray-200">
+                                  <p className="font-bold text-blue-600">
+                                    Rs. {subtotal.toLocaleString()}
+                                  </p>
+                                  {savings > 0 && (
+                                    <p className="text-xs text-green-600">
+                                      Saved Rs. {savings.toLocaleString()}
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   );
@@ -655,53 +890,13 @@ const OrderDetailPage = () => {
               </div>
             </CardContent>
           </Card>
-                
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center">
-                <MapPin className="mr-2 h-5 w-5" />
-                Shipping Address
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {order.addressId ? (
-                <div className="space-y-4">
-                  {/* Name with location icon */}
-                  <div className="flex items-center space-x-2">
-                    <MapPin className="h-5 w-5 text-gray-400" />
-                    <p className="font-medium text-gray-900">
-                      {order.addressId.firstName} {order.addressId.lastName}
-                    </p>
-                  </div>
-
-                  {/* Address lines & city grouped */}
-                  <div className="space-y-1 text-gray-700">
-                    <p>{order.addressId.line1}</p>
-                    {order.addressId.line2 && <p>{order.addressId.line2}</p>}
-                    <p>{order.addressId.city}</p>
-                  </div>
-                  
-                  {/* Phone with icon aligned */}
-                  {order.addressId.phone && (
-                    <div className="flex items-center space-x-2 text-gray-700">
-                      <Phone className="h-4 w-4 text-gray-400" />
-                      <span className="text-sm">{order.addressId.phone}</span>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-4">
-                  <AlertTriangle className="h-8 w-8 text-yellow-500 mx-auto mb-2" />
-                  <p className="text-yellow-700">Address information not available</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
 
         {/* Order Summary Sidebar */}
-        <div className="lg:col-span-1">
-          <Card className="sticky top-4">
+        <div className="lg:col-span-1 space-y-6">
+          
+          {/* Order Summary */}
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center">
                 <DollarSign className="mr-2 h-5 w-5" />
@@ -710,449 +905,306 @@ const OrderDetailPage = () => {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="space-y-3">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Order ID</span>
-                    <span className="font-medium">#{orderNumber}</span>
+                {/* Order ID & Date */}
+                <div className="pb-4 border-b border-gray-200">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-sm text-gray-600">Order ID</span>
+                    <span className="font-mono text-sm font-semibold">#{orderNumber}</span>
                   </div>
-                  
-                  <div className="flex justify-between text-gray-600">
-                    <span>Customer ID</span>
-                    <span className="font-medium text-xs">{order.userId}</span>
-                  </div>
-                  
-                  <div className="flex justify-between text-gray-600">
-                    <span>Order Date</span>
-                    <span className="font-medium">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-600">Order Date</span>
+                    <span className="text-sm">
                       {new Date(order.createdAt).toLocaleDateString()}
                     </span>
                   </div>
                 </div>
 
-                <hr className="border-gray-200" />
-
+                {/* Financial Breakdown */}
                 <div className="space-y-3">
-                  <div className="flex justify-between text-gray-600">
-                    <span>Subtotal</span>
-                    <span>${orderTotals.subtotal.toFixed(2)}</span>
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Subtotal ({order.items?.length || 0} items)</span>
+                    <span>Rs. {orderTotals.subtotal.toLocaleString()}</span>
                   </div>
                   
                   {orderTotals.savings > 0 && (
                     <div className="flex justify-between text-green-600">
-                      <span>You saved</span>
-                      <span>-${orderTotals.savings.toFixed(2)}</span>
+                      <span>Total Savings</span>
+                      <span>-Rs. {orderTotals.savings.toLocaleString()}</span>
                     </div>
                   )}
                   
-                  <div className="flex justify-between text-gray-600">
-                    <span>Shipping</span>
-                    <span className="text-green-600 font-medium">FREE</span>
+                  {/* Shipping (if applicable) */}
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">Shipping</span>
+                    <span className="text-green-600">Free</span>
                   </div>
                   
                   <hr className="border-gray-200" />
                   
-                  <div className="flex justify-between text-xl font-bold text-gray-900">
+                  {/* Total */}
+                  <div className="flex justify-between text-lg font-bold">
                     <span>Total</span>
-                    <span>${orderTotals.total.toFixed(2)}</span>
-                  </div>
-                </div>
-
-                {/* Quick Payment Actions for COD */}
-                {order.paymentMethod === 'COD' && (
-                  <div className="pt-4 space-y-3 border-t border-gray-200">
-                    <h4 className="font-medium text-gray-900">COD Payment Actions</h4>
-                    
-                    {order.paymentStatus === 'PENDING' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="default"
-                             className="w-full"
-                            disabled={isUpdating}
-                          >
-                            {isUpdating ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Updating...
-                              </>
-                            ) : (
-                              <>
-                                <CheckCircle className="h-4 w-4 mr-2" />
-                                Mark as Paid
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirm Payment Received</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to mark this COD order as PAID? This action confirms that payment has been received upon delivery.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handlePaymentStatusUpdate('PAID')}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Confirm Payment
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-
-                    {order.paymentStatus === 'PAID' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full border-red-200 text-red-700 hover:bg-red-50"
-                            disabled={isUpdating}
-                          >
-                            {isUpdating ? (
-                              <>
-                                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                Processing...
-                              </>
-                            ) : (
-                              <>
-                                <XCircle className="h-4 w-4 mr-2" />
-                                Issue Refund
-                              </>
-                            )}
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Issue Refund</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to issue a refund for this order? This will change the payment status to REFUNDED and cannot be easily undone.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handlePaymentStatusUpdate('REFUNDED')}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Issue Refund
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-
-                    {order.paymentStatus === 'REFUNDED' && (
-                      <div className="text-center py-2">
-                        <Badge variant="outline" className="bg-gray-100 text-gray-700 border-gray-300">
-                          <XCircle className="h-4 w-4 mr-2" />
-                          Refund Issued
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-               {/* Customer Information */}
-                {/* Enhanced Customer Information - Replace existing section */}
-                <div className="pt-4 space-y-3 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <User className="h-4 w-4 mr-2" />
-                    Customer Information
-                  </h4>
-                  
-                  <div className="space-y-3">
-                    {order.userInfo && !order.userInfo.isClerkError ? (
-                      <>
-                        {/* Customer Name & Avatar */}
-                        <div className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                          {order.userInfo.imageUrl ? (
-                            <img 
-                              src={order.userInfo.imageUrl} 
-                              alt={order.userInfo.fullName || 'User'}
-                              className="h-10 w-10 rounded-full object-cover border-2 border-white shadow-sm"
-                              onError={(e) => {
-                                e.target.style.display = 'none';
-                                e.target.nextElementSibling.style.display = 'flex';
-                              }}
-                            />
-                          ) : null}
-                          <div 
-                            className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center"
-                            style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}}
-                          >
-                            <User className="h-5 w-5 text-blue-600" />
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <h5 className="font-medium text-gray-900 truncate">
-                              {order.userInfo.fullName || 
-                              `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
-                              'Unknown User'}
-                            </h5>
-                            {order.userInfo.email && 
-                            order.userInfo.email !== 'No email available' && 
-                            order.userInfo.email !== 'Error fetching email' && (
-                              <p className="text-sm text-gray-600 truncate flex items-center">
-                                <Mail className="h-3 w-3 mr-1" />
-                                {order.userInfo.email}
-                              </p>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Additional User Details */}
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Customer ID:</span>
-                            <span className="font-mono text-gray-800 text-xs">
-                              {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
-                            </span>
-                          </div>
-                          
-                          {order.userInfo.createdAt && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Member since:</span>
-                              <span className="text-gray-800">
-                                {new Date(order.userInfo.createdAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-
-                          {order.userInfo.lastSignInAt && (
-                            <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Last active:</span>
-                              <span className="text-gray-800">
-                                {new Date(order.userInfo.lastSignInAt).toLocaleDateString()}
-                              </span>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        {/* Enhanced fallback for missing user info */}
-                        <div className="flex items-center space-x-3 p-3 bg-orange-50 rounded-lg border border-orange-200">
-                          <div className="h-10 w-10 rounded-full bg-orange-100 flex items-center justify-center">
-                            <AlertTriangle className="h-5 w-5 text-orange-600" />
-                          </div>
-                          <div className="flex-1">
-                            <h5 className="font-medium text-orange-800">
-                              {order.userInfo?.isClerkError ? 'Clerk API Error' : 'Unknown Customer'}
-                            </h5>
-                            <p className="text-sm text-orange-600">
-                              {order.userInfo?.isClerkError 
-                                ? order.userInfo.errorReason || 'Unable to fetch customer details from Clerk'
-                                : 'Customer information not available'
-                              }
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Customer ID:</span>
-                            <span className="font-mono text-gray-800 text-xs">
-                              {(order.userId || '').slice(-12).toUpperCase() || 'Unknown'}
-                            </span>
-                          </div>
-                        </div>
-                      </>
-                    )}
-                    
-                    {/* Debug Info - Remove in production */}
-                    {process.env.NODE_ENV === 'development' && order.userInfo && (
-                      <details className="text-xs bg-gray-100 p-2 rounded">
-                        <summary className="cursor-pointer text-gray-600">Debug: User Info</summary>
-                        <pre className="mt-2 text-xs overflow-auto">
-                          {JSON.stringify({
-                            hasUserInfo: !!order.userInfo,
-                            isClerkError: order.userInfo.isClerkError,
-                            firstName: order.userInfo.firstName,
-                            lastName: order.userInfo.lastName,
-                            email: order.userInfo.email,
-                            fullName: order.userInfo.fullName,
-                            errorReason: order.userInfo.errorReason
-                          }, null, 2)}
-                        </pre>
-                      </details>
-                    )}
-                  </div>
-                </div>
-
-                {/* Order Actions */}
-                <div className="pt-4 space-y-3 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900">Quick Actions</h4>
-                  
-                  <div className="grid grid-cols-1 gap-2">
-                    {order.orderStatus === 'PENDING' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full border-green-200 text-green-700 hover:bg-green-50"
-                            disabled={isUpdating}
-                          >
-                            <CheckCircle className="h-4 w-4 mr-2" />
-                            Confirm Order
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Confirm Order</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to confirm this order? This will change the status to CONFIRMED and notify the customer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleOrderStatusUpdate('CONFIRMED')}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Confirm Order
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-
-                    {order.orderStatus === 'CONFIRMED' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full border-blue-200 text-blue-700 hover:bg-blue-50"
-                            disabled={isUpdating}
-                          >
-                            <Truck className="h-4 w-4 mr-2" />
-                            Mark as Shipped
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Mark as Shipped</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to mark this order as SHIPPED? This will update the tracking status and notify the customer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleOrderStatusUpdate('SHIPPED')}
-                              className="bg-blue-600 hover:bg-blue-700"
-                            >
-                              Mark as Shipped
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-
-                    {order.orderStatus === 'SHIPPED' && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full border-green-200 text-green-700 hover:bg-green-50"
-                            disabled={isUpdating}
-                          >
-                            <Package className="h-4 w-4 mr-2" />
-                            Mark as Fulfilled
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Mark as Fulfilled</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to mark this order as FULFILLED? This indicates the order has been successfully delivered to the customer.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleOrderStatusUpdate('FULFILLED')}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Mark as Fulfilled
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-
-                    {/* Cancel Order - Available for PENDING and CONFIRMED orders */}
-                    {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && (
-                      <AlertDialog>
-                        <AlertDialogTrigger asChild>
-                          <Button 
-                            variant="outline" 
-                            className="w-full border-red-200 text-red-700 hover:bg-red-50"
-                            disabled={isUpdating}
-                          >
-                            <XCircle className="h-4 w-4 mr-2" />
-                            Cancel Order
-                          </Button>
-                        </AlertDialogTrigger>
-                        <AlertDialogContent>
-                          <AlertDialogHeader>
-                            <AlertDialogTitle>Cancel Order</AlertDialogTitle>
-                            <AlertDialogDescription>
-                              Are you sure you want to cancel this order? This action cannot be undone and the customer will be notified.
-                            </AlertDialogDescription>
-                          </AlertDialogHeader>
-                          <AlertDialogFooter>
-                            <AlertDialogCancel>Keep Order</AlertDialogCancel>
-                            <AlertDialogAction
-                              onClick={() => handleOrderStatusUpdate('CANCELLED')}
-                              className="bg-red-600 hover:bg-red-700"
-                            >
-                              Cancel Order
-                            </AlertDialogAction>
-                          </AlertDialogFooter>
-                        </AlertDialogContent>
-                      </AlertDialog>
-                    )}
-                  </div>
-                </div>
-
-                {/* Order Timeline */}
-                <div className="pt-4 space-y-3 border-t border-gray-200">
-                  <h4 className="font-medium text-gray-900 flex items-center">
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Order Timeline
-                  </h4>
-                  
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Order Placed</span>
-                      <span className="font-medium">
-                        {new Date(order.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    
-                    {order.updatedAt !== order.createdAt && (
-                      <div className="flex justify-between items-center">
-                        <span className="text-gray-600">Last Updated</span>
-                        <span className="font-medium">
-                          {new Date(order.updatedAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                    )}
-                    
-                    <div className="flex justify-between items-center">
-                      <span className="text-gray-600">Current Status</span>
-                      <span className="font-medium text-blue-600">
-                        {order.orderStatus}
-                      </span>
-                    </div>
+                    <span className="text-blue-600">Rs. {orderTotals.total.toLocaleString()}</span>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Shipping Address */}
+          {order.addressId && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center">
+                  <MapPin className="mr-2 h-5 w-5" />
+                  Shipping Address
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {/* Recipient Name */}
+                  {(order.addressId.firstName || order.addressId.lastName) && (
+                    <div>
+                      <p className="font-semibold text-gray-900">
+                        {`${order.addressId.firstName || ''} ${order.addressId.lastName || ''}`.trim()}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Address Lines */}
+                  <div className="text-gray-700 space-y-1">
+                    {order.addressId.addressLine1 && (
+                      <p>{order.addressId.addressLine1}</p>
+                    )}
+                    {order.addressId.addressLine2 && (
+                      <p>{order.addressId.addressLine2}</p>
+                    )}
+                    
+                    {/* City, State, Postal Code */}
+                    <div className="space-y-1">
+                      {order.addressId.city && (
+                        <p>{order.addressId.city}</p>
+                      )}
+                      {order.addressId.state && (
+                        <p>{order.addressId.state}</p>
+                      )}
+                      {order.addressId.postalCode && (
+                        <p>{order.addressId.postalCode}</p>
+                      )}
+                      {order.addressId.country && (
+                        <p className="font-medium">{order.addressId.country}</p>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Contact Info */}
+                  {order.addressId.phone && (
+                    <div className="pt-3 border-t border-gray-200">
+                      <div className="flex items-center text-gray-600">
+                        <Phone className="w-4 h-4 mr-2" />
+                        <span className="text-sm">{order.addressId.phone}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Order Timeline */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Calendar className="mr-2 h-5 w-5" />
+                Order Timeline
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {/* Order Placed */}
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0 w-2 h-2 bg-green-500 rounded-full mt-2"></div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Order Placed</p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(order.createdAt).toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Current Status */}
+                <div className="flex items-start space-x-3">
+                  <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                    order.orderStatus === 'CANCELLED' ? 'bg-red-500' : 
+                    order.orderStatus === 'FULFILLED' ? 'bg-green-500' :
+                    'bg-blue-500'
+                  }`}></div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Current Status</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {getOrderStatusBadge(order.orderStatus)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Payment Status */}
+                <div className="flex items-start space-x-3">
+                  <div className={`flex-shrink-0 w-2 h-2 rounded-full mt-2 ${
+                    order.paymentStatus === 'PAID' ? 'bg-green-500' : 
+                    order.paymentStatus === 'REFUNDED' ? 'bg-gray-500' :
+                    'bg-yellow-500'
+                  }`}></div>
+                  <div className="flex-1">
+                    <p className="font-medium text-gray-900">Payment Status</p>
+                    <div className="flex items-center space-x-2 mt-1">
+                      {getPaymentStatusBadge(order.paymentStatus)}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Last Updated */}
+                {order.updatedAt && order.updatedAt !== order.createdAt && (
+                  <div className="flex items-start space-x-3">
+                    <div className="flex-shrink-0 w-2 h-2 bg-gray-400 rounded-full mt-2"></div>
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">Last Updated</p>
+                      <p className="text-sm text-gray-600">
+                        {new Date(order.updatedAt).toLocaleDateString('en-US', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit'
+                        })}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Admin Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <AlertTriangle className="mr-2 h-5 w-5" />
+                Quick Actions
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {/* Cancel Order */}
+                {order.orderStatus !== 'CANCELLED' && order.orderStatus !== 'FULFILLED' && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="outline" className="w-full text-red-600 border-red-200 hover:bg-red-50">
+                        <XCircle className="w-4 h-4 mr-2" />
+                        Cancel Order
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Cancel Order</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to cancel this order? This action cannot be undone.
+                          The customer will be notified of the cancellation.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>No, Keep Order</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => handleOrderStatusUpdate('CANCELLED')}
+                          className="bg-red-600 hover:bg-red-700"
+                        >
+                          Yes, Cancel Order
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+
+                {/* Mark as Fulfilled */}
+                {order.orderStatus !== 'FULFILLED' && order.orderStatus !== 'CANCELLED' && (
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-green-600 border-green-200 hover:bg-green-50"
+                    onClick={() => handleOrderStatusUpdate('FULFILLED')}
+                    disabled={isUpdating}
+                  >
+                    {isUpdating ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-4 h-4 mr-2" />
+                    )}
+                    Mark as Fulfilled
+                  </Button>
+                )}
+
+                {/* Refresh Data */}
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => refetch()}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Clock className="w-4 h-4 mr-2" />
+                  )}
+                  Refresh Data
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Debug Information - Development Only */}
+          {process.env.NODE_ENV === 'development' && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center text-yellow-600">
+                  🐛 Debug Information
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <details className="text-xs">
+                  <summary className="cursor-pointer font-medium text-gray-600 mb-2">
+                    Click to view raw order data
+                  </summary>
+                  <pre className="bg-gray-100 p-3 rounded overflow-auto text-xs whitespace-pre-wrap max-h-64">
+                    {JSON.stringify({
+                      orderId: id,
+                      orderExists: !!order,
+                      orderStructure: {
+                        _id: order?._id,
+                        userId: order?.userId,
+                        orderStatus: order?.orderStatus,
+                        paymentStatus: order?.paymentStatus,
+                        paymentMethod: order?.paymentMethod,
+                        hasItems: !!order?.items?.length,
+                        itemsCount: order?.items?.length,
+                        hasUserInfo: !!order?.userInfo,
+                        userInfoStructure: order?.userInfo ? Object.keys(order.userInfo) : null,
+                        hasAddress: !!order?.addressId,
+                        addressStructure: order?.addressId ? Object.keys(order.addressId) : null,
+                        createdAt: order?.createdAt,
+                        updatedAt: order?.updatedAt
+                      },
+                      apiResponse: typeof apiResponse,
+                      calculatedTotals: orderTotals
+                    }, null, 2)}
+                  </pre>
+                </details>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

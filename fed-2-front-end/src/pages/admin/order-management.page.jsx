@@ -55,27 +55,45 @@ const OrdersPage = () => {
   const { data: apiResponse, isLoading, error, refetch } = useGetAllOrdersQuery();
   const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
 
-  // Extract orders safely from API response
+  // 🔧 FIXED: Extract orders safely from API response
   const orders = useMemo(() => {
     if (!apiResponse) {
+      console.log('❌ No API response received');
       return [];
     }
 
+    console.log('📦 Raw API Response:', apiResponse);
+
     // Handle different API response formats
+    let extractedOrders = [];
+    
     if (Array.isArray(apiResponse)) {
-      return apiResponse;
+      extractedOrders = apiResponse;
+    } else if (apiResponse.orders && Array.isArray(apiResponse.orders)) {
+      extractedOrders = apiResponse.orders;
+    } else if (apiResponse.data && Array.isArray(apiResponse.data)) {
+      extractedOrders = apiResponse.data;
+    } else if (apiResponse.success && apiResponse.orders) {
+      extractedOrders = apiResponse.orders;
+    } else {
+      console.warn('⚠️ Unexpected API response format:', apiResponse);
+      return [];
     }
 
-    if (apiResponse.orders && Array.isArray(apiResponse.orders)) {
-      return apiResponse.orders;
+    console.log(`✅ Extracted ${extractedOrders.length} orders from API response`);
+    
+    // 🔧 IMPORTANT: Log user info for debugging
+    if (extractedOrders.length > 0) {
+      console.log('🔍 First order user info check:', {
+        orderId: extractedOrders[0]._id?.slice(-8),
+        userId: extractedOrders[0].userId?.slice(-8),
+        hasUserInfo: !!extractedOrders[0].userInfo,
+        userInfo: extractedOrders[0].userInfo,
+        isClerkError: extractedOrders[0].userInfo?.isClerkError
+      });
     }
 
-    if (apiResponse.data && Array.isArray(apiResponse.data)) {
-      return apiResponse.data;
-    }
-
-    console.warn('Unexpected API response format:', apiResponse);
-    return [];
+    return extractedOrders;
   }, [apiResponse]);
 
   // Calculate order statistics
@@ -133,11 +151,22 @@ const OrdersPage = () => {
     return orders.filter(order => {
       if (!order) return false;
 
+      // 🔧 FIXED: Enhanced search that includes user info
+      const searchLower = searchTerm.toLowerCase();
       const matchesSearch = 
-        (order._id || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.userId || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.userInfo?.fullName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (order.userInfo?.email || '').toLowerCase().includes(searchTerm.toLowerCase());
+        // Order ID search
+        (order._id || '').toLowerCase().includes(searchLower) ||
+        // User ID search (fallback)
+        (order.userId || '').toLowerCase().includes(searchLower) ||
+        // User name search (if user info is available)
+        (order.userInfo?.fullName || '').toLowerCase().includes(searchLower) ||
+        (order.userInfo?.firstName || '').toLowerCase().includes(searchLower) ||
+        (order.userInfo?.lastName || '').toLowerCase().includes(searchLower) ||
+        // Email search (if available)
+        (order.userInfo?.email || '').toLowerCase().includes(searchLower) ||
+        // Shipping address name search
+        (order.addressId?.firstName || '').toLowerCase().includes(searchLower) ||
+        (order.addressId?.lastName || '').toLowerCase().includes(searchLower);
       
       const matchesStatus = statusFilter === 'all' || order.orderStatus === statusFilter;
       const matchesPayment = paymentFilter === 'all' || order.paymentStatus === paymentFilter;
@@ -149,23 +178,30 @@ const OrdersPage = () => {
   // Debug logging for development
   useEffect(() => {
     if (orders.length > 0 && process.env.NODE_ENV === 'development') {
-      console.log('Orders Debug:', {
+      console.log('📊 Orders Debug Summary:', {
         totalOrders: orders.length,
         sampleOrder: orders[0],
         sampleUserInfo: orders[0]?.userInfo,
         allOrdersHaveUserInfo: orders.every(order => !!order.userInfo),
-        ordersWithErrors: orders.filter(order => order.userInfo?.isClerkError).length
+        ordersWithUserInfoSuccess: orders.filter(order => order.userInfo && !order.userInfo.isClerkError).length,
+        ordersWithUserInfoErrors: orders.filter(order => order.userInfo?.isClerkError).length,
+        ordersWithoutUserInfo: orders.filter(order => !order.userInfo).length
       });
       
-      // Log first few orders' user info
+      // Log detailed user info for first few orders
       orders.slice(0, 3).forEach((order, index) => {
-        console.log(`Order ${index + 1} User Info:`, {
+        console.log(`📋 Order ${index + 1} User Details:`, {
           orderId: order._id?.slice(-8),
           hasUserInfo: !!order.userInfo,
-          userFullName: order.userInfo?.fullName,
-          userEmail: order.userInfo?.email,
-          isError: order.userInfo?.isClerkError,
-          errorReason: order.userInfo?.errorReason
+          userInfo: order.userInfo ? {
+            fullName: order.userInfo.fullName,
+            email: order.userInfo.email,
+            firstName: order.userInfo.firstName,
+            lastName: order.userInfo.lastName,
+            imageUrl: order.userInfo.imageUrl,
+            isClerkError: order.userInfo.isClerkError,
+            errorReason: order.userInfo.errorReason
+          } : null
         });
       });
     }
@@ -307,6 +343,104 @@ const OrdersPage = () => {
     }, 0);
   };
 
+  // 🔧 FIXED: Enhanced customer display function
+  const renderCustomerInfo = (order) => {
+    // If we have proper user info from Clerk
+    if (order.userInfo && !order.userInfo.isClerkError) {
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            {/* User Avatar */}
+            {order.userInfo.imageUrl ? (
+              <img 
+                src={order.userInfo.imageUrl} 
+                alt={order.userInfo.fullName || 'User'}
+                className="h-6 w-6 rounded-full object-cover border border-gray-200 flex-shrink-0"
+                onError={(e) => {
+                  e.target.style.display = 'none';
+                  e.target.nextElementSibling.style.display = 'flex';
+                }}
+              />
+            ) : null}
+            <div 
+              className="h-6 w-6 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0"
+              style={{display: order.userInfo.imageUrl ? 'none' : 'flex'}}
+            >
+              <User className="h-3 w-3 text-blue-600" />
+            </div>
+            
+            {/* User Name */}
+            <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
+              {order.userInfo.fullName || 
+               `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
+               'Unknown User'}
+            </span>
+          </div>
+          
+          {/* User Email */}
+          {order.userInfo.email && 
+           order.userInfo.email !== 'No email available' && 
+           order.userInfo.email !== 'Error fetching email' && (
+            <p className="text-xs text-gray-500 truncate max-w-[180px] pl-8">
+              {order.userInfo.email}
+            </p>
+          )}
+        </div>
+      );
+    }
+    
+    // If we have Clerk error
+    if (order.userInfo?.isClerkError) {
+      return (
+        <div className="space-y-1">
+          <div className="flex items-center space-x-2">
+            <div className="h-6 w-6 rounded-full bg-orange-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="h-3 w-3 text-orange-600" />
+            </div>
+            <span className="text-sm text-orange-600 font-medium">
+              User Info Error
+            </span>
+          </div>
+          <p className="text-xs text-orange-500 pl-8 truncate max-w-[180px]">
+            {order.userInfo.errorReason || 'Clerk API Error'}
+          </p>
+          <p className="text-xs text-gray-400 pl-8">
+            ID: {(order.userId || '').slice(-8).toUpperCase()}
+          </p>
+        </div>
+      );
+    }
+    
+    // Fallback: No user info or fallback to address
+    return (
+      <div className="space-y-1">
+        <div className="flex items-center space-x-2">
+          <div className="h-6 w-6 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+            <User className="h-3 w-3 text-gray-400" />
+          </div>
+          
+          {/* Try to get name from shipping address if available */}
+          {order.addressId?.firstName && order.addressId?.lastName ? (
+            <span className="text-sm font-medium text-gray-700">
+              {order.addressId.firstName} {order.addressId.lastName}
+            </span>
+          ) : (
+            <span className="text-sm text-gray-600">
+              Customer ID: {(order.userId || '').slice(-8).toUpperCase()}
+            </span>
+          )}
+        </div>
+        
+        {/* Phone from address if available */}
+        {order.addressId?.phone && (
+          <p className="text-xs text-gray-500 pl-8">
+            📞 {order.addressId.phone}
+          </p>
+        )}
+      </div>
+    );
+  };
+
   // Loading state
   if (isLoading) {
     return (
@@ -419,7 +553,7 @@ const OrdersPage = () => {
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              placeholder="Search by order ID, customer name, or email..."
+              placeholder="Search by order ID, customer name, email, or phone..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="pl-10"
@@ -486,62 +620,9 @@ const OrdersPage = () => {
                     </div>
                   </TableCell>
                   
-                  {/* CUSTOMER */}
+                  {/* 🔧 FIXED: CUSTOMER DISPLAY */}
                   <TableCell>
-                    <div className="space-y-1">
-                      {order.userInfo && !order.userInfo.isClerkError ? (
-                        <>
-                          <div className="flex items-center space-x-2">
-                            {order.userInfo.imageUrl && (
-                              <img 
-                                src={order.userInfo.imageUrl} 
-                                alt={order.userInfo.fullName || 'User'}
-                                className="h-6 w-6 rounded-full object-cover border border-gray-200"
-                                onError={(e) => {
-                                  e.target.style.display = 'none';
-                                }}
-                              />
-                            )}
-                            {!order.userInfo.imageUrl && (
-                              <User className="h-4 w-4 text-gray-400" />
-                            )}
-                            <span className="text-sm font-medium text-gray-900 truncate max-w-[150px]">
-                              {order.userInfo.fullName || 
-                              `${order.userInfo.firstName || ''} ${order.userInfo.lastName || ''}`.trim() || 
-                              'Unknown User'}
-                            </span>
-                          </div>
-                          {order.userInfo.email && 
-                          order.userInfo.email !== 'No email available' && 
-                          order.userInfo.email !== 'Error fetching email' && (
-                            <p className="text-xs text-gray-500 truncate max-w-[150px]">
-                              {order.userInfo.email}
-                            </p>
-                          )}
-                        </>
-                      ) : (
-                        <>
-                          <div className="flex items-center space-x-2">
-                            <User className="h-4 w-4 text-gray-400" />
-                            <span className="text-sm text-gray-600">
-                              {order.userInfo?.isClerkError ? (
-                                <span className="text-orange-600 flex items-center">
-                                  <AlertTriangle className="h-3 w-3 mr-1" />
-                                  User Info Error
-                                </span>
-                              ) : (
-                                `ID: ${(order.userId || '').slice(-8)}`
-                              )}
-                            </span>
-                          </div>
-                          {order.userInfo?.isClerkError && (
-                            <p className="text-xs text-orange-500">
-                              {order.userInfo.errorReason || 'Clerk API Error'}
-                            </p>
-                          )}
-                        </>
-                      )}
-                    </div>
+                    {renderCustomerInfo(order)}
                   </TableCell>
                   
                   {/* ITEMS COUNT */}
