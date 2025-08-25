@@ -29,8 +29,8 @@ function PaymentPage() {
     (acc, item) => acc + (item.product.finalPrice || item.product.price) * item.quantity,
     0
   );
-  const tax = subtotal * 0.08; // 8% tax
-  const shipping = subtotal > 50 ? 0 : 9.99; // Free shipping over $50
+  const tax = 0; // Tax-free
+  const shipping = 0; // Free shipping
   const total = subtotal + tax + shipping;
 
   if (!orderId) {
@@ -128,17 +128,20 @@ function PaymentPage() {
                 </div>
                 <div className="flex justify-between py-2">
                   <span className="text-gray-600">Tax</span>
-                  <span className="font-medium">${tax.toFixed(2)}</span>
+                  <div className="flex items-center">
+                    <span className="font-medium">${tax.toFixed(2)}</span>
+                    <Badge className="ml-2 text-xs bg-green-100 text-green-800">
+                      FREE
+                    </Badge>
+                  </div>
                 </div>
                 <div className="flex justify-between py-2">
                   <div className="flex items-center">
                     <Truck className="h-4 w-4 mr-2 text-gray-600" />
                     <span className="text-gray-600">Shipping</span>
-                    {shipping === 0 && (
-                      <Badge className="ml-2 text-xs bg-green-100 text-green-800">
-                        FREE
-                      </Badge>
-                    )}
+                    <Badge className="ml-2 text-xs bg-green-100 text-green-800">
+                      FREE
+                    </Badge>
                   </div>
                   <span className="font-medium">${shipping.toFixed(2)}</span>
                 </div>
