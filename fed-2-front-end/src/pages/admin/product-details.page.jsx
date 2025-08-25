@@ -294,7 +294,7 @@ const ProductDetailPage = () => {
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Category</label>
-                  <p className="text-lg">{getCategoryName(product.categoryId)}</p>
+                  <p className="text-lg">{getCategoryName(product.category?._id || product.categoryId)}</p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Brand</label>
