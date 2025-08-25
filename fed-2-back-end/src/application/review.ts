@@ -20,6 +20,7 @@ const getReviews = async (req: Request, res: Response, next: NextFunction) => {
   }
 };
 
+
 // Create a new review
 const createReview = async (req: Request, res: Response, next: NextFunction) => {
   try {
@@ -29,33 +30,43 @@ const createReview = async (req: Request, res: Response, next: NextFunction) => 
     if (!comment || !rating || !title || !userName || !productId) {
       throw new ValidationError('Comment, rating, title, userName, and productId are required');
     }
-
     if (rating < 1 || rating > 5) {
       throw new ValidationError('Rating must be between 1 and 5');
     }
-
     // Check if product exists
     const product = await Product.findById(productId);
     if (!product) {
       throw new NotFoundError('Product not found');
     }
-
-    // Create the review - handle userId properly
-    const newReview = await Review.create({ 
+    
+    // Create the review with proper userId handling
+    const reviewData: any = {
       comment, 
-      rating, 
+      rating: Number(rating), 
       title, 
       userName, 
       productId,
-      userId: userId && userId !== 'anonymous' ? userId : null, // Handle anonymous users
       verified: false
+    };
+    
+    // Only add userId if it's a valid value
+    if (userId && userId !== 'anonymous' && userId !== null && userId !== 'null') {
+      reviewData.userId = userId;
+    }
+    
+    const newReview = await Review.create(reviewData);
+    
+    res.status(201).json({
+      success: true,
+      data: newReview,
+      message: 'Review created successfully'
     });
-
-    res.status(201).json(newReview);
   } catch (error) {
+    console.error('Error creating review:', error);
     next(error);
   }
 };
+
 
 // Get all reviews (admin function)
 const getAllReviews = async (req: Request, res: Response, next: NextFunction) => {
