@@ -40,15 +40,15 @@ const createReview = async (req: Request, res: Response, next: NextFunction) => 
       throw new NotFoundError('Product not found');
     }
 
-    // Create the review
+    // Create the review - handle userId properly
     const newReview = await Review.create({ 
       comment, 
       rating, 
       title, 
       userName, 
       productId,
-      userId: userId || null,
-      verified: false // Set based on your business logic
+      userId: userId && userId !== 'anonymous' ? userId : null, // Handle anonymous users
+      verified: false
     });
 
     res.status(201).json(newReview);
