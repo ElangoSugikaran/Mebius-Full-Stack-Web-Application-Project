@@ -15,7 +15,7 @@ console.log('🚀 Wishlist routes initialized');
 
 // ✅ Following same pattern as cart routes
 wishlistRouter.get('/', isAuthenticated, getWishlist);
-wishlistRouter.get('/count', isAuthenticated, getWishlistItemCount);
+wishlistRouter.get('/count', getWishlistItemCount);
 wishlistRouter.post('/add', isAuthenticated, addToWishlist);
 wishlistRouter.delete('/remove/:productId', isAuthenticated, removeFromWishlist);
 wishlistRouter.delete('/clear', isAuthenticated, clearWishlist);

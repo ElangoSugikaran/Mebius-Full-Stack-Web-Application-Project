@@ -24,7 +24,7 @@ console.log('🚀 Cart routes initialized');
 cartRouter.get('/', isAuthenticated, getCart);
 
 // GET /api/cart/count - Get cart item count (for cart badge)
-cartRouter.get('/count', isAuthenticated, getCartItemCount);
+cartRouter.get('/count', getCartItemCount);
 
 // POST /api/cart/add - Add item to cart
 cartRouter.post('/add', isAuthenticated, addToCart);
