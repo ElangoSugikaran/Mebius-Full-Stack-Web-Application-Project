@@ -424,13 +424,22 @@ const ProductDetailPage = () => {
                   <div className="flex items-center">
                     <Star className="h-5 w-5 text-yellow-400 fill-current" />
                     <span className="text-xl font-bold ml-1">
-                      {product.averageRating ? product.averageRating.toFixed(1) : '0.0'}
+                      {product.averageRating && product.averageRating > 0 
+                        ? product.averageRating.toFixed(1) 
+                        : '0.0'
+                      }
                     </span>
                   </div>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Reviews</label>
-                  <p className="text-xl font-bold">{product.reviews?.length || 0}</p>
+                  <p className="text-xl font-bold">
+                    {/* FIXED: Handle different possible review data structures */}
+                    {Array.isArray(product.reviews) 
+                      ? product.reviews.length 
+                      : (product.reviewCount || 0)
+                    }
+                  </p>
                 </div>
                 <div>
                   <label className="text-sm font-medium text-gray-500">Featured</label>
