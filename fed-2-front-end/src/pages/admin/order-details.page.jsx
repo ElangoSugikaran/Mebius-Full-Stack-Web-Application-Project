@@ -857,12 +857,11 @@ const OrderDetailPage = () => {
                               )}
                               
                               {/* Category or Description if available */}
-                              {product?.category && (
+                              {(product?.category || product?.categoryId?.name) && (
                                 <p className="text-sm text-gray-600 mt-1">
-                                  Category: {product.category}
+                                  Category: {product?.category || product?.categoryId?.name}
                                 </p>
                               )}
-
                               {/* 🔧 NEW: Display additional product info if available */}
                               {product?.description && (
                                 <p className="text-sm text-gray-600 mt-1 line-clamp-2">
