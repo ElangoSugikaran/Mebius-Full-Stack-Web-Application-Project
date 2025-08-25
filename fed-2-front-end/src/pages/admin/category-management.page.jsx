@@ -249,9 +249,6 @@ const CategoriesPage = () => {
               className="pl-10"
             />
           </div>
-          <Button variant="outline">
-            Filter
-          </Button>
         </div>
       </div>
 
