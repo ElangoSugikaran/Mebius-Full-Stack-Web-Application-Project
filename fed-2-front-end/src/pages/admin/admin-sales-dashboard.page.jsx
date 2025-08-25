@@ -213,22 +213,35 @@ const SalesDashboard = () => {
       .sort((a, b) => b[1].quantity - a[1].quantity) // Sort by quantity sold
       .slice(0, 5)
       .map(([productId, salesData]) => {
-        // Find product details from products array
-        const product = productsArray.find(p => 
-          (p._id && p._id === productId) || 
-          (p.id && p.id === productId) ||
-          (p._id && p._id.toString() === productId.toString()) ||
-          (p.id && p.id.toString() === productId.toString())
-        );
+        // Find product details from products array with better matching
+        const product = productsArray.find(p => {
+          // Convert both to strings for comparison to handle different ID types
+          const pId = (p._id || p.id || '').toString();
+          const searchId = productId.toString();
+          
+          return pId === searchId;
+        });
+        
+        // Debug logging to see what we're working with
+        console.log('Product lookup:', {
+          searchingFor: productId,
+          found: product,
+          productName: product?.name || product?.title || product?.productName
+        });
         
         return {
           id: productId,
-          name: product?.name || product?.title || `Product ${productId.toString().slice(-6)}`,
+          // Better name extraction with more fallback options
+          name: product?.name || 
+                product?.title || 
+                product?.productName || 
+                product?.displayName ||
+                `Product ${productId.toString().slice(-4)}`, // Show last 4 chars of ID as fallback
           quantity: salesData.quantity,
           revenue: salesData.revenue || (salesData.quantity * (product?.price || product?.cost || 0)),
           price: product?.price || product?.cost || 0
         };
-      });
+  });
     
     // Get recent orders (all orders, not just completed)
     const recentOrdersArray = [...ordersArray]
@@ -277,8 +290,8 @@ const SalesDashboard = () => {
   const SalesCard = ({ title, value, subtitle, icon: Icon, color, trend }) => (
     <Card className="hover:shadow-lg transition-all duration-200 border-l-4" 
           style={{ borderLeftColor: color.replace('bg-', '').includes('green') ? '#10b981' : 
-                                   color.replace('bg-', '').includes('blue') ? '#3b82f6' : 
-                                   color.replace('bg-', '').includes('purple') ? '#8b5cf6' : '#f59e0b' }}>
+          color.replace('bg-', '').includes('blue') ? '#3b82f6' : 
+          color.replace('bg-', '').includes('purple') ? '#8b5cf6' : '#f59e0b' }}>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-sm font-medium text-gray-600">
           {title}
