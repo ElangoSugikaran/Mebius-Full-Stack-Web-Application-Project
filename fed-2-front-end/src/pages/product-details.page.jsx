@@ -510,7 +510,9 @@ const ShopProductDetailPage = () => {
                       <div className="flex justify-between"> 
                         <dt className="text-gray-600">Category:</dt>
                         <dd className="font-medium capitalize">
-                          {product.category || product.categoryId?.name || 'N/A'} </dd>
+                          {/* FIXED: Use product.category instead of product.categoryId?.name */}
+                          {product.category?.name || product.category || 'N/A'}
+                        </dd>
                       </div>
                       <div className="flex justify-between">
                         <dt className="text-gray-600">SKU:</dt>
