@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Star, Loader2 } from 'lucide-react';
 import { toast } from 'react-toastify';
+import { useCreateReviewMutation } from '../lib/api';
 import {
   Form,
   FormControl,
@@ -35,7 +36,7 @@ const reviewFormSchema = z.object({
 
 const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
   const [hoveredRating, setHoveredRating] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [createReview, { isLoading: isSubmitting }] = useCreateReviewMutation(); // Add this hook
 
   // Form setup with react-hook-form
   const form = useForm({
@@ -48,27 +49,22 @@ const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
     }
   });
 
-  // Submit handler
+  // ✅ FIXED: Submit handler using RTK Query mutation
   const onSubmit = async (values) => {
-    setIsSubmitting(true);
-
     try {
-      const response = await fetch('http://localhost:8000/api/reviews/', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...values,
-          productId
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit review');
+      // Get Clerk user ID
+      const clerk = window.Clerk;
+      let userId = null;
+      
+      if (clerk && clerk.user) {
+        userId = clerk.user.id;
       }
 
-      const newReview = await response.json();
+      const newReview = await createReview({
+        ...values,
+        productId,
+        userId // This will now be passed to the backend
+      }).unwrap();
       
       // Reset form
       form.reset({
@@ -105,10 +101,9 @@ const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
         pauseOnHover: true,
         draggable: true,
       });
-    } finally {
-      setIsSubmitting(false);
     }
   };
+
 
   // Star rating component
   const renderStars = () => {
