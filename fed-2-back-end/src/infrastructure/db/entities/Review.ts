@@ -21,9 +21,10 @@ const reviewSchema = new mongoose.Schema({
         required: true,
     },
     userId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',
-        required: false // Optional if you want anonymous reviews
+        type: String,
+        required: false, 
+        index: true,
+        default: null
     },
     productId: {
         type: mongoose.Schema.Types.ObjectId,
