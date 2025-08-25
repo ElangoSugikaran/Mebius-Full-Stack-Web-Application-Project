@@ -120,7 +120,7 @@ const SalesDashboard = () => {
     }
     
     // Process orders with proper error handling
-    ordersArray.forEach((order, index) => {
+   ordersArray.forEach((order, index) => {
       try {
         // Handle different date field names and ensure valid date
         const orderDateStr = order.createdAt || order.orderDate || order.created_at;
@@ -144,9 +144,8 @@ const SalesDashboard = () => {
         
         // Check order status - be flexible with status field names and values
         const status = (order.orderStatus || order.status || '').toLowerCase();
-        const isCompleted = status === 'completed' || status === 'fulfilled' || 
-                           status === 'confirmed' || status === 'delivered';
-        
+        const isCompleted = status === 'completed' || status === 'fulfilled' || status === 'confirmed' || status === 'delivered';
+
         // Only process completed orders for revenue metrics
         if (isCompleted) {
           totalRevenue += orderTotal;
@@ -173,27 +172,63 @@ const SalesDashboard = () => {
           }
           
           // Product sales tracking with proper error handling
-          const orderProducts = order.products || order.items || order.orderItems || [];
+        const orderProducts = order.products || order.items || order.orderItems || [];
           if (Array.isArray(orderProducts)) {
             orderProducts.forEach(item => {
               try {
-                const productId = item.productId || item.product?._id || item.product || item._id || item.id;
+                // Enhanced product ID extraction with better logic
+                let productId = null;
+                let productName = null;
+                let productPrice = 0;
+
+                // Try different ways to get product ID
+                if (item.productId) {
+                  if (typeof item.productId === 'object' && item.productId._id) {
+                    productId = item.productId._id;
+                    productName = item.productId.name || item.productId.title;
+                    productPrice = item.productId.price || item.productId.cost || 0;
+                  } else if (typeof item.productId === 'string') {
+                    productId = item.productId;
+                  }
+                } else if (item.product) {
+                  if (typeof item.product === 'object' && item.product._id) {
+                    productId = item.product._id;
+                    productName = item.product.name || item.product.title;
+                    productPrice = item.product.price || item.product.cost || 0;
+                  } else if (typeof item.product === 'string') {
+                    productId = item.product;
+                  }
+                } else if (item._id) {
+                  productId = item._id;
+                } else if (item.id) {
+                  productId = item.id;
+                }
+
                 const quantity = Number(item.quantity) || 1;
-                const price = Number(item.price || item.unitPrice || 0);
+                const price = Number(item.price || item.unitPrice || productPrice || 0);
                 
+                // Use product name from item if available
+                if (!productName) {
+                  productName = item.name || item.productName || item.title;
+                }
+
                 if (productId && quantity > 0) {
-                  if (productSales.has(productId)) {
-                    const existing = productSales.get(productId);
-                    productSales.set(productId, {
+                  const key = productId.toString();
+                  
+                  if (productSales.has(key)) {
+                    const existing = productSales.get(key);
+                    productSales.set(key, {
                       ...existing,
                       quantity: existing.quantity + quantity,
-                      revenue: existing.revenue + (quantity * price)
+                      revenue: existing.revenue + (quantity * price),
+                      name: existing.name || productName
                     });
                   } else {
-                    productSales.set(productId, {
+                    productSales.set(key, {
                       quantity,
                       revenue: quantity * price,
-                      productId
+                      productId: key,
+                      name: productName
                     });
                   }
                 }
@@ -202,47 +237,53 @@ const SalesDashboard = () => {
               }
             });
           }
+          }
+        } catch (orderError) {
+          console.warn(`Error processing order ${index}:`, orderError, order);
         }
-      } catch (orderError) {
-        console.warn(`Error processing order ${index}:`, orderError, order);
-      }
-    });
+      });
     
     // Get top selling products with proper product data matching
     const topProductsArray = Array.from(productSales.entries())
-      .sort((a, b) => b[1].quantity - a[1].quantity) // Sort by quantity sold
-      .slice(0, 5)
-      .map(([productId, salesData]) => {
-        // Find product details from products array with better matching
-        const product = productsArray.find(p => {
-          // Convert both to strings for comparison to handle different ID types
-          const pId = (p._id || p.id || '').toString();
-          const searchId = productId.toString();
-          
-          return pId === searchId;
-        });
-        
-        // Debug logging to see what we're working with
-        console.log('Product lookup:', {
-          searchingFor: productId,
-          found: product,
-          productName: product?.name || product?.title || product?.productName
-        });
-        
-        return {
-          id: productId,
-          // Better name extraction with more fallback options
-          name: product?.name || 
-                product?.title || 
-                product?.productName || 
-                product?.displayName ||
-                `Product ${productId.toString().slice(-4)}`, // Show last 4 chars of ID as fallback
-          quantity: salesData.quantity,
-          revenue: salesData.revenue || (salesData.quantity * (product?.price || product?.cost || 0)),
-          price: product?.price || product?.cost || 0
-        };
-  });
+  .sort((a, b) => b[1].quantity - a[1].quantity)
+  .slice(0, 5)
+  .map(([productId, salesData]) => {
+    let productName = salesData.name; // Use name stored during processing
+    let productPrice = 0;
     
+    // If we don't have a name, try to find it in the products array
+    if (!productName) {
+      const product = productsArray.find(p => {
+        const pId = (p._id || p.id || '').toString();
+        return pId === productId;
+      });
+      
+      if (product) {
+        productName = product.name || product.title || product.productName;
+        productPrice = product.price || product.cost || 0;
+      }
+    }
+    
+    // Final fallback for product name
+    if (!productName) {
+      productName = `Product #${productId.slice(-6)}`;
+    }
+    
+    console.log('Product lookup result:', {
+      productId,
+      foundName: productName,
+      quantity: salesData.quantity,
+      revenue: salesData.revenue
+    });
+    
+    return {
+      id: productId,
+      name: productName,
+      quantity: salesData.quantity,
+      revenue: salesData.revenue,
+      price: productPrice || (salesData.revenue / salesData.quantity)
+    };
+  });
     // Get recent orders (all orders, not just completed)
     const recentOrdersArray = [...ordersArray]
       .sort((a, b) => {
