@@ -348,9 +348,19 @@ const clearCart = async (req: Request, res: Response, next: NextFunction) => {
 // Get cart item count (useful for cart badge)
 const getCartItemCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const userId = getUserId(req);
+    let userId;
+    try {
+      const { userId: authUserId } = getAuth(req);
+      userId = authUserId;
+    } catch (error) {
+      // User not authenticated - return 0 count instead of throwing error
+      console.log('User not authenticated, returning cart count 0');
+      return res.json({ 
+        success: true,
+        itemCount: 0 
+      });
+    }
     
-    // Return 0 for non-authenticated users instead of throwing error
     if (!userId) {
       return res.json({ 
         success: true,
@@ -361,14 +371,14 @@ const getCartItemCount = async (req: Request, res: Response, next: NextFunction)
     const cart = await Cart.findOne({ userId });
     const itemCount = cart ? cart.totalItems : 0;
     
-    console.log('📊 Cart item count for user', userId, ':', itemCount);
+    console.log('Cart item count for user', userId, ':', itemCount);
     
     res.json({ 
       success: true,
       itemCount 
     });
   } catch (error) {
-    console.error('❌ Error getting cart count:', error);
+    console.error('Error getting cart count:', error);
     
     // Return 0 instead of throwing error to prevent 500 status
     res.json({ 
