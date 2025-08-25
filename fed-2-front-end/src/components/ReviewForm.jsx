@@ -51,21 +51,23 @@ const ReviewForm = ({ productId, onReviewSubmitted, isVisible, onClose }) => {
 
   // ✅ FIXED: Submit handler using RTK Query mutation
   const onSubmit = async (values) => {
-    try {
-      // Get Clerk user ID
-      const clerk = window.Clerk;
-      let userId = null;
-      
-      if (clerk && clerk.user) {
-        userId = clerk.user.id;
-      }
+  try {
+    // Get Clerk user ID properly
+    const clerk = window.Clerk;
+    let userId = null;
+    
+    if (clerk?.user?.id) {
+      userId = clerk.user.id;
+    }
 
-      const newReview = await createReview({
-        ...values,
-        productId,
-        userId // This will now be passed to the backend
-      }).unwrap();
-      
+    // Ensure userId is included, even if null
+    const reviewData = {
+      ...values,
+      productId,
+      userId: userId || 'anonymous' // Fallback for non-logged users
+    };
+
+    const newReview = await createReview(reviewData).unwrap();
       // Reset form
       form.reset({
         title: '',
