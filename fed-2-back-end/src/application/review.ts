@@ -56,6 +56,9 @@ const createReview = async (req: Request, res: Response, next: NextFunction) => 
     
     const newReview = await Review.create(reviewData);
     
+    // 🔥 NEW: Update the product with the new review
+    await updateProductReviewStats(productId);
+    
     res.status(201).json({
       success: true,
       data: newReview,
@@ -67,6 +70,29 @@ const createReview = async (req: Request, res: Response, next: NextFunction) => 
   }
 };
 
+// 🔥 NEW: Helper function to update product review statistics
+const updateProductReviewStats = async (productId: string) => {
+  try {
+    // Get all reviews for this product
+    const reviews = await Review.find({ productId });
+    
+    // Calculate average rating
+    const averageRating = reviews.length > 0 
+      ? reviews.reduce((sum, review) => sum + review.rating, 0) / reviews.length 
+      : 0;
+    
+    // Update the product with review IDs and average rating
+    await Product.findByIdAndUpdate(productId, {
+      reviews: reviews.map(review => review._id),
+      averageRating: Math.round(averageRating * 10) / 10 // Round to 1 decimal place
+    });
+    
+    console.log(`✅ Updated product ${productId} review stats: ${reviews.length} reviews, ${averageRating.toFixed(1)} avg rating`);
+    
+  } catch (error) {
+    console.error('❌ Error updating product review stats:', error);
+  }
+};
 
 // Get all reviews (admin function)
 const getAllReviews = async (req: Request, res: Response, next: NextFunction) => {
@@ -91,10 +117,13 @@ const deleteReview = async (req: Request, res: Response, next: NextFunction) => 
       throw new NotFoundError('Review not found');
     }
     
+    // 🔥 NEW: Update product stats after deletion
+    await updateProductReviewStats(deletedReview.productId.toString());
+    
     res.status(200).json({ message: 'Review deleted successfully' });
   } catch (error) {
     next(error);
   }
 };
 
-export { createReview, getReviews, getAllReviews, deleteReview };
+export { createReview, getReviews, getAllReviews, deleteReview, updateProductReviewStats };
