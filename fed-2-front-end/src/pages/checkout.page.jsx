@@ -1,4 +1,4 @@
-// 🔧 FIXED: Enhanced checkout page with proper Stripe payment flow
+// 🔧 FIXED: Enhanced checkout page with proper size/color handling
 import { useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -17,7 +17,6 @@ const CheckoutPage = () => {
   
   // RTK Query hook
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
-  // Add this hook inside the CheckoutPage component (after other hooks)
   const [clearCartMutation] = useClearCartMutation();
   
   // Get cart items from Redux store
@@ -59,7 +58,7 @@ const CheckoutPage = () => {
     setShippingAddress(addressData);
   };
 
-  // 🔧 ENHANCED: COD Navigation in CheckoutPage - Replace the handlePlaceOrder function
+  // 🔧 FIXED: Proper size/color handling in order creation
   const handlePlaceOrder = async () => {
     if (!shippingAddress) {
       alert("Please fill in your shipping address first!");
@@ -70,25 +69,52 @@ const CheckoutPage = () => {
 
     try {
       console.log("🚀 Creating order with payment method:", paymentMethod);
+      console.log("📦 Cart items:", cart);
 
-     const orderData = {
-      items: cart.map(item => ({
-        productId: item.product._id,
-        quantity: item.quantity,
-        price: item.product.discount > 0 
-          ? item.product.price * (1 - item.product.discount / 100)
-          : item.product.price,
-        size: item.size || null,
-        color: item.color || null
-      })),
-      shippingAddress,
-      paymentMethod,
-      totalAmount: total,
-      orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
-      paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
-    };
+      // 🔧 CRITICAL FIX: Properly extract size and color from cart items
+      const orderData = {
+        items: cart.map(item => {
+          const product = item.product || item;
+          
+          // Calculate the correct price
+          const itemPrice = product.discount > 0 
+            ? product.price * (1 - product.discount / 100)
+            : product.price;
 
-      console.log("📦 Order data being sent:", orderData);
+          const orderItem = {
+            productId: product._id || product.id,
+            quantity: item.quantity,
+            price: itemPrice
+          };
+
+          // 🔧 CRITICAL: Include size and color if they exist in the cart item
+          if (item.size && item.size.trim() !== '') {
+            orderItem.size = item.size.trim();
+          }
+          
+          if (item.color && item.color.trim() !== '') {
+            orderItem.color = item.color.trim();
+          }
+
+          console.log(`📦 Order item prepared:`, {
+            productName: product.name,
+            productId: orderItem.productId,
+            quantity: orderItem.quantity,
+            size: orderItem.size || 'N/A',
+            color: orderItem.color || 'N/A',
+            price: orderItem.price
+          });
+
+          return orderItem;
+        }),
+        shippingAddress,
+        paymentMethod,
+        totalAmount: total,
+        orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
+        paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
+      };
+
+      console.log("📦 Complete order data being sent:", orderData);
 
       const result = await createOrder(orderData).unwrap();
       console.log("✅ Order created successfully:", result);
@@ -110,10 +136,8 @@ const CheckoutPage = () => {
         if (orderId) {
           console.log("🎉 COD Order successful, navigating with orderId:", orderId);
           
-          // 🔧 ENHANCED: Multiple navigation strategies
           const successURL = `/order-success?orderId=${orderId}&paymentMethod=COD&status=confirmed&orderType=cod&totalAmount=${total}&timestamp=${Date.now()}`;
           
-          // Strategy 1: Navigate with state backup
           navigate(successURL, { 
             replace: true,
             state: {
@@ -126,7 +150,7 @@ const CheckoutPage = () => {
             }
           });
           
-          // Strategy 2: Fallback using window.location (if navigate fails)
+          // Fallback navigation
           setTimeout(() => {
             if (window.location.pathname !== '/order-success') {
               console.log("🔄 Fallback: Using window.location for navigation");
@@ -154,7 +178,27 @@ const CheckoutPage = () => {
 
     } catch (error) {
       console.error('❌ Order creation failed:', error);
-      const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
+      
+      // 🔧 IMPROVED: Better error message extraction
+      let errorMessage = 'Unknown error occurred';
+      
+      if (error?.data?.message) {
+        errorMessage = error.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      } else if (typeof error === 'string') {
+        errorMessage = error;
+      }
+      
+      // Show user-friendly error messages
+      if (errorMessage.includes('Size is required')) {
+        errorMessage = 'Some items in your cart require size selection. Please check your cart and ensure all required options are selected.';
+      } else if (errorMessage.includes('Color is required')) {
+        errorMessage = 'Some items in your cart require color selection. Please check your cart and ensure all required options are selected.';
+      } else if (errorMessage.includes('Insufficient stock')) {
+        errorMessage = 'Some items in your cart are out of stock. Please update quantities or remove unavailable items.';
+      }
+      
       alert(`Order creation failed: ${errorMessage}`);
     } finally {
       setIsProcessingOrder(false);
@@ -183,6 +227,35 @@ const CheckoutPage = () => {
             </Button>
           </div>
         </div>
+
+        {/* 🔧 NEW: Cart Items Validation Alert */}
+        {cart.some(item => {
+          const product = item.product || item;
+          const needsSize = product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0;
+          const needsColor = product.colors && Array.isArray(product.colors) && product.colors.length > 0;
+          return (needsSize && !item.size) || (needsColor && !item.color);
+        }) && (
+          <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start space-x-3">
+              <div className="flex-shrink-0">
+                <div className="w-8 h-8 bg-amber-100 rounded-full flex items-center justify-center">
+                  <Package className="h-4 w-4 text-amber-600" />
+                </div>
+              </div>
+              <div>
+                <h3 className="font-medium text-amber-800 mb-1">
+                  Missing Product Options
+                </h3>
+                <p className="text-sm text-amber-700 mb-3">
+                  Some items in your cart require size or color selection before checkout.
+                </p>
+                <Button variant="outline" size="sm" onClick={() => navigate('/shop/cart')}>
+                  Update Cart Items
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* PROGRESS STEPS */}
         <div className="mb-8">
@@ -359,7 +432,7 @@ const CheckoutPage = () => {
               <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item, index) => (
                   <CartItem 
-                    key={`${item.product._id}-${index}`}
+                    key={`${item.product._id}-${item.size || 'no-size'}-${item.color || 'no-color'}-${index}`}
                     item={item} 
                     viewMode="compact"
                   />
@@ -393,12 +466,22 @@ const CheckoutPage = () => {
                 </div>
               </div>
 
-              {/* 🔧 FIXED: PLACE ORDER BUTTON with proper logic */}
+              {/* 🔧 IMPROVED: Place Order Button with validation checks */}
               <Button 
                 size="lg" 
                 className="w-full mt-6" 
                 onClick={handlePlaceOrder}
-                disabled={isCreatingOrder || isProcessingOrder || !shippingAddress}
+                disabled={
+                  isCreatingOrder || 
+                  isProcessingOrder || 
+                  !shippingAddress ||
+                  cart.some(item => {
+                    const product = item.product || item;
+                    const needsSize = product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0;
+                    const needsColor = product.colors && Array.isArray(product.colors) && product.colors.length > 0;
+                    return (needsSize && !item.size) || (needsColor && !item.color);
+                  })
+                }
               >
                 {isCreatingOrder || isProcessingOrder ? (
                   'Processing...'
@@ -412,6 +495,17 @@ const CheckoutPage = () => {
               {!shippingAddress && (
                 <p className="text-sm text-red-600 mt-2 text-center">
                   Please fill in your shipping address to continue
+                </p>
+              )}
+              
+              {cart.some(item => {
+                const product = item.product || item;
+                const needsSize = product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0;
+                const needsColor = product.colors && Array.isArray(product.colors) && product.colors.length > 0;
+                return (needsSize && !item.size) || (needsColor && !item.color);
+              }) && (
+                <p className="text-sm text-red-600 mt-2 text-center">
+                  Some items need size/color selection
                 </p>
               )}
               
