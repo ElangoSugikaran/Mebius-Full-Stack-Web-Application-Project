@@ -2,7 +2,7 @@ import express from "express";
 import {
   createCheckoutSession,
   retrieveSessionStatus,
-   handleWebhook
+  handleWebhook,
 } from "../application/payment";
 
 export const paymentsRouter = express.Router();
