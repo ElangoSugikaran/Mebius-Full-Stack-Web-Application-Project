@@ -126,6 +126,10 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
     const userId = getUserId(req);
     const { productId } = req.params;
     
+    if (!userId) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+    
     const wishlist = await Wishlist.findOne({ userId });
     if (!wishlist) {
       throw new NotFoundError('Wishlist not found');
@@ -164,6 +168,10 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
     console.log('🧹 Clearing wishlist...');
     const userId = getUserId(req);
     
+    if (!userId) {
+      throw new UnauthorizedError('User not authenticated');
+    }
+    
     const wishlist = await Wishlist.findOne({ userId });
     if (!wishlist) {
       throw new NotFoundError('Wishlist not found');
@@ -184,46 +192,43 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-// 🔧 FIXED: Get wishlist item count - corrected version
+// 🔧 COMPLETELY FIXED: Get wishlist item count - handles unauthenticated users gracefully
 const getWishlistItemCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
-    console.log('Getting wishlist item count...');
+    console.log('💖 Getting wishlist item count...');
     
-    let userId;
-    try {
-      const auth = getAuth(req);
-      userId = auth?.userId;
-    } catch (error) {
-      console.log('User not authenticated, returning wishlist count 0');
-      return res.json({ 
-        success: true,
-        itemCount: 0 
-      });
-    }
-
+    const userId = getUserId(req); // This returns null for unauthenticated users
+    
+    // 🔧 FIX: For unauthenticated users, return 0 count instead of error
     if (!userId) {
+      console.log('📊 User not authenticated, returning wishlist count 0');
       return res.json({ 
         success: true,
-        itemCount: 0 
+        itemCount: 0,
+        message: 'Guest user - no wishlist'
       });
     }
 
+    // For authenticated users, get actual count
     const wishlist = await Wishlist.findOne({ userId });
     const itemCount = wishlist ? wishlist.items.length : 0;
     
-    console.log('Wishlist item count:', itemCount);
+    console.log('📊 Wishlist item count for authenticated user:', itemCount);
     
     res.json({ 
       success: true,
-      itemCount 
+      itemCount,
+      message: `Wishlist has ${itemCount} items`
     });
+    
   } catch (error) {
-    console.error('Error getting wishlist count:', error);
-    // 🔧 FIX: Don't call next(error) for count endpoint - just return 0
+    console.error('❌ Error getting wishlist count:', error);
+    // 🔧 FIX: Even on error, return graceful response for count endpoint
     res.status(200).json({ 
       success: false,
       itemCount: 0,
-      error: 'Failed to get wishlist count'
+      error: 'Failed to get wishlist count',
+      message: 'Defaulting to 0 items'
     });
   }
 };
