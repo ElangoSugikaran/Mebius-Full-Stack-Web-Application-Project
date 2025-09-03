@@ -92,6 +92,26 @@ const ShopProductDetailPage = () => {
   const handleAddToCart = async () => {
     if (!product || isAddingToCart) return;
 
+    // 🔧 VALIDATION: Check if variants are required but not selected
+    const hasRequiredSizes = product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0;
+    const hasRequiredColors = product.colors && Array.isArray(product.colors) && product.colors.length > 0;
+
+    if (hasRequiredSizes && (!selectedSize || selectedSize.trim() === '')) {
+      toast.error(`Please select a size for ${product.name}`, {
+        position: "top-right",
+        autoClose: 3000,
+      });
+      return;
+    }
+
+    if (hasRequiredColors && (!selectedColor || selectedColor.trim() === '')) {
+      toast.error(`Please select a color for ${product.name}`, {
+        position: "top-right", 
+        autoClose: 3000,
+      });
+      return;
+    }
+
     setIsAddingToCart(true);
 
     try {
@@ -107,30 +127,34 @@ const ShopProductDetailPage = () => {
         sizes: product.sizes,
         colors: product.colors,
         stock: product.stock,
-        size: selectedSize,
-        color: selectedColor,
+        size: hasRequiredSizes ? selectedSize : null, // Only set if product has sizes
+        color: hasRequiredColors ? selectedColor : null, // Only set if product has colors
         quantity: quantity,
       }));
 
-      // Try to sync with server (this will gracefully fail if endpoint doesn't exist)
+      // Try to sync with server
       try {
         await addToCartMutation({
           productId: product._id,
           quantity: quantity,
-          size: selectedSize,
-          color: selectedColor,
+          size: hasRequiredSizes ? selectedSize : null,
+          color: hasRequiredColors ? selectedColor : null,
         }).unwrap();
         
         console.log('✅ Product synced with server cart');
       } catch (serverError) {
-        // Server sync failed, but Redux state is already updated
         console.warn('⚠️ Server sync failed, using local cart only:', serverError);
       }
 
-      // Show success feedback
-      // alert(`Added ${quantity} item(s) to cart!`);
-       // Show success toast instead of alert
-      toast.success(`Added ${quantity} ${product.name} to cart!`, {
+      // Show success feedback with variant info
+      const variantText = [
+        hasRequiredSizes ? selectedSize : null,
+        hasRequiredColors ? selectedColor : null
+      ].filter(Boolean).join(', ');
+      
+      const displayText = variantText ? ` (${variantText})` : '';
+      
+      toast.success(`Added ${quantity} ${product.name}${displayText} to cart!`, {
         position: "top-right",
         autoClose: 3000,
         hideProgressBar: false,
@@ -141,8 +165,7 @@ const ShopProductDetailPage = () => {
       
     } catch (error) {
       console.error('❌ Error adding to cart:', error);
-      // Even if there's an error, the Redux state should be updated
-       toast.error('Failed to add item to cart. Please try again.', {
+      toast.error('Failed to add item to cart. Please try again.', {
         position: "top-right",
         autoClose: 3000,
       });
