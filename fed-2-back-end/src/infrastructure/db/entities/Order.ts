@@ -21,10 +21,12 @@ const itemSchema = new mongoose.Schema({
         type: String,
         required: false,
         trim: true,
+        default: null  
     },
     color: {
         type: String,
-        required: false
+        required: false,
+        default: null
     },
 });
 
