@@ -71,49 +71,63 @@ const CheckoutPage = () => {
     try {
       console.log("🚀 Creating order with payment method:", paymentMethod);
 
-     const orderData = {
-      items: cart.map(item => ({
-        productId: item.product._id,
-        quantity: item.quantity,
-        price: item.product.discount > 0 
-          ? item.product.price * (1 - item.product.discount / 100)
-          : item.product.price,
-        size: item.size || null,
-        color: item.color || null
-      })),
-      shippingAddress,
-      paymentMethod,
-      totalAmount: total,
-      orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
-      paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
-    };
+      const orderData = {
+        items: cart.map(item => ({
+          productId: item.product._id,
+          quantity: item.quantity,
+          price: item.product.discount > 0 
+            ? item.product.price * (1 - item.product.discount / 100)
+            : item.product.price,
+          size: item.size || null,
+          color: item.color || null
+        })),
+        shippingAddress,
+        paymentMethod,
+        totalAmount: total,
+        orderStatus: paymentMethod === 'COD' ? 'CONFIRMED' : 'PENDING',
+        paymentStatus: paymentMethod === 'COD' ? 'COD_PENDING' : 'PENDING'
+      };
 
       console.log("📦 Order data being sent:", orderData);
 
       const result = await createOrder(orderData).unwrap();
       console.log("✅ Order created successfully:", result);
 
-      if (paymentMethod === 'COD') {
-        // Clear both Redux and server cart
+      // 🔧 CRITICAL FIX: Clear cart for BOTH payment methods after successful order creation
+      const clearCartSequence = async () => {
         try {
+          // Step 1: Clear server cart
           await clearCartMutation().unwrap();
-          console.log("✅ Server cart cleared");
+          console.log("✅ Server cart cleared successfully");
+          
+          // Step 2: Clear Redux cart
+          dispatch(clearCart());
+          console.log("✅ Redux cart cleared successfully");
+          
+          return true;
         } catch (cartError) {
-          console.warn("⚠️ Failed to clear server cart:", cartError);
+          console.error("❌ Cart clearing failed:", cartError);
+          
+          // Even if server clear fails, clear Redux cart
+          dispatch(clearCart());
+          console.log("⚠️ Redux cart cleared despite server error");
+          
+          return false;
         }
-        
-        dispatch(clearCart());
-        console.log("✅ Redux cart cleared");
+      };
+
+      if (paymentMethod === 'COD') {
+        // Clear cart immediately for COD since order is confirmed
+        await clearCartSequence();
         
         const orderId = result.order?._id || result.orderId || result._id;
         
         if (orderId) {
           console.log("🎉 COD Order successful, navigating with orderId:", orderId);
           
-          // 🔧 ENHANCED: Multiple navigation strategies
           const successURL = `/order-success?orderId=${orderId}&paymentMethod=COD&status=confirmed&orderType=cod&totalAmount=${total}&timestamp=${Date.now()}`;
           
-          // Strategy 1: Navigate with state backup
+          // Navigate with state backup
           navigate(successURL, { 
             replace: true,
             state: {
@@ -121,12 +135,13 @@ const CheckoutPage = () => {
                 orderId,
                 paymentMethod: 'COD',
                 status: 'confirmed',
-                totalAmount: total
+                totalAmount: total,
+                cartCleared: true // Flag to confirm cart was cleared
               }
             }
           });
           
-          // Strategy 2: Fallback using window.location (if navigate fails)
+          // Fallback navigation
           setTimeout(() => {
             if (window.location.pathname !== '/order-success') {
               console.log("🔄 Fallback: Using window.location for navigation");
@@ -135,17 +150,22 @@ const CheckoutPage = () => {
           }, 100);
           
         } else {
-          console.error("❌ No orderId found in response:", result);
+          console.error("❌ No orderId found in COD response:", result);
           alert("Order created successfully! Redirecting to orders page.");
           navigate('/orders', { replace: true });
         }
         
       } else if (paymentMethod === 'CREDIT_CARD') {
+        // 🔧 NEW: Also clear cart for credit card orders before payment
+        // This prevents cart duplication if user abandons payment and tries again
+        await clearCartSequence();
+        
         const orderId = result.order?._id || result.orderId || result._id;
         console.log("💳 Redirecting to payment page with orderId:", orderId);
         
         if (orderId) {
-          navigate(`/payment?orderId=${orderId}`);
+          // Pass cart cleared flag to payment page
+          navigate(`/payment?orderId=${orderId}&cartCleared=true`);
         } else {
           console.error("❌ No orderId found for payment:", result);
           alert("Order created but payment setup failed. Please contact support.");
@@ -156,6 +176,10 @@ const CheckoutPage = () => {
       console.error('❌ Order creation failed:', error);
       const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
       alert(`Order creation failed: ${errorMessage}`);
+      
+      // Don't clear cart if order creation failed
+      console.log("⚠️ Cart not cleared due to order creation failure");
+      
     } finally {
       setIsProcessingOrder(false);
     }
