@@ -199,7 +199,8 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     }
 
     // 🔧 FIX 2: Validate required shipping address fields
-    const requiredAddressFields = ['firstName', 'lastName', 'line1', 'city', 'phone'];
+    // ✅ CORRECT: Only validate fields in your Address schema
+    const requiredAddressFields = ['line1', 'city', 'phone'];
     for (const field of requiredAddressFields) {
       if (!data.shippingAddress[field] || data.shippingAddress[field].trim() === '') {
         throw new ValidationError(`Shipping address ${field} is required`);
@@ -209,15 +210,11 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     // Create shipping address with error handling
     let address;
     try {
+      // ✅ FIXED: Only use fields that exist in your Address schema
       const addressData = {
-        firstName: data.shippingAddress.firstName.trim(),
-        lastName: data.shippingAddress.lastName.trim(),
         line1: data.shippingAddress.line1.trim(),
-        line2: data.shippingAddress.line2?.trim() || "",
+        line2: data.shippingAddress.line2?.trim() || "",  // This field exists in your schema
         city: data.shippingAddress.city.trim(),
-        state: data.shippingAddress.state?.trim() || "",
-        postalCode: data.shippingAddress.postalCode?.trim() || "",
-        country: data.shippingAddress.country?.trim() || "US",
         phone: data.shippingAddress.phone.trim(),
       };
 
@@ -225,7 +222,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       address = await Address.create(addressData);
       console.log("✅ Address created successfully:", address._id);
       
-    } catch (addressError: any) {
+    } catch (addressError: any) {  // ✅ Add type annotation
       console.error("❌ Failed to create address:", addressError);
       throw new ValidationError(`Failed to create shipping address: ${addressError.message}`);
     }
