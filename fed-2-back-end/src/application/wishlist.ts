@@ -204,9 +204,9 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
       throw new NotFoundError('Wishlist not found');
     }
 
-    // 🔧 FIX: Better way to clear array
+    // 🔧 FIX: Use splice to clear the DocumentArray instead of assignment
     const itemCount = wishlist.items.length;
-    wishlist.items = []; // Clear the array completely
+    wishlist.items.splice(0, wishlist.items.length); // Removes all items from DocumentArray
     
     const clearedWishlist = await wishlist.save();
     console.log(`✅ Wishlist cleared successfully - removed ${itemCount} items`);
