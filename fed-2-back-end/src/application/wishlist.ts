@@ -1,4 +1,4 @@
-// 🔧 FIXED: Wishlist controller following Cart pattern
+// 🔧 FIXED: Wishlist controller with better error handling
 import Wishlist from '../infrastructure/db/entities/Wishlist';
 import Product from '../infrastructure/db/entities/Product';
 import ValidationError from "../domain/errors/validation-error";
@@ -8,7 +8,7 @@ import { Request, Response, NextFunction } from "express";
 import { addToWishlistDTO } from '../domain/dto/wishlist';
 import { getAuth } from "@clerk/express";
 
-// ✅ Helper function like Cart
+// Helper function like Cart
 const getUserId = (req: Request): string | null => {
   try {
     const { userId } = getAuth(req);
@@ -18,15 +18,22 @@ const getUserId = (req: Request): string | null => {
   }
 };
 
-// Get user's wishlist
+// 🔧 FIXED: Get user's wishlist - handle unauthenticated users gracefully
 const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('💖 Getting wishlist for user...');
     const userId = getUserId(req);
     
-    // FIXED: Properly handle unauthenticated users
+    // 🔧 NEW: Return empty wishlist for unauthenticated users instead of error
     if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
+      console.log('👤 User not authenticated, returning empty wishlist');
+      return res.json({
+        success: true,
+        items: [],           
+        totalItems: 0,
+        message: 'Guest user - no wishlist',
+        isGuest: true
+      });
     }
     
     let wishlist = await Wishlist.findOne({ userId }).populate('items.productId');
@@ -42,7 +49,8 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
       success: true,
       items: wishlist.items,           
       totalItems: wishlist.items.length, 
-      data: wishlist                   
+      data: wishlist,
+      isGuest: false
     });
   } catch (error) {
     console.error('❌ Error getting wishlist:', error);
@@ -56,19 +64,20 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
     console.log('💝 Adding item to wishlist:', req.body);
     const userId = getUserId(req);
     
-    // ✅ Validate request body
+    // Authentication required for adding to wishlist
+    if (!userId) {
+      throw new UnauthorizedError('Please sign in to add items to your wishlist');
+    }
+    
+    // Validate request body
     const result = addToWishlistDTO.safeParse(req.body);
     if (!result.success) {
       throw new ValidationError('Invalid wishlist item data: ' + result.error.message);
     }
     
     const { productId } = result.data;
-
-     if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
-    }
     
-    // ✅ Find product like Cart does
+    // Find product like Cart does
     const product = await Product.findById(productId);
     if (!product) {
       throw new NotFoundError('Product not found');
@@ -84,7 +93,7 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
       wishlist = new Wishlist({ userId, items: [] });
     }
     
-    // ✅ Check if already exists
+    // Check if already exists
     const existingItem = wishlist.items.find(item => 
       item.productId.toString() === productId
     );
@@ -93,7 +102,7 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
       throw new ValidationError('Item already in wishlist');
     }
     
-    // ✅ Add new item
+    // Add new item
     wishlist.items.push({
       productId: product._id,
       name: product.name,
@@ -126,7 +135,7 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
     const { productId } = req.params;
     
     if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
+      throw new UnauthorizedError('Please sign in to manage your wishlist');
     }
     
     const wishlist = await Wishlist.findOne({ userId });
@@ -134,7 +143,7 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
       throw new NotFoundError('Wishlist not found');
     }
     
-    // 🔧 FIX: Find and remove the specific item
+    // Find and remove the specific item
     const itemToRemove = wishlist.items.find(item => 
       item.productId.toString() === productId
     );
@@ -168,7 +177,7 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
     const userId = getUserId(req);
     
     if (!userId) {
-      throw new UnauthorizedError('User not authenticated');
+      throw new UnauthorizedError('Please sign in to manage your wishlist');
     }
     
     const wishlist = await Wishlist.findOne({ userId });
@@ -191,14 +200,14 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-// 🔧 COMPLETELY FIXED: Get wishlist item count - handles unauthenticated users gracefully
+// 🔧 UNCHANGED: Get wishlist item count - already handles unauthenticated users gracefully
 const getWishlistItemCount = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('💖 Getting wishlist item count...');
     
     const userId = getUserId(req); // This returns null for unauthenticated users
     
-    // 🔧 FIX: For unauthenticated users, return 0 count instead of error
+    // For unauthenticated users, return 0 count instead of error
     if (!userId) {
       console.log('📊 User not authenticated, returning wishlist count 0');
       return res.json({ 
@@ -222,7 +231,7 @@ const getWishlistItemCount = async (req: Request, res: Response, next: NextFunct
     
   } catch (error) {
     console.error('❌ Error getting wishlist count:', error);
-    // 🔧 FIX: Even on error, return graceful response for count endpoint
+    // Even on error, return graceful response for count endpoint
     res.status(200).json({ 
       success: false,
       itemCount: 0,
