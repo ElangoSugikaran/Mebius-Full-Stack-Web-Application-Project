@@ -711,12 +711,32 @@ export const Api = createApi({
       transformResponse: (response) => {
         return response.data || response;
       },
+      transformErrorResponse: (response, meta, arg) => {
+        // Handle 401 Unauthorized gracefully for wishlist
+        if (response?.status === 401) {
+          console.log('👤 User not authenticated, returning empty wishlist');
+          return {
+            status: 401,
+            data: {
+              success: true,
+              items: [],
+              totalItems: 0,
+              message: 'Guest user - no wishlist'
+            }
+          };
+        }
+        console.error('❌ Failed to fetch wishlist:', response);
+        return response;
+      },
       async onQueryStarted(arg, { dispatch, queryFulfilled }) {
         try {
           const result = await queryFulfilled;
           console.log('✅ Wishlist fetched successfully:', result.data);
         } catch (error) {
-          console.error('❌ Failed to fetch wishlist:', error);
+          // Only log actual errors, not auth issues
+          if (error?.error?.status !== 401) {
+            console.error('❌ Failed to fetch wishlist:', error);
+          }
         }
       },
     }),
@@ -734,12 +754,25 @@ export const Api = createApi({
       transformResponse: (response) => {
         return response.data || response;
       },
+      transformErrorResponse: (response, meta, arg) => {
+        if (response?.status === 401) {
+          return {
+            ...response,
+            message: 'Please sign in to add items to your wishlist'
+          };
+        }
+        return response;
+      },
       async onQueryStarted(productId, { dispatch, queryFulfilled }) {
         try {
           const result = await queryFulfilled;
           console.log('✅ Added to wishlist successfully:', result.data);
         } catch (error) {
-          console.error('❌ Failed to add to wishlist:', error);
+          if (error?.error?.status === 401) {
+            console.log('👤 Authentication required for wishlist');
+          } else {
+            console.error('❌ Failed to add to wishlist:', error);
+          }
           throw error;
         }
       },
@@ -757,12 +790,23 @@ export const Api = createApi({
       transformResponse: (response) => {
         return response.data || response;
       },
+      transformErrorResponse: (response, meta, arg) => {
+        if (response?.status === 401) {
+          return {
+            ...response,
+            message: 'Please sign in to manage your wishlist'
+          };
+        }
+        return response;
+      },
       async onQueryStarted(productId, { dispatch, queryFulfilled }) {
         try {
           const result = await queryFulfilled;
           console.log('✅ Removed from wishlist successfully:', result.data);
         } catch (error) {
-          console.error('❌ Failed to remove from wishlist:', error);
+          if (error?.error?.status !== 401) {
+            console.error('❌ Failed to remove from wishlist:', error);
+          }
           throw error;
         }
       },
@@ -782,7 +826,9 @@ export const Api = createApi({
           const result = await queryFulfilled;
           console.log('✅ Wishlist cleared successfully:', result.data);
         } catch (error) {
-          console.error('❌ Failed to clear wishlist:', error);
+          if (error?.error?.status !== 401) {
+            console.error('❌ Failed to clear wishlist:', error);
+          }
           throw error;
         }
       },
@@ -794,9 +840,19 @@ export const Api = createApi({
       transformResponse: (response) => {
         return response.itemCount || response.data?.itemCount || 0;
       },
+      transformErrorResponse: (response, meta, arg) => {
+        // Always return 0 for count endpoint on any error
+        console.log('📊 Wishlist count error, defaulting to 0:', response?.status);
+        return {
+          status: 200,
+          data: {
+            success: true,
+            itemCount: 0,
+            message: 'Defaulting to 0 items'
+          }
+        };
+      },
     }),
-
-    // 🔧 SETTINGS ENDPOINTS
 
   }),
 });
