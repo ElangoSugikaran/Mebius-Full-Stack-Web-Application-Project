@@ -538,13 +538,19 @@ export const Api = createApi({
     async onQueryStarted(orderData, { dispatch, queryFulfilled }) {
       try {
         const result = await queryFulfilled;
+        const order = result.data || result;
         console.log('🎉 Order creation completed:', {
-          orderId: result.data._id || result.data.id,
-          status: result.data.orderStatus || result.data.status,
-          itemCount: result.data.items?.length
+          orderId: order._id || order.id,
+          status: order.orderStatus || order.status,
+          itemCount: order.items?.length,
+          hasVariants: order.items?.some(item => item.size || item.color) || false
         });
       } catch (error) {
-        console.error('💥 Order creation error in onQueryStarted:', error);
+        console.error('💥 Order creation error in onQueryStarted:', {
+          error: error?.data?.message || error.message,
+          status: error?.status,
+          originalData: orderData
+        });
         throw error;
       }
     },
