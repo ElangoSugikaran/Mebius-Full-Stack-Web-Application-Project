@@ -1,4 +1,4 @@
-// 🔧 FIXED: Wishlist controller with better error handling
+// 🔧 FIXED: Wishlist controller with improved removeFromWishlist method
 import Wishlist from '../infrastructure/db/entities/Wishlist';
 import Product from '../infrastructure/db/entities/Product';
 import ValidationError from "../domain/errors/validation-error";
@@ -7,6 +7,7 @@ import UnauthorizedError from "../domain/errors/unauthorized-error";
 import { Request, Response, NextFunction } from "express";
 import { addToWishlistDTO } from '../domain/dto/wishlist';
 import { getAuth } from "@clerk/express";
+import mongoose from 'mongoose';
 
 // Helper function like Cart
 const getUserId = (req: Request): string | null => {
@@ -77,6 +78,11 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
     
     const { productId } = result.data;
     
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new ValidationError('Invalid product ID');
+    }
+    
     // Find product like Cart does
     const product = await Product.findById(productId);
     if (!product) {
@@ -93,9 +99,9 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
       wishlist = new Wishlist({ userId, items: [] });
     }
     
-    // Check if already exists
+    // Check if already exists - use proper ObjectId comparison
     const existingItem = wishlist.items.find(item => 
-      item.productId.toString() === productId
+      item.productId.toString() === productId.toString()
     );
     
     if (existingItem) {
@@ -104,7 +110,7 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
     
     // Add new item
     wishlist.items.push({
-      productId: product._id,
+      productId: new mongoose.Types.ObjectId(product._id),
       name: product.name,
       price: product.price,
       finalPrice: product.finalPrice || product.price,
@@ -127,7 +133,7 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
   }
 };
 
-// Remove from wishlist
+// 🔧 COMPLETELY FIXED: Remove from wishlist with better array manipulation
 const removeFromWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('🗑️ Removing from wishlist:', req.params.productId);
@@ -138,31 +144,44 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
       throw new UnauthorizedError('Please sign in to manage your wishlist');
     }
     
+    // Validate ObjectId
+    if (!mongoose.Types.ObjectId.isValid(productId)) {
+      throw new ValidationError('Invalid product ID');
+    }
+    
     const wishlist = await Wishlist.findOne({ userId });
     if (!wishlist) {
       throw new NotFoundError('Wishlist not found');
     }
     
-    // Find and remove the specific item
-    const itemToRemove = wishlist.items.find(item => 
-      item.productId.toString() === productId
+    // Find the item index for removal
+    const itemIndex = wishlist.items.findIndex(item => 
+      item.productId.toString() === productId.toString()
     );
     
-    if (!itemToRemove) {
+    if (itemIndex === -1) {
       throw new NotFoundError('Item not found in wishlist');
     }
     
-    wishlist.items.pull(itemToRemove._id);
+    console.log(`📍 Found item at index ${itemIndex}, removing...`);
     
+    // 🔧 FIX: Use splice instead of pull for better reliability
+    wishlist.items.splice(itemIndex, 1);
+    
+    // Save the updated wishlist
     const updatedWishlist = await wishlist.save();
+    
+    // 🔧 OPTIONAL: Populate after save if needed
     await updatedWishlist.populate('items.productId');
     
     console.log('✅ Item removed from wishlist successfully');
+    console.log(`📊 Remaining items: ${updatedWishlist.items.length}`);
     
     res.json({
       success: true,
       message: 'Item removed from wishlist successfully',
-      data: updatedWishlist
+      data: updatedWishlist,
+      remainingItems: updatedWishlist.items.length
     });
   } catch (error) {
     console.error('❌ Error removing from wishlist:', error);
@@ -170,7 +189,7 @@ const removeFromWishlist = async (req: Request, res: Response, next: NextFunctio
   }
 };
 
-// Clear wishlist
+// 🔧 IMPROVED: Clear wishlist with better array handling
 const clearWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('🧹 Clearing wishlist...');
@@ -185,14 +204,18 @@ const clearWishlist = async (req: Request, res: Response, next: NextFunction) =>
       throw new NotFoundError('Wishlist not found');
     }
 
-    wishlist.items.splice(0, wishlist.items.length);
+    // 🔧 FIX: Better way to clear array
+    const itemCount = wishlist.items.length;
+    wishlist.items = []; // Clear the array completely
+    
     const clearedWishlist = await wishlist.save();
-    console.log('✅ Wishlist cleared successfully');
+    console.log(`✅ Wishlist cleared successfully - removed ${itemCount} items`);
     
     res.json({ 
       success: true,
-      message: 'Wishlist cleared successfully', 
-      data: clearedWishlist 
+      message: `Wishlist cleared successfully - removed ${itemCount} items`, 
+      data: clearedWishlist,
+      itemsRemoved: itemCount
     });
   } catch (error) {
     console.error('❌ Error clearing wishlist:', error);
