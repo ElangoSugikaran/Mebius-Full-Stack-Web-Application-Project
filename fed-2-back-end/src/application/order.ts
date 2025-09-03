@@ -174,8 +174,6 @@ const getUserFromClerk = async (userId : string) => {
 };
 
 // ========== CREATE ORDER ==========
-// 🔧 FIXED: Replace the createOrder function in your order.ts file (lines 85-200 approximately)
-
 const createOrder = async (req: Request, res: Response, next: NextFunction) => {
   try {
     const data = req.body;
@@ -216,23 +214,18 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         line2: data.shippingAddress.line2?.trim() || "",
         city: data.shippingAddress.city.trim(),
         phone: data.shippingAddress.phone.trim(),
-        firstName: data.shippingAddress.firstName.trim(),
-        lastName: data.shippingAddress.lastName.trim(),
-        state: data.shippingAddress.state?.trim() || "",
-        postalCode: data.shippingAddress.postalCode?.trim() || "",
-        country: data.shippingAddress.country?.trim() || "Sri Lanka"
       };
 
       console.log("📍 Creating address with data:", addressData);
       address = await Address.create(addressData);
       console.log("✅ Address created successfully:", address._id);
       
-    } catch (addressError: any) {  // 🔧 FIXED: Type assertion for error handling
+    } catch (addressError: any) {
       console.error("❌ Failed to create address:", addressError);
       throw new ValidationError(`Failed to create shipping address: ${addressError.message}`);
     }
 
-    // 🔧 FIX 3: Enhanced item processing with better error handling
+    // 🔧 CRITICAL FIX: Enhanced item processing with better size/color validation
     let totalAmount = 0;
     const processedItems = [];
 
@@ -255,7 +248,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         throw new ValidationError(`Item ${i + 1}: Quantity must be a whole number`);
       }
 
-      // 🔧 FIX 4: Better product fetching with error handling
+      // Better product fetching with error handling
       let product;
       try {
         product = await Product.findById(item.productId);
@@ -268,55 +261,62 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         throw new NotFoundError(`Product with ID ${item.productId} not found or invalid`);
       }
 
-      // 🔧 FIX 5: Robust size and color validation
-      let selectedSize = item.size?.trim() || null;
-      let selectedColor = item.color?.trim() || null;
+      // 🔧 CRITICAL FIX: Better size and color validation with null handling
+      let selectedSize = null;
+      let selectedColor = null;
 
-      // Validate size if product has sizes
-      if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
-        if (!selectedSize) {
-          throw new ValidationError(`Size is required for "${product.name}"`);
+      // Process size - allow null/undefined for products without size variants
+      if (item.size !== undefined && item.size !== null && item.size.trim() !== '') {
+        selectedSize = item.size.trim();
+        
+        // Only validate if product actually has sizes
+        if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+          const availableSizes = product.sizes.map(s => s.toLowerCase());
+          if (!availableSizes.includes(selectedSize.toLowerCase())) {
+            throw new ValidationError(
+              `Size "${selectedSize}" is not available for "${product.name}". Available sizes: ${product.sizes.join(', ')}`
+            );
+          }
         }
-        // Case-insensitive size comparison
-        const availableSizes = product.sizes.map(s => s.toLowerCase());
-        if (!availableSizes.includes(selectedSize.toLowerCase())) {
-          throw new ValidationError(
-            `Size "${selectedSize}" is not available for "${product.name}". Available sizes: ${product.sizes.join(', ')}`
-          );
-        }
+      } else if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
+        // Size is required if product has size variants
+        throw new ValidationError(`Size is required for "${product.name}". Available sizes: ${product.sizes.join(', ')}`);
       }
 
-      // Validate color if product has colors
-      if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
-        if (!selectedColor) {
-          throw new ValidationError(`Color is required for "${product.name}"`);
+      // Process color - allow null/undefined for products without color variants
+      if (item.color !== undefined && item.color !== null && item.color.trim() !== '') {
+        selectedColor = item.color.trim();
+        
+        // Only validate if product actually has colors
+        if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+          const availableColors = product.colors.map(c => c.toLowerCase());
+          if (!availableColors.includes(selectedColor.toLowerCase())) {
+            throw new ValidationError(
+              `Color "${selectedColor}" is not available for "${product.name}". Available colors: ${product.colors.join(', ')}`
+            );
+          }
         }
-        // Case-insensitive color comparison
-        const availableColors = product.colors.map(c => c.toLowerCase());
-        if (!availableColors.includes(selectedColor.toLowerCase())) {
-          throw new ValidationError(
-            `Color "${selectedColor}" is not available for "${product.name}". Available colors: ${product.colors.join(', ')}`
-          );
-        }
+      } else if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
+        // Color is required if product has color variants
+        throw new ValidationError(`Color is required for "${product.name}". Available colors: ${product.colors.join(', ')}`);
       }
 
-      // 🔧 FIX 6: Better stock validation
-      const availableStock = parseInt(product.stock.toString()) || 0;  // 🔧 FIXED: Convert to string first
-      const requestedQuantity = parseInt(item.quantity.toString());    // 🔧 FIXED: Convert to string first
+      // Better stock validation
+      const availableStock = parseInt(product.stock.toString()) || 0;
+      const requestedQuantity = parseInt(item.quantity.toString());
       
       if (availableStock < requestedQuantity) {
-        const variantText = selectedSize || selectedColor 
-          ? ` (${[selectedSize, selectedColor].filter(Boolean).join(', ')})` 
-          : '';
+        const variantText = [selectedSize, selectedColor].filter(Boolean).join(', ');
+        const variantDisplay = variantText ? ` (${variantText})` : '';
         throw new ValidationError(
-          `Insufficient stock for "${product.name}"${variantText}. Available: ${availableStock}, Requested: ${requestedQuantity}`
+          `Insufficient stock for "${product.name}"${variantDisplay}. Available: ${availableStock}, Requested: ${requestedQuantity}`
         );
       }
 
-      // 🔧 FIX 7: Robust price calculation
+      // Robust price calculation
       let itemPrice;
       try {
-        itemPrice = parseFloat(product.price.toString());  // Convert to string first for safety
+        itemPrice = parseFloat(product.price.toString());
         if (isNaN(itemPrice) || itemPrice < 0) {
           throw new Error(`Invalid price for product ${product.name}`);
         }
@@ -334,15 +334,14 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       const itemTotal = itemPrice * requestedQuantity;
       totalAmount += itemTotal;
       
-      // 🔧 FIX 8: Enhanced processed item with better image handling
+      // 🔧 FIXED: Enhanced processed item with proper null handling
       const processedItem = {
         productId: item.productId,
         quantity: requestedQuantity,
         price: itemPrice,
-        size: selectedSize,
-        color: selectedColor,
+        size: selectedSize, // null if no size selected/required
+        color: selectedColor, // null if no color selected/required
         productName: product.name,
-        // 🔧 CRITICAL FIX: Only use 'image' field since 'images' doesn't exist in the schema
         productImage: product.image || null
       };
       
@@ -399,13 +398,12 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
               quantityDeducted: item.quantity
             });
             
-            const variantText = item.size || item.color 
-              ? ` (${[item.size, item.color].filter(Boolean).join(', ')})` 
-              : '';
-            console.log(`📦 Stock updated for ${product.name}${variantText}: ${originalStock} → ${product.stock}`);
+            const variantText = [item.size, item.color].filter(Boolean).join(', ');
+            const variantDisplay = variantText ? ` (${variantText})` : '';
+            console.log(`📦 Stock updated for ${product.name}${variantDisplay}: ${originalStock} → ${product.stock}`);
           }
         }
-      } catch (stockError: any) {  // 🔧 FIXED: Type assertion for error handling
+      } catch (stockError: any) {
         console.error("❌ Stock deduction failed, rolling back changes:", stockError);
         
         // Rollback stock changes
@@ -447,7 +445,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     try {
       order = await Order.create(orderData);
       console.log("✅ Order created successfully:", order._id);
-    } catch (orderCreationError: any) {  // 🔧 FIXED: Type assertion for error handling
+    } catch (orderCreationError: any) {
       console.error("❌ Order creation failed:", orderCreationError);
       
       // If COD order creation fails, rollback stock changes
@@ -479,7 +477,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         .populate("addressId")
         .populate({
           path: "items.productId",
-          select: "name price discount image description"  // 🔧 FIXED: Removed 'images' field reference
+          select: "name price discount image description"
         });
       
       if (!populatedOrder) {
@@ -511,7 +509,7 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
       order: populatedOrder
     });
     
-  } catch (error: any) {  // 🔧 FIXED: Type assertion for error handling
+  } catch (error: any) {
     console.error("❌ Error creating order:", {
       message: error.message,
       stack: error.stack,
