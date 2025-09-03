@@ -12,10 +12,9 @@ import { getAuth } from "@clerk/express";
 const getUserId = (req: Request): string | null => {
   try {
     const { userId } = getAuth(req);
-    return userId || null; // ✅ Return null instead of throwing error
+    return userId || null;
   } catch (error) {
-    console.log('Auth error in getUserId:', error);
-    return null; // ✅ Return null on any auth error
+    return null;
   }
 };
 
