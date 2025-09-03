@@ -210,9 +210,14 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
     let address;
     try {
       const addressData = {
+        firstName: data.shippingAddress.firstName.trim(),
+        lastName: data.shippingAddress.lastName.trim(),
         line1: data.shippingAddress.line1.trim(),
         line2: data.shippingAddress.line2?.trim() || "",
         city: data.shippingAddress.city.trim(),
+        state: data.shippingAddress.state?.trim() || "",
+        postalCode: data.shippingAddress.postalCode?.trim() || "",
+        country: data.shippingAddress.country?.trim() || "US",
         phone: data.shippingAddress.phone.trim(),
       };
 
