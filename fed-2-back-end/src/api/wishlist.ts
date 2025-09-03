@@ -16,14 +16,13 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
   (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch(next);
   };
+// Public routes first (no auth needed)
+wishlistRouter.get('/count', asyncHandler(getWishlistItemCount));
 
-// IMPORTANT: /count route must come BEFORE authenticated routes
-wishlistRouter.get('/count', asyncHandler(getWishlistItemCount)); // No auth for count
-
-// Authenticated routes
-wishlistRouter.get('/', isAuthenticated, asyncHandler(getWishlist));
-wishlistRouter.post('/add', isAuthenticated, asyncHandler(addToWishlist));
-wishlistRouter.delete('/remove/:productId', isAuthenticated, asyncHandler(removeFromWishlist));
-wishlistRouter.delete('/clear', isAuthenticated, asyncHandler(clearWishlist));
-
+// Then authenticated routes
+wishlistRouter.use(isAuthenticated); // Apply auth to all routes below
+wishlistRouter.get('/', asyncHandler(getWishlist));
+wishlistRouter.post('/add', asyncHandler(addToWishlist));
+wishlistRouter.delete('/remove/:productId', asyncHandler(removeFromWishlist));
+wishlistRouter.delete('/clear', asyncHandler(clearWishlist));
 export default wishlistRouter;
