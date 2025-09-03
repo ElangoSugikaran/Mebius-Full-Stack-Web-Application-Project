@@ -16,11 +16,13 @@ const asyncHandler = (fn: (req: Request, res: Response, next: NextFunction) => P
     Promise.resolve(fn(req, res, next)).catch(next);
   };
 
-// PUBLIC ROUTES (no authentication required)
+// 🔧 FIXED: PUBLIC ROUTES (no authentication middleware)
+// These handle unauthenticated users gracefully in the controller
 wishlistRouter.get('/count', asyncHandler(getWishlistItemCount));
+wishlistRouter.get('/', asyncHandler(getWishlist)); // ✅ Made public, handles auth in controller
 
-// PROTECTED ROUTES (authentication required)
-wishlistRouter.get('/', isAuthenticated, asyncHandler(getWishlist));
+// 🔧 PROTECTED ROUTES (authentication required)  
+// These require authentication because they modify data
 wishlistRouter.post('/add', isAuthenticated, asyncHandler(addToWishlist));
 wishlistRouter.delete('/remove/:productId', isAuthenticated, asyncHandler(removeFromWishlist));
 wishlistRouter.delete('/clear', isAuthenticated, asyncHandler(clearWishlist));
