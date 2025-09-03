@@ -9,12 +9,14 @@ import { addToWishlistDTO } from '../domain/dto/wishlist';
 import { getAuth } from "@clerk/express";
 
 // ✅ Helper function like Cart
-const getUserId = (req: Request): string => {
-  const { userId } = getAuth(req);
-  if (!userId) {
-    throw new UnauthorizedError('User not authenticated');
+const getUserId = (req: Request): string | null => {
+  try {
+    const { userId } = getAuth(req);
+    return userId || null; // ✅ Return null instead of throwing error
+  } catch (error) {
+    console.log('Auth error in getUserId:', error);
+    return null; // ✅ Return null on any auth error
   }
-  return userId;
 };
 
 // Get user's wishlist
@@ -22,6 +24,16 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
   try {
     console.log('💖 Getting wishlist for user...');
     const userId = getUserId(req);
+    
+    // ✅ Handle unauthenticated users gracefully
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated',
+        items: [],
+        totalItems: 0
+      });
+    }
     
     let wishlist = await Wishlist.findOne({ userId }).populate('items.productId');
     
@@ -35,9 +47,9 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
     // 🔧 FIX: Return the correct format that frontend expects
     res.json({
       success: true,
-      items: wishlist.items,           // Frontend expects items array
-      totalItems: wishlist.items.length, // Frontend expects totalItems
-      data: wishlist                   // Keep original data for compatibility
+      items: wishlist.items,           
+      totalItems: wishlist.items.length, 
+      data: wishlist                   
     });
   } catch (error) {
     console.error('❌ Error getting wishlist:', error);
