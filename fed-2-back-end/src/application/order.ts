@@ -260,45 +260,40 @@ const createOrder = async (req: Request, res: Response, next: NextFunction) => {
         console.error(`❌ Failed to fetch product ${item.productId}:`, productError);
         throw new NotFoundError(`Product with ID ${item.productId} not found or invalid`);
       }
+      // In your order controller, replace the size/color validation section with this:
 
-      // 🔧 CRITICAL FIX: Better size and color validation with null handling
+      // Process size - handle null/undefined properly
       let selectedSize = null;
       let selectedColor = null;
 
-      // Process size - allow null/undefined for products without size variants
-      if (item.size !== undefined && item.size !== null && item.size.trim() !== '') {
-        selectedSize = item.size.trim();
+      // Handle size validation
+      if (item.size !== undefined && item.size !== null && item.size !== '' && item.size !== 'undefined') {
+        selectedSize = item.size.toString().trim();
         
-        // Only validate if product actually has sizes
+        // Only validate if product has size variants
         if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
-          const availableSizes = product.sizes.map(s => s.toLowerCase());
+          const availableSizes = product.sizes.map(s => s.toString().toLowerCase());
           if (!availableSizes.includes(selectedSize.toLowerCase())) {
             throw new ValidationError(
               `Size "${selectedSize}" is not available for "${product.name}". Available sizes: ${product.sizes.join(', ')}`
             );
           }
         }
-      } else if (product.sizes && Array.isArray(product.sizes) && product.sizes.length > 0) {
-        // Size is required if product has size variants
-        throw new ValidationError(`Size is required for "${product.name}". Available sizes: ${product.sizes.join(', ')}`);
       }
 
-      // Process color - allow null/undefined for products without color variants
-      if (item.color !== undefined && item.color !== null && item.color.trim() !== '') {
-        selectedColor = item.color.trim();
+      // Handle color validation  
+      if (item.color !== undefined && item.color !== null && item.color !== '' && item.color !== 'undefined') {
+        selectedColor = item.color.toString().trim();
         
-        // Only validate if product actually has colors
+        // Only validate if product has color variants
         if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
-          const availableColors = product.colors.map(c => c.toLowerCase());
+          const availableColors = product.colors.map(c => c.toString().toLowerCase());
           if (!availableColors.includes(selectedColor.toLowerCase())) {
             throw new ValidationError(
               `Color "${selectedColor}" is not available for "${product.name}". Available colors: ${product.colors.join(', ')}`
             );
           }
         }
-      } else if (product.colors && Array.isArray(product.colors) && product.colors.length > 0) {
-        // Color is required if product has color variants
-        throw new ValidationError(`Color is required for "${product.name}". Available colors: ${product.colors.join(', ')}`);
       }
 
       // Better stock validation
