@@ -25,14 +25,9 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
     console.log('💖 Getting wishlist for user...');
     const userId = getUserId(req);
     
-    // ✅ Handle unauthenticated users gracefully
+    // FIXED: Properly handle unauthenticated users
     if (!userId) {
-      return res.status(401).json({
-        success: false,
-        message: 'User not authenticated',
-        items: [],
-        totalItems: 0
-      });
+      throw new UnauthorizedError('User not authenticated');
     }
     
     let wishlist = await Wishlist.findOne({ userId }).populate('items.productId');
@@ -44,7 +39,6 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
     
     console.log('✅ Wishlist retrieved successfully:', { itemCount: wishlist.items.length });
     
-    // 🔧 FIX: Return the correct format that frontend expects
     res.json({
       success: true,
       items: wishlist.items,           
@@ -70,6 +64,10 @@ const addToWishlist = async (req: Request, res: Response, next: NextFunction) =>
     }
     
     const { productId } = result.data;
+
+     if (!userId) {
+      throw new UnauthorizedError('User not authenticated');
+    }
     
     // ✅ Find product like Cart does
     const product = await Product.findById(productId);
