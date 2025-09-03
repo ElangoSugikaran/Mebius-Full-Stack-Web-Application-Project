@@ -130,6 +130,49 @@ function ProductCard({ product }) {
     }
   };
 
+  const isInWishlist = () => {
+  if (!wishlist || !Array.isArray(wishlist.items)) return false;
+  
+  return wishlist.items.some(item => {
+    const itemProductId = item.productId?._id || item.productId;
+    return itemProductId === product._id;
+  });
+};
+
+// Wishlist toggle handler
+const handleWishlistToggle = async () => {
+  try {
+    const isCurrentlyInWishlist = isInWishlist();
+    
+    if (isCurrentlyInWishlist) {
+      await removeFromWishlist(product._id).unwrap();
+      toast.success('Removed from wishlist', {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } else {
+      await addToWishlist(product._id).unwrap();
+      toast.success('Added to wishlist', {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    }
+  } catch (error) {
+    console.error('Wishlist toggle error:', error);
+    toast.error('Failed to update wishlist', {
+      position: "top-right",
+      autoClose: 3000,
+    });
+  }
+};
+
+
+// Price calculation helper
+const calculateFinalPrice = (price, discount) => {
+  return (price * (1 - discount / 100)).toFixed(2);
+};
+
+
   // 🔧 NEW: Modal for size/color selection
   const VariantSelectionModal = () => {
     if (!showVariantModal) return null;
