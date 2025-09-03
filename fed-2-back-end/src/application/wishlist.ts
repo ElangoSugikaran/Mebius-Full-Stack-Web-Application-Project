@@ -32,9 +32,12 @@ const getWishlist = async (req: Request, res: Response, next: NextFunction) => {
     
     console.log('✅ Wishlist retrieved successfully:', { itemCount: wishlist.items.length });
     
+    // 🔧 FIX: Return the correct format that frontend expects
     res.json({
       success: true,
-      data: wishlist
+      items: wishlist.items,           // Frontend expects items array
+      totalItems: wishlist.items.length, // Frontend expects totalItems
+      data: wishlist                   // Keep original data for compatibility
     });
   } catch (error) {
     console.error('❌ Error getting wishlist:', error);
@@ -178,8 +181,8 @@ const getWishlistItemCount = async (req: Request, res: Response, next: NextFunct
     
     let userId;
     try {
-      const { userId: authUserId } = getAuth(req);
-      userId = authUserId;
+      const auth = getAuth(req);
+      userId = auth?.userId;
     } catch (error) {
       console.log('User not authenticated, returning wishlist count 0');
       return res.json({ 
@@ -206,8 +209,8 @@ const getWishlistItemCount = async (req: Request, res: Response, next: NextFunct
     });
   } catch (error) {
     console.error('Error getting wishlist count:', error);
-    // Return 0 instead of throwing error to prevent 500 status
-    res.json({ 
+    // 🔧 FIX: Don't call next(error) for count endpoint - just return 0
+    res.status(200).json({ 
       success: false,
       itemCount: 0,
       error: 'Failed to get wishlist count'
