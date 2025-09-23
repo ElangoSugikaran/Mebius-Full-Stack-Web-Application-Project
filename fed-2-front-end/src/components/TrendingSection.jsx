@@ -1,4 +1,5 @@
 import { Link } from "react-router";
+import { useAuth } from '@clerk/clerk-react';
 import { useGetAllProductsQuery, useGetFeaturedProductsQuery, useAddToCartMutation, useGetWishlistQuery, useAddToWishlistMutation, useRemoveFromWishlistMutation } from "../lib/api";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +9,8 @@ import { useState } from 'react';
 
 // 🔥 TRENDING SECTION COMPONENT - Now shows only featured products
 function TrendingSection() {
+  const { isSignedIn } = useAuth(); // Add this line
+  
   // 🔧 UPDATED: Use featured products query for trending section
   const { data: featuredProducts = [], isLoading: isFeaturedLoading } = useGetFeaturedProductsQuery();
   const { data: wishlist, error: wishlistError, isLoading: isWishlistLoading } = useGetWishlistQuery();
@@ -29,11 +32,9 @@ function TrendingSection() {
   const [selectedColor, setSelectedColor] = useState('');
   const [selectedProduct, setSelectedProduct] = useState(null);
 
-  // 🔐 NEW: Check if user is authenticated
-  const isAuthenticated = () => {
-    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
-    return !!token;
-  };
+const isAuthenticated = () => {
+  return isSignedIn;
+};
   
   // 📊 Get trending products - Now limited to 8 featured products
   const trendingProducts = featuredProducts.slice(0, 8);
@@ -86,7 +87,7 @@ function TrendingSection() {
         <span className="font-medium">Sign in required</span>
         <span className="text-sm">You need to sign in to {action}</span>
         <Link 
-          to="/login" 
+          to="/sign-in" 
           className="text-blue-600 hover:text-blue-700 text-sm font-medium underline"
         >
           Sign in now →
