@@ -208,12 +208,9 @@ export const Api = createApi({
 
     // 🔧 CUSTOMER ORDER ENDPOINTS
     getUserOrders: build.query({
-      query: () => '/orders',  // ✅ Correct: GET /api/orders
+      query: () => '/orders',
       providesTags: ['Order'],
       transformResponse: (response) => {
-        // console.log('📦 getUserOrders API response:', response);
-
-        // Handle different response structures
         let orders = [];
         if (Array.isArray(response)) {
           orders = response;
@@ -224,10 +221,6 @@ export const Api = createApi({
         } else if (response.success && response.orders) {
           orders = response.orders;
         }
-
-        // console.log(`✅ Processed ${orders.length} user orders with user info`);
-
-        // Return consistent structure
         return {
           orders: orders,
           count: orders.length,
@@ -236,134 +229,72 @@ export const Api = createApi({
         };
       },
       transformErrorResponse: (response, meta, arg) => {
-        console.error('❌ getUserOrders fetch error:', {
-          status: response?.status,
-          data: response?.data,
-          message: response?.data?.message || 'Failed to fetch orders'
-        });
-
+        console.error('❌ getUserOrders fetch error:', response);
         return {
           ...response,
-          message: response?.data?.message || 'Failed to fetch your orders. Please try again.'
+          message: response?.data?.message || 'Failed to fetch your orders.'
         };
       }
     }),
 
-    // 🔧 Customer order by ID
     getCustomerOrderById: build.query({
       query: (id) => `/orders/${id}`,
+    }),
+
+    createOrder: build.mutation({
+      query: (order) => ({
+        url: "/orders",
+        method: "POST",
+        body: order,
+      }),
+      invalidatesTags: ['Order', 'Cart'],
     }),
 
     // 🔧 CART ENDPOINTS
     getCart: build.query({
       query: () => '/cart',
       providesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Cart fetched successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to fetch cart:', error);
-        }
-      },
+      transformResponse: (response) => response.data || response,
     }),
 
     addToCart: build.mutation({
-      query: (item) => {
-        const body = {
+      query: (item) => ({
+        url: '/cart/add',
+        method: 'POST',
+        body: {
           productId: item.productId || item._id,
           quantity: item.quantity || 1,
-          size: item.size || undefined,
-          color: item.color || undefined,
-        };
-
-        // console.log('🔄 Adding to cart:', body);
-
-        return {
-          url: '/cart/add',
-          method: 'POST',
-          body,
-        };
-      },
+          size: item.size,
+          color: item.color,
+        },
+      }),
       invalidatesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(item, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Added to cart successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to add to cart:', error);
-          throw error;
-        }
-      },
+      transformResponse: (response) => response.data || response,
     }),
 
     updateCartItem: build.mutation({
-      query: ({ productId, quantity, size, color }) => {
-        const body = {
-          quantity,
-          size: size || undefined,
-          color: color || undefined,
-        };
-
-        // console.log('🔄 Updating cart item:', { productId, body });
-
-        return {
-          url: `/cart/update/${productId}`,
-          method: 'PUT',
-          body,
-        };
-      },
+      query: ({ productId, quantity, size, color }) => ({
+        url: `/cart/update/${productId}`,
+        method: 'PUT',
+        body: { quantity, size, color },
+      }),
       invalidatesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(params, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Cart item updated successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to update cart item:', error);
-          throw error;
-        }
-      },
+      transformResponse: (response) => response.data || response,
     }),
 
     removeFromCart: build.mutation({
       query: ({ productId, size, color }) => {
-        // console.log('🔄 Removing from cart:', { productId, size, color });
-
-        // Build query parameters
         const params = new URLSearchParams();
         if (size) params.append('size', size);
         if (color) params.append('color', color);
-
         const queryString = params.toString();
-        const url = `/cart/remove/${productId}${queryString ? `?${queryString}` : ''}`;
-
         return {
-          url,
+          url: `/cart/remove/${productId}${queryString ? `?${queryString}` : ''}`,
           method: 'DELETE',
         };
       },
       invalidatesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(params, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Removed from cart successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to remove from cart:', error);
-          throw error;
-        }
-      },
+      transformResponse: (response) => response.data || response,
     }),
 
     clearCart: build.mutation({
@@ -372,18 +303,7 @@ export const Api = createApi({
         method: 'DELETE',
       }),
       invalidatesTags: ['Cart'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Cart cleared successfully:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to clear cart:', error);
-          throw error;
-        }
-      },
+      transformResponse: (response) => response.data || response,
     }),
 
     getCartItemCount: build.query({
@@ -391,14 +311,6 @@ export const Api = createApi({
       providesTags: ['Cart'],
       transformResponse: (response) => {
         return response.itemCount || response.data?.itemCount || 0;
-      },
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Cart count fetched:', result.data);
-        } catch (error) {
-          console.error('❌ Failed to fetch cart count:', error);
-        }
       },
     }),
 
@@ -410,9 +322,7 @@ export const Api = createApi({
         return response.data || response;
       },
       transformErrorResponse: (response, meta, arg) => {
-        // Handle 401 Unauthorized gracefully for wishlist
         if (response?.status === 401) {
-          // console.log('👤 User not authenticated, returning empty wishlist');
           return {
             status: 401,
             data: {
@@ -426,32 +336,16 @@ export const Api = createApi({
         console.error('❌ Failed to fetch wishlist:', response);
         return response;
       },
-      async onQueryStarted(arg, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Wishlist fetched successfully:', result.data);
-        } catch (error) {
-          // Only log actual errors, not auth issues
-          if (error?.error?.status !== 401) {
-            console.error('❌ Failed to fetch wishlist:', error);
-          }
-        }
-      },
     }),
 
     addToWishlist: build.mutation({
-      query: (productId) => {
-        // console.log('🔄 Adding to wishlist:', productId);
-        return {
-          url: '/wishlist/add',
-          method: 'POST',
-          body: { productId },
-        };
-      },
+      query: (productId) => ({
+        url: '/wishlist/add',
+        method: 'POST',
+        body: { productId },
+      }),
       invalidatesTags: ['Wishlist'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
+      transformResponse: (response) => response.data || response,
       transformErrorResponse: (response, meta, arg) => {
         if (response?.status === 401) {
           return {
@@ -461,33 +355,15 @@ export const Api = createApi({
         }
         return response;
       },
-      async onQueryStarted(productId, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Added to wishlist successfully:', result.data);
-        } catch (error) {
-          if (error?.error?.status === 401) {
-            // console.log('👤 Authentication required for wishlist');
-          } else {
-            console.error('❌ Failed to add to wishlist:', error);
-          }
-          throw error;
-        }
-      },
     }),
 
     removeFromWishlist: build.mutation({
-      query: (productId) => {
-        // console.log('🔄 Removing from wishlist:', productId);
-        return {
-          url: `/wishlist/remove/${productId}`,
-          method: 'DELETE',
-        };
-      },
+      query: (productId) => ({
+        url: `/wishlist/remove/${productId}`,
+        method: 'DELETE',
+      }),
       invalidatesTags: ['Wishlist'],
-      transformResponse: (response) => {
-        return response.data || response;
-      },
+      transformResponse: (response) => response.data || response,
       transformErrorResponse: (response, meta, arg) => {
         if (response?.status === 401) {
           return {
@@ -496,17 +372,6 @@ export const Api = createApi({
           };
         }
         return response;
-      },
-      async onQueryStarted(productId, { dispatch, queryFulfilled }) {
-        try {
-          const result = await queryFulfilled;
-          // console.log('✅ Removed from wishlist successfully:', result.data);
-        } catch (error) {
-          if (error?.error?.status !== 401) {
-            console.error('❌ Failed to remove from wishlist:', error);
-          }
-          throw error;
-        }
       },
     }),
   }),
@@ -533,6 +398,7 @@ export const {
   useGetCheckoutSessionStatusQuery,
   useGetUserOrdersQuery,
   useGetCustomerOrderByIdQuery,
+  useCreateOrderMutation,
   useGetCartQuery,
   useAddToCartMutation,
   useUpdateCartItemMutation,
