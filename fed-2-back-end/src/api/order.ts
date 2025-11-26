@@ -2,9 +2,9 @@
 // File: src/api/routes/order.ts (or wherever your order routes are defined)
 
 import express from "express";
-import { 
-  createOrder, 
-  getOrder, 
+import {
+  createOrder,
+  getOrder,
   getUserOrders,
   getAllOrders,
   getOrderById,
@@ -12,7 +12,7 @@ import {
   updatePaymentStatus,
   cancelOrder,
   updateOrderStatusAfterPayment
-} from "../application/order"; 
+} from "../application/order";
 import { isAuthenticated } from "../api/middleware/authentication-middleware";
 import { isAdmin } from "../api/middleware/authorization-middleware";
 
@@ -66,11 +66,11 @@ orderRouter.route("/:id")
 // 🔧 Add debugging middleware to log all requests
 if (process.env.NODE_ENV === 'development') {
   orderRouter.use((req, res, next) => {
-    console.log(`📍 Order Route: ${req.method} ${req.path}`, {
-      params: req.params,
-      query: req.query,
-      body: req.method !== 'GET' ? req.body : undefined
-    });
+    // console.log(`📍 Order Route: ${ req.method } ${ req.path } `, {
+    //   params: req.params,
+    //   query: req.query,
+    //   bodyKeys: Object.keys(req.body)
+    // });
     next();
   });
 }

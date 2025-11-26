@@ -21,7 +21,7 @@ const itemSchema = new mongoose.Schema({
         type: String,
         required: false,
         trim: true,
-        default: null  
+        default: null
     },
     color: {
         type: String,
@@ -72,6 +72,8 @@ const orderSchema = new mongoose.Schema({
 
 // Index for finding user's orders
 orderSchema.index({ userId: 1, createdAt: -1 });
+// Index for admin to sort all orders by date
+orderSchema.index({ createdAt: -1 });
 
 const Order = mongoose.model("Order", orderSchema);
 
