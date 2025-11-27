@@ -14,15 +14,15 @@ import { useCreateOrderMutation, useClearCartMutation } from '@/lib/api';
 const CheckoutPage = () => {
   const dispatch = useDispatch();
   const navigate = useNavigate();
-
+  
   // RTK Query hook
   const [createOrder, { isLoading: isCreatingOrder }] = useCreateOrderMutation();
   // Add this hook inside the CheckoutPage component (after other hooks)
   const [clearCartMutation] = useClearCartMutation();
-
+  
   // Get cart items from Redux store
   const cart = useSelector((state) => state.cart.cartItems);
-
+  
   // State for payment method and form validation
   const [paymentMethod, setPaymentMethod] = useState('CREDIT_CARD');
   const [shippingAddress, setShippingAddress] = useState(null);
@@ -31,7 +31,7 @@ const CheckoutPage = () => {
   // Calculate order summary
   const orderSummary = {
     subtotal: cart.reduce((total, item) => {
-      const price = item.product.discount > 0
+      const price = item.product.discount > 0 
         ? item.product.price * (1 - item.product.discount / 100)
         : item.product.price;
       return total + (price * item.quantity);
@@ -55,7 +55,7 @@ const CheckoutPage = () => {
 
   // Handle shipping address form submission
   const handleShippingAddressSubmit = (addressData) => {
-    // console.log("📍 Shipping address received:", addressData);
+    console.log("📍 Shipping address received:", addressData);
     setShippingAddress(addressData);
   };
 
@@ -75,7 +75,7 @@ const CheckoutPage = () => {
         items: cart.map(item => ({
           productId: item.product._id,
           quantity: item.quantity,
-          price: item.product.discount > 0
+          price: item.product.discount > 0 
             ? item.product.price * (1 - item.product.discount / 100)
             : item.product.price,
           size: item.size || null,
@@ -99,19 +99,19 @@ const CheckoutPage = () => {
           // Step 1: Clear server cart
           await clearCartMutation().unwrap();
           console.log("✅ Server cart cleared successfully");
-
+          
           // Step 2: Clear Redux cart
           dispatch(clearCart());
           console.log("✅ Redux cart cleared successfully");
-
+          
           return true;
         } catch (cartError) {
           console.error("❌ Cart clearing failed:", cartError);
-
+          
           // Even if server clear fails, clear Redux cart
           dispatch(clearCart());
           console.log("⚠️ Redux cart cleared despite server error");
-
+          
           return false;
         }
       };
@@ -119,16 +119,16 @@ const CheckoutPage = () => {
       if (paymentMethod === 'COD') {
         // Clear cart immediately for COD since order is confirmed
         await clearCartSequence();
-
+        
         const orderId = result.order?._id || result.orderId || result._id;
-
+        
         if (orderId) {
           console.log("🎉 COD Order successful, navigating with orderId:", orderId);
-
+          
           const successURL = `/order-success?orderId=${orderId}&paymentMethod=COD&status=confirmed&orderType=cod&totalAmount=${total}&timestamp=${Date.now()}`;
-
+          
           // Navigate with state backup
-          navigate(successURL, {
+          navigate(successURL, { 
             replace: true,
             state: {
               orderData: {
@@ -140,7 +140,7 @@ const CheckoutPage = () => {
               }
             }
           });
-
+          
           // Fallback navigation
           setTimeout(() => {
             if (window.location.pathname !== '/order-success') {
@@ -148,21 +148,21 @@ const CheckoutPage = () => {
               window.location.href = successURL;
             }
           }, 100);
-
+          
         } else {
           console.error("❌ No orderId found in COD response:", result);
           alert("Order created successfully! Redirecting to orders page.");
           navigate('/orders', { replace: true });
         }
-
+        
       } else if (paymentMethod === 'CREDIT_CARD') {
         // 🔧 NEW: Also clear cart for credit card orders before payment
         // This prevents cart duplication if user abandons payment and tries again
         await clearCartSequence();
-
+        
         const orderId = result.order?._id || result.orderId || result._id;
         console.log("💳 Redirecting to payment page with orderId:", orderId);
-
+        
         if (orderId) {
           // Pass cart cleared flag to payment page
           navigate(`/payment?orderId=${orderId}&cartCleared=true`);
@@ -176,19 +176,19 @@ const CheckoutPage = () => {
       console.error('❌ Order creation failed:', error);
       const errorMessage = error?.data?.message || error?.message || 'Unknown error occurred';
       alert(`Order creation failed: ${errorMessage}`);
-
+      
       // Don't clear cart if order creation failed
       console.log("⚠️ Cart not cleared due to order creation failure");
-
+      
     } finally {
       setIsProcessingOrder(false);
     }
   };
-
+  
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
-
+        
         {/* HEADER & BREADCRUMB */}
         <div className="mb-8">
           <div className="flex items-center space-x-2 text-sm text-gray-600 mb-2">
@@ -198,7 +198,7 @@ const CheckoutPage = () => {
             <span>/</span>
             <span className="text-gray-900">Checkout</span>
           </div>
-
+          
           <div className="flex items-center justify-between">
             <h1 className="text-3xl font-bold text-gray-900">Checkout</h1>
             <Button variant="outline" onClick={() => navigate('/shop/cart')}>
@@ -235,10 +235,10 @@ const CheckoutPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
+          
           {/* CHECKOUT FORM */}
           <div className="lg:col-span-2 space-y-6">
-
+            
             {/* SHIPPING ADDRESS */}
             <Card className="p-6">
               <div className="flex items-center space-x-3 mb-6">
@@ -250,7 +250,7 @@ const CheckoutPage = () => {
                   <p className="text-sm text-gray-600">Where should we deliver your order?</p>
                 </div>
               </div>
-
+              
               <ShippingAddressForm onSubmit={handleShippingAddressSubmit} />
             </Card>
 
@@ -301,21 +301,22 @@ const CheckoutPage = () => {
 
               <div className="space-y-4">
                 {/* Online Payment Option */}
-                <div
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${paymentMethod === 'CREDIT_CARD'
-                      ? 'border-blue-500 bg-blue-50'
+                <div 
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                    paymentMethod === 'CREDIT_CARD' 
+                      ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                  }`}
                   onClick={() => setPaymentMethod('CREDIT_CARD')}
                 >
                   <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      name="payment"
+                    <input 
+                      type="radio" 
+                      name="payment" 
                       value="CREDIT_CARD"
                       checked={paymentMethod === 'CREDIT_CARD'}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-blue-600"
+                      className="text-blue-600" 
                     />
                     <CreditCard className="h-5 w-5 text-gray-600" />
                     <div className="flex-1">
@@ -332,21 +333,22 @@ const CheckoutPage = () => {
                 </div>
 
                 {/* COD Payment Option */}
-                <div
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${paymentMethod === 'COD'
-                      ? 'border-blue-500 bg-blue-50'
+                <div 
+                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                    paymentMethod === 'COD' 
+                      ? 'border-blue-500 bg-blue-50' 
                       : 'border-gray-300 hover:border-gray-400'
-                    }`}
+                  }`}
                   onClick={() => setPaymentMethod('COD')}
                 >
                   <div className="flex items-center space-x-3">
-                    <input
-                      type="radio"
-                      name="payment"
+                    <input 
+                      type="radio" 
+                      name="payment" 
                       value="COD"
                       checked={paymentMethod === 'COD'}
                       onChange={(e) => setPaymentMethod(e.target.value)}
-                      className="text-blue-600"
+                      className="text-blue-600" 
                     />
                     <Banknote className="h-5 w-5 text-gray-600" />
                     <div className="flex-1">
@@ -380,9 +382,9 @@ const CheckoutPage = () => {
               {/* COMPACT CART ITEMS */}
               <div className="space-y-3 mb-6 max-h-64 overflow-y-auto">
                 {cart.map((item, index) => (
-                  <CartItem
+                  <CartItem 
                     key={`${item.product._id}-${index}`}
-                    item={item}
+                    item={item} 
                     viewMode="compact"
                   />
                 ))}
@@ -394,21 +396,21 @@ const CheckoutPage = () => {
                   <span>Subtotal</span>
                   <span>${orderSummary.subtotal.toFixed(2)}</span>
                 </div>
-
+                
                 {orderSummary.savings > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>You saved</span>
                     <span>-${orderSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
-
+                
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
                   <span className="text-green-600 font-medium">FREE</span>
                 </div>
-
+                
                 <hr className="border-gray-200" />
-
+                
                 <div className="flex justify-between text-xl font-bold text-gray-900">
                   <span>Total</span>
                   <span>${total.toFixed(2)}</span>
@@ -416,9 +418,9 @@ const CheckoutPage = () => {
               </div>
 
               {/* 🔧 FIXED: PLACE ORDER BUTTON with proper logic */}
-              <Button
-                size="lg"
-                className="w-full mt-6"
+              <Button 
+                size="lg" 
+                className="w-full mt-6" 
                 onClick={handlePlaceOrder}
                 disabled={isCreatingOrder || isProcessingOrder || !shippingAddress}
               >
@@ -430,13 +432,13 @@ const CheckoutPage = () => {
                   `Proceed to Payment • $${total.toFixed(2)}`
                 )}
               </Button>
-
+              
               {!shippingAddress && (
                 <p className="text-sm text-red-600 mt-2 text-center">
                   Please fill in your shipping address to continue
                 </p>
               )}
-
+              
               <div className="mt-4 text-center">
                 <p className="text-xs text-gray-500 mb-2">
                   By placing your order, you agree to our Terms of Service and Privacy Policy

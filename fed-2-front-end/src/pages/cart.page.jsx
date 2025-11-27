@@ -8,13 +8,13 @@ import { Link } from "react-router";
 import { useSelector, useDispatch } from "react-redux";
 import CartItem from "@/components/CartItem";
 import { ShoppingBag, ArrowLeft, Truck, Shield, RotateCcw, LogIn, Loader2 } from "lucide-react";
-import {
-  useGetCartQuery,
-  useUpdateCartItemMutation,
+import { 
+  useGetCartQuery, 
+  useUpdateCartItemMutation, 
   useRemoveFromCartMutation,
-  useClearCartMutation
+  useClearCartMutation 
 } from "@/lib/api";
-import {
+import { 
   syncCartFromServer,
   updateCartItemQuantity,
   removeFromCart as removeFromCartAction,
@@ -25,19 +25,19 @@ const CartPage = () => {
   const { isSignedIn, isLoaded } = useUser();
   const dispatch = useDispatch();
   const [useLocalCart, setUseLocalCart] = useState(false);
-
+  
   // RTK Query hooks - only call when signed in
-  const {
-    data: serverCart,
-    isLoading,
+  const { 
+    data: serverCart, 
+    isLoading, 
     error,
-    refetch
+    refetch 
   } = useGetCartQuery(undefined, {
     skip: !isSignedIn, // 🔧 Skip API call if user not signed in
     refetchOnMountOrArgChange: true,
     refetchOnReconnect: true
   });
-
+  
   const [updateCartItem, { isLoading: isUpdating }] = useUpdateCartItemMutation();
   const [removeFromCart, { isLoading: isRemoving }] = useRemoveFromCartMutation();
   const [clearCartMutation, { isLoading: isClearing }] = useClearCartMutation();
@@ -51,14 +51,14 @@ const CartPage = () => {
   // Handle server connection and cart synchronization
   useEffect(() => {
     if (!isSignedIn) return; // Don't try to sync if not signed in
-
+    
     if (error) {
       // Server is unavailable, switch to local cart
       console.warn('⚠️ Server cart not available, using local cart only:', error);
       setUseLocalCart(true);
     } else if (serverCart) {
       // Server is available, sync data
-      // console.log('✅ Using server cart data');
+      console.log('✅ Using server cart data');
       if (serverCart.items && Array.isArray(serverCart.items)) {
         dispatch(syncCartFromServer(serverCart));
       }
@@ -74,18 +74,18 @@ const CartPage = () => {
         const price = parseFloat(product.price) || 0;
         const discount = parseFloat(product.discount) || 0;
         const quantity = parseInt(item.quantity) || 1;
-
-        const finalPrice = discount > 0
+        
+        const finalPrice = discount > 0 
           ? price * (1 - discount / 100)
           : price;
-
+        
         return total + (finalPrice * quantity);
       } catch (err) {
         console.error('Error calculating item total:', err, item);
         return total;
       }
     }, 0),
-
+    
     itemCount: cart.reduce((total, item) => {
       try {
         return total + (parseInt(item.quantity) || 1);
@@ -94,12 +94,12 @@ const CartPage = () => {
         return total;
       }
     }, 0),
-
+    
     savings: cart.reduce((total, item) => {
       try {
         const product = item.product || item;
         const discount = parseFloat(product.discount) || 0;
-
+        
         if (discount > 0) {
           const price = parseFloat(product.price) || 0;
           const quantity = parseInt(item.quantity) || 1;
@@ -123,27 +123,27 @@ const CartPage = () => {
 
     try {
       // Always update local state first for immediate UI response
-      dispatch(updateCartItemQuantity({
-        productId,
+      dispatch(updateCartItemQuantity({ 
+        productId, 
         quantity: newQuantity,
         size,
-        color
+        color 
       }));
 
       // Try server update if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
-        await updateCartItem({
-          productId,
+        await updateCartItem({ 
+          productId, 
           quantity: newQuantity,
           size: size || undefined,
           color: color || undefined
         }).unwrap();
-
-        // console.log('✅ Server cart updated successfully');
+        
+        console.log('✅ Server cart updated successfully');
       }
     } catch (serverError) {
       console.warn('⚠️ Server update failed, using local update only:', serverError);
-
+      
       // If server fails, make sure we switch to local cart mode
       if (isSignedIn) {
         setUseLocalCart(true);
@@ -160,25 +160,25 @@ const CartPage = () => {
 
     try {
       // Always update local state first
-      dispatch(removeFromCartAction({
+      dispatch(removeFromCartAction({ 
         productId,
         size,
-        color
+        color 
       }));
 
       // Try server removal if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
-        await removeFromCart({
+        await removeFromCart({ 
           productId,
           size: size || undefined,
           color: color || undefined
         }).unwrap();
-
-        // console.log('✅ Item removed from server cart');
+        
+        console.log('✅ Item removed from server cart');
       }
     } catch (serverError) {
       console.warn('⚠️ Server removal failed, using local removal only:', serverError);
-
+      
       // Switch to local cart mode if server fails
       if (isSignedIn) {
         setUseLocalCart(true);
@@ -195,7 +195,7 @@ const CartPage = () => {
       // Try server clear if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
         await clearCartMutation().unwrap();
-        // console.log('✅ Server cart cleared');
+        console.log('✅ Server cart cleared');
       }
     } catch (serverError) {
       console.warn('⚠️ Server clear failed, local cart cleared:', serverError);
@@ -268,8 +268,8 @@ const CartPage = () => {
         <div className="text-center">
           <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto mb-4"></div>
           <p className="text-gray-600">Loading your cart...</p>
-          <Button
-            variant="outline"
+          <Button 
+            variant="outline" 
             className="mt-4"
             onClick={() => setUseLocalCart(true)}
           >
@@ -316,7 +316,7 @@ const CartPage = () => {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-6xl mx-auto px-4 py-8">
-
+        
         {/* Header & Breadcrumb */}
         <div className="flex items-center justify-between mb-8">
           <div>
@@ -331,7 +331,7 @@ const CartPage = () => {
                 {cartSummary.itemCount} {cartSummary.itemCount === 1 ? 'item' : 'items'}
               </Badge>
             </h1>
-
+            
             {/* Cart Status Indicator */}
             {!isSignedIn && (
               <div className="flex items-center space-x-2 mt-2">
@@ -343,14 +343,14 @@ const CartPage = () => {
                 </Button>
               </div>
             )}
-
+            
             {useLocalCart && isSignedIn && (
               <div className="flex items-center space-x-2 mt-2">
                 <p className="text-sm text-amber-600">
                   ⚠️ Using local cart (server unavailable)
                 </p>
-                <Button
-                  variant="outline"
+                <Button 
+                  variant="outline" 
                   size="sm"
                   onClick={() => {
                     setUseLocalCart(false);
@@ -363,7 +363,7 @@ const CartPage = () => {
               </div>
             )}
           </div>
-
+          
           <div className="flex space-x-2">
             <Button variant="outline" asChild>
               <Link to="/shop">
@@ -371,10 +371,10 @@ const CartPage = () => {
                 Continue Shopping
               </Link>
             </Button>
-
+            
             {cart.length > 0 && (
-              <Button
-                variant="outline"
+              <Button 
+                variant="outline" 
                 onClick={handleClearCart}
                 disabled={isClearing}
                 className="text-red-600 hover:text-red-700 hover:bg-red-50"
@@ -386,22 +386,22 @@ const CartPage = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-
+          
           {/* Cart Items */}
           <div className="lg:col-span-2">
             <Card className="p-6">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Cart Items</h2>
-
+              
               <div className="space-y-6">
                 {cart.map((item, index) => {
                   // Create a unique key for each item
                   const product = item.product || item;
                   const uniqueKey = `${product._id || product.id || index}-${item.size || ''}-${item.color || ''}-${index}`;
-
+                  
                   return (
                     <div key={uniqueKey}>
-                      <CartItem
-                        item={item}
+                      <CartItem 
+                        item={item} 
                         onUpdateQuantity={handleUpdateQuantity}
                         onRemoveItem={handleRemoveItem}
                         isUpdating={isUpdating}
@@ -427,7 +427,7 @@ const CartPage = () => {
                     <p className="text-gray-600">Always free delivery</p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
                     <Shield className="h-5 w-5 text-green-600" />
@@ -437,7 +437,7 @@ const CartPage = () => {
                     <p className="text-gray-600">100% protected</p>
                   </div>
                 </div>
-
+                
                 <div className="flex items-center space-x-3">
                   <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
                     <RotateCcw className="h-5 w-5 text-orange-600" />
@@ -455,27 +455,27 @@ const CartPage = () => {
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
-
+              
               <div className="space-y-4">
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal ({cartSummary.itemCount} items)</span>
                   <span>${cartSummary.subtotal.toFixed(2)}</span>
                 </div>
-
+                
                 {cartSummary.savings > 0 && (
                   <div className="flex justify-between text-green-600">
                     <span>You saved</span>
                     <span>-${cartSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
-
+                
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
                   <span className="text-green-600 font-medium">FREE</span>
                 </div>
-
+                
                 <hr className="border-gray-200" />
-
+                
                 <div className="flex justify-between text-lg font-bold text-gray-900">
                   <span>Total</span>
                   <span>${cartSummary.subtotal.toFixed(2)}</span>
@@ -484,9 +484,9 @@ const CartPage = () => {
 
               {/* Checkout Button */}
               {isSignedIn ? (
-                <Button
-                  asChild
-                  size="lg"
+                <Button 
+                  asChild 
+                  size="lg" 
                   className="w-full mt-6"
                   disabled={cart.length === 0}
                 >
@@ -496,9 +496,9 @@ const CartPage = () => {
                 </Button>
               ) : (
                 <div className="mt-6 space-y-3">
-                  <Button
-                    asChild
-                    size="lg"
+                  <Button 
+                    asChild 
+                    size="lg" 
                     className="w-full"
                     disabled={cart.length === 0}
                   >
@@ -512,7 +512,7 @@ const CartPage = () => {
                   </p>
                 </div>
               )}
-
+              
               <p className="text-xs text-gray-500 text-center mt-3">
                 All prices include any applicable taxes
               </p>
