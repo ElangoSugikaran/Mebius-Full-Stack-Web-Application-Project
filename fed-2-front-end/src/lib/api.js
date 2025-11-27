@@ -250,6 +250,23 @@ export const Api = createApi({
       invalidatesTags: ['Order', 'Cart'],
     }),
 
+    cancelOrder: build.mutation({
+      query: (id) => ({
+        url: `/orders/${id}/cancel`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Order'],
+    }),
+
+    updateOrderStatus: build.mutation({
+      query: ({ id, status }) => ({
+        url: `/orders/${id}/status`,
+        method: 'PUT',
+        body: { status },
+      }),
+      invalidatesTags: ['Order'],
+    }),
+
     // 🔧 CART ENDPOINTS
     getCart: build.query({
       query: () => '/cart',
@@ -338,6 +355,14 @@ export const Api = createApi({
       },
     }),
 
+    getWishlistItemCount: build.query({
+      query: () => '/wishlist/count',
+      providesTags: ['Wishlist'],
+      transformResponse: (response) => {
+        return response.itemCount || response.data?.itemCount || 0;
+      },
+    }),
+
     addToWishlist: build.mutation({
       query: (productId) => ({
         url: '/wishlist/add',
@@ -374,6 +399,15 @@ export const Api = createApi({
         return response;
       },
     }),
+
+    clearWishlist: build.mutation({
+      query: () => ({
+        url: '/wishlist/clear',
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Wishlist'],
+      transformResponse: (response) => response.data || response,
+    }),
   }),
 });
 
@@ -399,6 +433,8 @@ export const {
   useGetUserOrdersQuery,
   useGetCustomerOrderByIdQuery,
   useCreateOrderMutation,
+  useCancelOrderMutation,
+  useUpdateOrderStatusMutation,
   useGetCartQuery,
   useAddToCartMutation,
   useUpdateCartItemMutation,
@@ -406,6 +442,8 @@ export const {
   useClearCartMutation,
   useGetCartItemCountQuery,
   useGetWishlistQuery,
+  useGetWishlistItemCountQuery,
   useAddToWishlistMutation,
   useRemoveFromWishlistMutation,
+  useClearWishlistMutation,
 } = Api;
