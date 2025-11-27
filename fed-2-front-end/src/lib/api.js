@@ -249,6 +249,18 @@ export const Api = createApi({
       }
     }),
 
+    //  ADMIN: Get all orders
+    getAllOrders: build.query({
+      query: () => '/admin/orders',
+      providesTags: ['Order'],
+    }),
+
+    //  ADMIN: Get order by ID
+    getOrderById: build.query({
+      query: (id) => `/admin/orders/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Order', id }],
+    }),
+
     // 🔧 Customer order by ID
     getCustomerOrderById: build.query({
       query: (id) => `/orders/${id}`,
@@ -261,6 +273,33 @@ export const Api = createApi({
         body: order,
       }),
       invalidatesTags: ['Order', 'Cart'],
+    }),
+
+    //  Update order status (used after payment completion)
+    updateOrderStatus: build.mutation({
+      query: ({ orderId, status, orderStatus, id, isPaymentComplete, ...rest }) => {
+        const targetId = orderId || id;
+        return {
+          url: `/orders/${targetId}`,
+          method: "PUT",
+          body: { 
+            status: status || orderStatus,
+            orderStatus: orderStatus || status,
+            isPaymentComplete,
+            ...rest
+          },
+        };
+      },
+      invalidatesTags: ['Order'],
+    }),
+
+    //  Cancel order (customer can cancel their order)
+    cancelOrder: build.mutation({
+      query: (orderId) => ({
+        url: `/orders/${orderId}/cancel`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Order'],
     }),
 
     // 🔧 CART ENDPOINTS
@@ -558,8 +597,12 @@ export const {
   useDeleteReviewMutation,
   useGetCheckoutSessionStatusQuery,
   useGetUserOrdersQuery,
+  useGetAllOrdersQuery,
+  useGetOrderByIdQuery,
   useGetCustomerOrderByIdQuery,
   useCreateOrderMutation,
+  useCancelOrderMutation,
+  useUpdateOrderStatusMutation,
   useGetCartQuery,
   useAddToCartMutation,
   useUpdateCartItemMutation,
