@@ -1,4 +1,4 @@
-// Fixed CartPage.jsx - Handle unauthenticated users properly
+// Fixed CartPage.jsx - Correct calculations matching CartItem.jsx
 import { useEffect, useState } from "react";
 import { useUser } from '@clerk/clerk-react';
 import { Button } from "@/components/ui/button";
@@ -33,7 +33,7 @@ const CartPage = () => {
     error,
     refetch
   } = useGetCartQuery(undefined, {
-    skip: !isSignedIn, // 🔧 Skip API call if user not signed in
+    skip: !isSignedIn,
     refetchOnMountOrArgChange: true,
     refetchOnReconnect: true
   });
@@ -50,14 +50,12 @@ const CartPage = () => {
 
   // Handle server connection and cart synchronization
   useEffect(() => {
-    if (!isSignedIn) return; // Don't try to sync if not signed in
+    if (!isSignedIn) return;
 
     if (error) {
-      // Server is unavailable, switch to local cart
       console.warn('⚠️ Server cart not available, using local cart only:', error);
       setUseLocalCart(true);
     } else if (serverCart) {
-      // Server is available, sync data
       console.log('✅ Using server cart data');
       if (serverCart.items && Array.isArray(serverCart.items)) {
         dispatch(syncCartFromServer(serverCart));
@@ -66,57 +64,63 @@ const CartPage = () => {
     }
   }, [serverCart, error, dispatch, isSignedIn]);
 
-  const cartSummary = {
-    // Calculate subtotal AFTER discounts (final price customer pays)
-    subtotal: cart.reduce((total, item) => {
+  // 🔧 FIXED: Calculate cart summary with EXACT same logic as CartItem.jsx
+  const calculateCartSummary = () => {
+    let subtotal = 0;
+    let itemCount = 0;
+    let totalSavings = 0;
+    let originalTotal = 0;
+
+    cart.forEach((item) => {
       try {
-        const product = item.product || item;
-        const price = parseFloat(product.price) || 0;
+        // Extract product data (handle both formats)
+        const product = (() => {
+          if (item?.productId && typeof item.productId === 'object') {
+            return item.productId;
+          }
+          if (item?.name && item?.price) {
+            return item;
+          }
+          if (item?.product) {
+            return item.product;
+          }
+          return item || {};
+        })();
+
+        // Safe property extraction
+        const originalPrice = parseFloat(product.price) || 0;
         const discount = parseFloat(product.discount) || 0;
         const quantity = parseInt(item.quantity) || 1;
 
-        // SAME LOGIC AS CartItem.jsx
+        // EXACT SAME CALCULATION AS CartItem.jsx
         const discountedPrice = discount > 0
-          ? price * (1 - discount / 100)
-          : price;
+          ? originalPrice * (1 - discount / 100)
+          : originalPrice;
 
+        // Calculate totals
         const itemTotal = discountedPrice * quantity;
+        const itemOriginalTotal = originalPrice * quantity;
+        const itemSavings = itemOriginalTotal - itemTotal;
 
-        return total + itemTotal;
+        subtotal += itemTotal;
+        originalTotal += itemOriginalTotal;
+        totalSavings += itemSavings;
+        itemCount += quantity;
+
       } catch (err) {
-        console.error('Error calculating item total:', err, item);
-        return total;
+        console.error('Error calculating item in summary:', err, item);
       }
-    }, 0),
+    });
 
-    itemCount: cart.reduce((total, item) => {
-      try {
-        return total + (parseInt(item.quantity) || 1);
-      } catch (err) {
-        console.error('Error calculating item count:', err, item);
-        return total;
-      }
-    }, 0),
-
-    // Calculate total savings (optional - for display purposes)
-    savings: cart.reduce((total, item) => {
-      try {
-        const product = item.product || item;
-        const price = parseFloat(product.price) || 0;
-        const discount = parseFloat(product.discount) || 0;
-        const quantity = parseInt(item.quantity) || 1;
-
-        if (discount > 0) {
-          const savingsPerItem = price * (discount / 100);
-          return total + (savingsPerItem * quantity);
-        }
-        return total;
-      } catch (err) {
-        console.error('Error calculating savings:', err, item);
-        return total;
-      }
-    }, 0)
+    return {
+      subtotal: subtotal,
+      itemCount: itemCount,
+      savings: totalSavings,
+      originalTotal: originalTotal
+    };
   };
+
+  const cartSummary = calculateCartSummary();
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (productId, newQuantity, size, color) => {
@@ -126,7 +130,6 @@ const CartPage = () => {
     }
 
     try {
-      // Always update local state first for immediate UI response
       dispatch(updateCartItemQuantity({
         productId,
         quantity: newQuantity,
@@ -134,7 +137,6 @@ const CartPage = () => {
         color
       }));
 
-      // Try server update if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
         await updateCartItem({
           productId,
@@ -147,8 +149,6 @@ const CartPage = () => {
       }
     } catch (serverError) {
       console.warn('⚠️ Server update failed, using local update only:', serverError);
-
-      // If server fails, make sure we switch to local cart mode
       if (isSignedIn) {
         setUseLocalCart(true);
       }
@@ -163,14 +163,12 @@ const CartPage = () => {
     }
 
     try {
-      // Always update local state first
       dispatch(removeFromCartAction({
         productId,
         size,
         color
       }));
 
-      // Try server removal if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
         await removeFromCart({
           productId,
@@ -182,8 +180,6 @@ const CartPage = () => {
       }
     } catch (serverError) {
       console.warn('⚠️ Server removal failed, using local removal only:', serverError);
-
-      // Switch to local cart mode if server fails
       if (isSignedIn) {
         setUseLocalCart(true);
       }
@@ -193,10 +189,8 @@ const CartPage = () => {
   // Handle cart clearing
   const handleClearCart = async () => {
     try {
-      // Clear local cart first
       dispatch(clearCart());
 
-      // Try server clear if available and user is signed in
       if (isSignedIn && !useLocalCart && !error) {
         await clearCartMutation().unwrap();
         console.log('✅ Server cart cleared');
@@ -209,7 +203,7 @@ const CartPage = () => {
     }
   };
 
-  // 🔧 NEW: Loading state for Clerk
+  // Loading state for Clerk
   if (!isLoaded) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -221,14 +215,11 @@ const CartPage = () => {
     );
   }
 
-  // 🔧 NEW: Unauthenticated user state
+  // Unauthenticated user state
   if (!isSignedIn) {
-    // Show local cart items if any exist for non-signed users
     if (localCart.length > 0) {
-      // Show cart with local items but disable server operations
-      // This allows guests to manage local cart before signing in
+      // Allow guests to manage local cart
     } else {
-      // Show login prompt if no local cart items
       return (
         <div className="min-h-screen bg-gray-50">
           <div className="max-w-6xl mx-auto px-4 py-8">
@@ -265,7 +256,7 @@ const CartPage = () => {
     }
   }
 
-  // Loading state - only show if we're actually waiting for server data
+  // Loading state
   if (isLoading && isSignedIn && !useLocalCart && localCart.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -398,7 +389,6 @@ const CartPage = () => {
 
               <div className="space-y-6">
                 {cart.map((item, index) => {
-                  // Create a unique key for each item
                   const product = item.product || item;
                   const uniqueKey = `${product._id || product.id || index}-${item.size || ''}-${item.color || ''}-${index}`;
 
@@ -428,7 +418,7 @@ const CartPage = () => {
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">Free Shipping</p>
-                    <p className="text-gray-600">Always free delivery</p>
+                    <p className="text-gray-600">On all orders</p>
                   </div>
                 </div>
 
@@ -455,25 +445,34 @@ const CartPage = () => {
             </Card>
           </div>
 
-          {/* Order Summary */}
+          {/* Order Summary - FIXED with correct calculations */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
 
               <div className="space-y-4">
-                {/* Subtotal - This is the FINAL price after discounts */}
-                <div className="flex justify-between text-gray-600">
-                  <span>Subtotal ({cartSummary.itemCount} items)</span>
-                  <span>${cartSummary.subtotal.toFixed(2)}</span>
-                </div>
 
-                {/* Show savings if any discounts applied */}
+                {/* Show original total if there are savings */}
                 {cartSummary.savings > 0 && (
-                  <div className="flex justify-between text-green-600">
-                    <span>You saved</span>
+                  <div className="flex justify-between text-gray-500 text-sm">
+                    <span>Original Price</span>
+                    <span className="line-through">${cartSummary.originalTotal.toFixed(2)}</span>
+                  </div>
+                )}
+
+                {/* Show discount/savings */}
+                {cartSummary.savings > 0 && (
+                  <div className="flex justify-between text-green-600 font-medium">
+                    <span>Discount Savings</span>
                     <span>-${cartSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
+
+                {/* Subtotal - This is the price AFTER discounts */}
+                <div className="flex justify-between text-gray-900 font-medium">
+                  <span>Subtotal ({cartSummary.itemCount} {cartSummary.itemCount === 1 ? 'item' : 'items'})</span>
+                  <span>${cartSummary.subtotal.toFixed(2)}</span>
+                </div>
 
                 {/* Shipping */}
                 <div className="flex justify-between text-gray-600">
@@ -481,13 +480,28 @@ const CartPage = () => {
                   <span className="text-green-600 font-medium">FREE</span>
                 </div>
 
+                {/* Tax info */}
+                <div className="flex justify-between text-gray-600 text-sm">
+                  <span>Taxes</span>
+                  <span>Calculated at checkout</span>
+                </div>
+
                 <hr className="border-gray-200" />
 
-                {/* Total - Same as subtotal since shipping is free */}
-                <div className="flex justify-between text-lg font-bold text-gray-900">
+                {/* Total - Same as subtotal (discounted price) + FREE shipping */}
+                <div className="flex justify-between text-xl font-bold text-gray-900">
                   <span>Total</span>
                   <span>${cartSummary.subtotal.toFixed(2)}</span>
                 </div>
+
+                {/* Savings Badge */}
+                {cartSummary.savings > 0 && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-green-800 text-sm font-medium text-center">
+                      🎉 You're saving ${cartSummary.savings.toFixed(2)} on this order!
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Checkout Button */}
@@ -522,7 +536,7 @@ const CartPage = () => {
               )}
 
               <p className="text-xs text-gray-500 text-center mt-3">
-                All prices include any applicable taxes
+                Taxes and final total calculated at checkout
               </p>
             </Card>
           </div>
