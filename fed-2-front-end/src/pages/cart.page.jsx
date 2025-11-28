@@ -66,36 +66,25 @@ const CartPage = () => {
     }
   }, [serverCart, error, dispatch, isSignedIn]);
 
-  // Calculate cart summary with error handling
   const cartSummary = {
-    // Calculate ORIGINAL subtotal (before discounts)
-    originalSubtotal: cart.reduce((total, item) => {
-      try {
-        const product = item.product || item;
-        const price = parseFloat(product.price) || 0;
-        const quantity = parseInt(item.quantity) || 1;
-        return total + (price * quantity);
-      } catch (err) {
-        console.error('Error calculating original subtotal:', err, item);
-        return total;
-      }
-    }, 0),
-
-    // Calculate total savings from discounts
-    savings: cart.reduce((total, item) => {
+    // Calculate subtotal AFTER discounts (final price customer pays)
+    subtotal: cart.reduce((total, item) => {
       try {
         const product = item.product || item;
         const price = parseFloat(product.price) || 0;
         const discount = parseFloat(product.discount) || 0;
         const quantity = parseInt(item.quantity) || 1;
 
-        if (discount > 0) {
-          const savings = (price * discount / 100) * quantity;
-          return total + savings;
-        }
-        return total;
+        // SAME LOGIC AS CartItem.jsx
+        const discountedPrice = discount > 0
+          ? price * (1 - discount / 100)
+          : price;
+
+        const itemTotal = discountedPrice * quantity;
+
+        return total + itemTotal;
       } catch (err) {
-        console.error('Error calculating savings:', err, item);
+        console.error('Error calculating item total:', err, item);
         return total;
       }
     }, 0),
@@ -107,11 +96,27 @@ const CartPage = () => {
         console.error('Error calculating item count:', err, item);
         return total;
       }
+    }, 0),
+
+    // Calculate total savings (optional - for display purposes)
+    savings: cart.reduce((total, item) => {
+      try {
+        const product = item.product || item;
+        const price = parseFloat(product.price) || 0;
+        const discount = parseFloat(product.discount) || 0;
+        const quantity = parseInt(item.quantity) || 1;
+
+        if (discount > 0) {
+          const savingsPerItem = price * (discount / 100);
+          return total + (savingsPerItem * quantity);
+        }
+        return total;
+      } catch (err) {
+        console.error('Error calculating savings:', err, item);
+        return total;
+      }
     }, 0)
   };
-
-  // Calculate final subtotal (after discounts)
-  const finalSubtotal = cartSummary.originalSubtotal - cartSummary.savings;
 
   // Handle quantity updates with proper error handling
   const handleUpdateQuantity = async (productId, newQuantity, size, color) => {
@@ -451,22 +456,21 @@ const CartPage = () => {
           </div>
 
           {/* Order Summary */}
-          {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
 
               <div className="space-y-4">
-                {/* Original Subtotal */}
+                {/* Subtotal - This is the FINAL price after discounts */}
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal ({cartSummary.itemCount} items)</span>
-                  <span>${cartSummary.originalSubtotal.toFixed(2)}</span>
+                  <span>${cartSummary.subtotal.toFixed(2)}</span>
                 </div>
 
-                {/* Discount Savings - CRITICAL: This must show */}
+                {/* Show savings if any discounts applied */}
                 {cartSummary.savings > 0 && (
-                  <div className="flex justify-between text-green-600 font-medium">
-                    <span>Discount Savings</span>
+                  <div className="flex justify-between text-green-600">
+                    <span>You saved</span>
                     <span>-${cartSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
@@ -479,10 +483,10 @@ const CartPage = () => {
 
                 <hr className="border-gray-200" />
 
-                {/* Final Total - MUST use finalSubtotal */}
+                {/* Total - Same as subtotal since shipping is free */}
                 <div className="flex justify-between text-lg font-bold text-gray-900">
                   <span>Total</span>
-                  <span>${finalSubtotal.toFixed(2)}</span>
+                  <span>${cartSummary.subtotal.toFixed(2)}</span>
                 </div>
               </div>
 
