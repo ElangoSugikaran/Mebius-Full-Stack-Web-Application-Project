@@ -451,23 +451,27 @@ const CartPage = () => {
           </div>
 
           {/* Order Summary */}
+          {/* Order Summary */}
           <div className="lg:col-span-1">
             <Card className="p-6 sticky top-4">
               <h2 className="text-xl font-semibold text-gray-900 mb-6">Order Summary</h2>
 
               <div className="space-y-4">
+                {/* Original Subtotal */}
                 <div className="flex justify-between text-gray-600">
                   <span>Subtotal ({cartSummary.itemCount} items)</span>
                   <span>${cartSummary.originalSubtotal.toFixed(2)}</span>
                 </div>
 
+                {/* Discount Savings - CRITICAL: This must show */}
                 {cartSummary.savings > 0 && (
-                  <div className="flex justify-between text-green-600">
+                  <div className="flex justify-between text-green-600 font-medium">
                     <span>Discount Savings</span>
                     <span>-${cartSummary.savings.toFixed(2)}</span>
                   </div>
                 )}
 
+                {/* Shipping */}
                 <div className="flex justify-between text-gray-600">
                   <span>Shipping</span>
                   <span className="text-green-600 font-medium">FREE</span>
@@ -475,6 +479,7 @@ const CartPage = () => {
 
                 <hr className="border-gray-200" />
 
+                {/* Final Total - MUST use finalSubtotal */}
                 <div className="flex justify-between text-lg font-bold text-gray-900">
                   <span>Total</span>
                   <span>${finalSubtotal.toFixed(2)}</span>
