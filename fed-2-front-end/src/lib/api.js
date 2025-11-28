@@ -276,20 +276,32 @@ export const Api = createApi({
     }),
 
     //  Update order status (used after payment completion)
-    updateOrderStatus: build.mutation({
-      query: ({ orderId, status, orderStatus, id, isPaymentComplete, ...rest }) => {
-        const targetId = orderId || id;
-        return {
-          url: `/orders/${targetId}`,
-          method: "PUT",
-          body: { 
-            status: status || orderStatus,
-            orderStatus: orderStatus || status,
-            isPaymentComplete,
-            ...rest
-          },
-        };
-      },
+    // updateOrderStatus: build.mutation({
+    //   query: ({ orderId, status, orderStatus, id, isPaymentComplete, ...rest }) => {
+    //     const targetId = orderId || id;
+    //     return {
+    //       url: `/orders/${targetId}`,
+    //       method: "PUT",
+    //       body: { 
+    //         status: status || orderStatus,
+    //         orderStatus: orderStatus || status,
+    //         isPaymentComplete,
+    //         ...rest
+    //       },
+    //     };
+    //   },
+    //   invalidatesTags: ['Order'],
+    // }),
+    // Add separate mutation for payment completion
+    updateOrderStatusAfterPayment: build.mutation({
+      query: ({ orderId }) => ({
+        url: `/orders/${orderId}/payment-complete`,
+        method: "PUT",
+        body: { 
+          orderStatus: 'CONFIRMED',
+          paymentStatus: 'PAID'
+        },
+      }),
       invalidatesTags: ['Order'],
     }),
 
@@ -602,7 +614,8 @@ export const {
   useGetCustomerOrderByIdQuery,
   useCreateOrderMutation,
   useCancelOrderMutation,
-  useUpdateOrderStatusMutation,
+  // useUpdateOrderStatusMutation,
+  useUpdateOrderStatusAfterPaymentMutation,
   useGetCartQuery,
   useAddToCartMutation,
   useUpdateCartItemMutation,

@@ -1,7 +1,7 @@
 // 🔧 FIXED: PaymentCompletePage.jsx - Uses customer endpoint for payment completion
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { useGetCheckoutSessionStatusQuery, useUpdateOrderStatusMutation } from "@/lib/api";
+import { useGetCheckoutSessionStatusQuery, useUpdateOrderStatusAfterPaymentMutation } from "@/lib/api";
 import { Link, useSearchParams, Navigate } from "react-router-dom";
 
 function PaymentCompletePage() {
@@ -16,7 +16,7 @@ function PaymentCompletePage() {
     pollingInterval: 3000,
   });
   
-  const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
+const [updateOrderStatus, { isLoading: isUpdating }] = useUpdateOrderStatusAfterPaymentMutation();
 
   // 🔧 FIXED: Order status update using customer endpoint
   useEffect(() => {
