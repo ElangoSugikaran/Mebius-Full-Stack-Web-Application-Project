@@ -249,26 +249,109 @@ export const Api = createApi({
       }
     }),
 
-        // 🔧 ADMIN: Update order status
+    //     // 🔧 ADMIN: Update order status
+    // updateOrderStatus: build.mutation({
+    //   query: ({ orderId, orderStatus, paymentStatus }) => ({
+    //     url: `/admin/orders/${orderId}/status`,
+    //     method: 'PUT',
+    //     body: { orderStatus, paymentStatus },
+    //   }),
+    //   invalidatesTags: ['Order'],
+    // }),
+
+    // //  ADMIN: Get all orders
+    // getAllOrders: build.query({
+    //   query: () => '/admin/orders',
+    //   providesTags: ['Order'],
+    // }),
+
+    // //  ADMIN: Get order by ID
+    // getOrderById: build.query({
+    //   query: (id) => `/admin/orders/${id}`,
+    //   providesTags: (result, error, id) => [{ type: 'Order', id }],
+    // }),
+
+    // 🔧 ADMIN ORDER ENDPOINTS - FIXED to match backend routes
+
+    // ADMIN: Update order status
     updateOrderStatus: build.mutation({
       query: ({ orderId, orderStatus, paymentStatus }) => ({
-        url: `/admin/orders/${orderId}/status`,
+        url: `/orders/admin/${orderId}/status`,  // ✅ FIXED: was /admin/orders/${orderId}/status
         method: 'PUT',
         body: { orderStatus, paymentStatus },
       }),
       invalidatesTags: ['Order'],
     }),
 
-    //  ADMIN: Get all orders
+    // ADMIN: Get all orders with user info
     getAllOrders: build.query({
-      query: () => '/admin/orders',
+      query: () => '/orders/admin/all',  // ✅ FIXED: was /admin/orders
       providesTags: ['Order'],
+      transformResponse: (response) => {
+        console.log('📦 getAllOrders API response:', response);
+        
+        // Handle different response structures
+        let orders = [];
+        if (Array.isArray(response)) {
+          orders = response;
+        } else if (response.orders && Array.isArray(response.orders)) {
+          orders = response.orders;
+        } else if (response.data && Array.isArray(response.data)) {
+          orders = response.data;
+        } else if (response.success && response.orders) {
+          orders = response.orders;
+        }
+
+        console.log(`✅ Processed ${orders.length} admin orders`);
+
+        return {
+          orders: orders,
+          count: orders.length,
+          success: true,
+          isEmpty: orders.length === 0
+        };
+      },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ getAllOrders fetch error:', {
+          status: response?.status,
+          data: response?.data,
+          message: response?.data?.message || 'Failed to fetch orders'
+        });
+
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to fetch admin orders. Please try again.'
+        };
+      }
     }),
 
-    //  ADMIN: Get order by ID
+    // ADMIN: Get order by ID with user info
     getOrderById: build.query({
-      query: (id) => `/admin/orders/${id}`,
+      query: (id) => `/orders/admin/${id}`,  // ✅ FIXED: was /admin/orders/${id}
       providesTags: (result, error, id) => [{ type: 'Order', id }],
+      transformResponse: (response) => {
+        console.log('📦 getOrderById API response:', response);
+        
+        // Return order data consistently
+        if (response.order) {
+          return response.order;
+        } else if (response.data) {
+          return response.data;
+        }
+        return response;
+      },
+      transformErrorResponse: (response, meta, arg) => {
+        console.error('❌ getOrderById fetch error:', {
+          status: response?.status,
+          data: response?.data,
+          message: response?.data?.message || 'Failed to fetch order'
+        });
+
+        return {
+          ...response,
+          message: response?.data?.message || 'Failed to fetch order details.'
+        };
+      }
     }),
 
     // 🔧 Customer order by ID
@@ -624,7 +707,6 @@ export const {
   useGetCustomerOrderByIdQuery,
   useCreateOrderMutation,
   useCancelOrderMutation,
-  // useUpdateOrderStatusMutation,
   useUpdateOrderStatusMutation,
   useUpdateOrderStatusAfterPaymentMutation,
   useGetCartQuery,
