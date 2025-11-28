@@ -249,6 +249,16 @@ export const Api = createApi({
       }
     }),
 
+        // 🔧 ADMIN: Update order status
+    updateOrderStatus: build.mutation({
+      query: ({ orderId, orderStatus, paymentStatus }) => ({
+        url: `/admin/orders/${orderId}/status`,
+        method: 'PUT',
+        body: { orderStatus, paymentStatus },
+      }),
+      invalidatesTags: ['Order'],
+    }),
+
     //  ADMIN: Get all orders
     getAllOrders: build.query({
       query: () => '/admin/orders',
@@ -615,6 +625,7 @@ export const {
   useCreateOrderMutation,
   useCancelOrderMutation,
   // useUpdateOrderStatusMutation,
+  useUpdateOrderStatusMutation,
   useUpdateOrderStatusAfterPaymentMutation,
   useGetCartQuery,
   useAddToCartMutation,
