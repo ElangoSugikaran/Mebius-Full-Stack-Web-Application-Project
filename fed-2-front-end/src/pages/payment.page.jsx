@@ -1,4 +1,4 @@
- import React from 'react';
+import React from 'react';
 import PaymentOrderItem from '@/components/PaymentOrderItem';
 import { useSelector } from "react-redux";
 import { Navigate } from "react-router";
@@ -38,9 +38,16 @@ function PaymentPage() {
     return <Navigate to="/checkout" replace />;
   }
 
-  if (cart.length === 0) {
-    console.warn("⚠️ Cart is empty, redirecting to shop");
+  // ✅ FIXED: Don't redirect if we have an orderId
+  // The cart was already cleared after order creation
+  if (cart.length === 0 && !orderId) {
+    console.warn("⚠️ Cart is empty and no orderId, redirecting to shop");
     return <Navigate to="/shop" replace />;
+  }
+
+  // If cart is empty but we have orderId, that's expected - show payment form anyway
+  if (cart.length === 0 && orderId) {
+    console.log("✅ Cart empty but orderId present - proceeding with payment");
   }
 
   return (
