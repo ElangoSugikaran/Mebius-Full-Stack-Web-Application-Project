@@ -44,8 +44,8 @@ orderRouter.route("/:orderId/webhook-update")
   .put(updateOrderStatus);
 
 // 🔄 PUT /api/orders/:orderId/payment-complete - Customer payment completion
-orderRouter.route("/:orderId/payment-complete")
-  .put(isAuthenticated, updateOrderStatusAfterPayment);
+// orderRouter.route("/:orderId/payment-complete")
+//   .put(isAuthenticated, updateOrderStatusAfterPayment);
 
 // ====== CUSTOMER ROUTES (Authenticated Users) ======
 // 📝 POST /api/orders - Create new order
@@ -60,6 +60,17 @@ orderRouter.route("/:id/cancel")
 
 // 🔍 GET /api/orders/:id - Get single order with user info
 // 🔧 IMPORTANT: This MUST be last because it catches any /:id
+orderRouter.route("/:id")
+  .get(isAuthenticated, getOrder);
+
+// Specific routes first
+orderRouter.route("/:orderId/payment-complete")
+  .put(isAuthenticated, updateOrderStatusAfterPayment);
+
+orderRouter.route("/:id/cancel")
+  .put(isAuthenticated, cancelOrder);
+
+// Generic /:id route LAST
 orderRouter.route("/:id")
   .get(isAuthenticated, getOrder);
 

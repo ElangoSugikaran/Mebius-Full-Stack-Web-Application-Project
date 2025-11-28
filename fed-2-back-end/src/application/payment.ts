@@ -20,6 +20,9 @@ interface ProductType {
 
 async function fulfillCheckout(sessionId: string) {
   console.log("Fulfilling Checkout Session " + sessionId);
+   console.log("🔔 WEBHOOK TRIGGERED - Session:", sessionId);
+   console.log("🕐 Timestamp:", new Date().toISOString());
+  
   
   try {
     const checkoutSession = await stripe.checkout.sessions.retrieve(sessionId, {
